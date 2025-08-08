@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Favicon and Icons -->
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
+    <link rel="shortcut icon" type="image/png" href="/favicon.png" />
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Trek and Stay - Adventure Tourism in Karnataka and Maharashtra. Discover waterfalls, forts, and hidden gems." />
+    <title>Trek and Stay - Adventure Tourism</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#FF6B35" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Trek & Stay" />
+    
+    <!-- Performance optimizations -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://images.pexels.com">
+    
+    <!-- Critical fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Fredoka+One&display=swap" rel="stylesheet">
+    <style>
+      #initial-loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #1B4332 0%, #264653 100%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        opacity: 1;
+        transition: opacity 0.5s ease-out;
+      }
+      #initial-loader.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .waterfall-loader {
+        display: flex;
+        align-items: flex-end;
+        height: 80px;
+        margin-bottom: 24px;
+        position: relative;
+      }
+      .fall-bar {
+        width: 10px;
+        height: 60px;
+        margin: 0 4px;
+        border-radius: 6px;
+        background: linear-gradient(180deg, #4FC3F7 0%, #1976D2 100%);
+        opacity: 0.85;
+        animation: waterfall-fall 1.1s cubic-bezier(0.4,0,0.2,1) infinite;
+      }
+      .bar1 { animation-delay: 0s; }
+      .bar2 { animation-delay: 0.18s; }
+      .bar3 { animation-delay: 0.36s; }
+      .bar4 { animation-delay: 0.54s; }
+      .bar5 { animation-delay: 0.72s; }
+      @keyframes waterfall-fall {
+        0% { height: 10px; opacity: 0.5; transform: translateY(-10px) scaleX(1); }
+        30% { height: 60px; opacity: 1; transform: translateY(0) scaleX(1.1); }
+        60% { height: 60px; opacity: 1; transform: translateY(0) scaleX(0.95); }
+        100% { height: 10px; opacity: 0.5; transform: translateY(10px) scaleX(1); }
+      }
+      .splash {
+        position: absolute;
+        left: 50%;
+        bottom: -10px;
+        width: 40px;
+        height: 16px;
+        background: radial-gradient(ellipse at center, #B3E5FC 60%, transparent 100%);
+        opacity: 0.7;
+        transform: translateX(-50%);
+        animation: splash-anim 1.1s cubic-bezier(0.4,0,0.2,1) infinite;
+      }
+      @keyframes splash-anim {
+        0% { opacity: 0.2; transform: translateX(-50%) scaleX(0.7); }
+        30% { opacity: 0.7; transform: translateX(-50%) scaleX(1.1); }
+        60% { opacity: 0.7; transform: translateX(-50%) scaleX(1); }
+        100% { opacity: 0.2; transform: translateX(-50%) scaleX(0.7); }
+      }
+      .loader-text {
+        color: #B3E5FC;
+        font-family: 'Oswald', sans-serif;
+        font-size: 24px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        letter-spacing: 1px;
+        text-shadow: 0 2px 8px #1976D2;
+      }
+      .loader-subtext {
+        color: #E3F2FD;
+        font-family: 'Inter', sans-serif;
+        font-size: 16px;
+        letter-spacing: 0.5px;
+        text-shadow: 0 1px 4px #1976D2;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      body {
+        margin: 0;
+        overflow-x: hidden;
+      }
+      #root {
+        animation: fadeIn 0.6s ease-out;
+      }
+      </style>
+  </head>
+  <body>
+    <!-- Initial loading screen -->
+    <div id="initial-loader">
+      <div class="waterfall-loader">
+        <div class="fall-bar bar1"></div>
+        <div class="fall-bar bar2"></div>
+        <div class="fall-bar bar3"></div>
+        <div class="fall-bar bar4"></div>
+        <div class="fall-bar bar5"></div>
+        <div class="splash"></div>
+      </div>
+      <div class="loader-text">Loading Adventures...</div>
+      <div class="loader-subtext">Welcome to Wilderness</div>
+    </div>
+    
+    <div id="root"></div>
+    
+    <script>
+      // Hide loader when page is ready
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          const loader = document.getElementById('initial-loader');
+          if (loader) {
+            loader.classList.add('hidden');
+            setTimeout(function() { loader.remove(); }, 350);
+          }
+        }, 250);
+      });
+      
+      // Service Worker disabled: aggressively clear existing SW and caches to avoid stale builds
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', async function() {
+          try {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            for (const reg of regs) {
+              await reg.unregister();
+            }
+            if (window.caches) {
+              const names = await caches.keys();
+              await Promise.all(names.map((n) => caches.delete(n)));
+            }
+            console.log('Service workers unregistered and caches cleared');
+          } catch (e) {
+            console.log('SW cleanup failed', e);
+          }
+        });
+      }
+      
+      // Install prompt for PWA
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        deferredPrompt = e;
+        // Show install button/banner if desired
+      });
+    </script>
+    
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
