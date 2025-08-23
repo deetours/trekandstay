@@ -16,7 +16,7 @@ export function BookingsWidget() {
         setLoading(true);
         const data = await fetchBookings();
         setBookings(data);
-      } catch (err) {
+  } catch {
         setError('Failed to load bookings');
       } finally {
         setLoading(false);

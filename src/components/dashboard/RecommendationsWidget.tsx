@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { mockApi, TripRecommendation } from '../../services/mockApi';
+import { fetchTripRecommendations, generateTripRecommendations, type TripRecommendation } from '../../services/api';
 import { motion } from 'framer-motion';
 
 export function RecommendationsWidget() {
@@ -11,9 +11,22 @@ export function RecommendationsWidget() {
     const fetchRecommendations = async () => {
       try {
         setLoading(true);
-        const data = await mockApi.getRecommendations();
+        // Try to get existing recommendations first
+        let data = await fetchTripRecommendations();
+        
+        // If no recommendations exist, generate new ones
+        if (data.length === 0) {
+          try {
+            await generateTripRecommendations();
+            data = await fetchTripRecommendations();
+          } catch (genError) {
+            console.warn('Could not generate recommendations:', genError);
+            // Continue with empty array
+          }
+        }
+        
         setRecommendations(data);
-      } catch (err) {
+      } catch {
         setError('Failed to load recommendations');
       } finally {
         setLoading(false);

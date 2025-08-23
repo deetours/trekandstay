@@ -14,7 +14,7 @@ export function ProfileWidget() {
         setLoading(true);
         const data = await mockApi.getUserProfile();
         setProfile(data);
-      } catch (err) {
+      } catch {
         setError('Failed to load profile');
       } finally {
         setLoading(false);
@@ -90,14 +90,15 @@ export function ProfileWidget() {
         <div>
           <h5 className="font-medium text-gray-700 mb-2">Preferences</h5>
           <div className="flex flex-wrap gap-2">
-            {profile.preferences.preferred_activities?.map((activity: string, index: number) => (
-              <span
-                key={index}
-                className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
-              >
-                {activity}
-              </span>
-            ))}
+            {Array.isArray(profile.preferences.preferred_activities) &&
+              profile.preferences.preferred_activities.map((activity: string, index: number) => (
+                <span
+                  key={index}
+                  className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
+                >
+                  {activity}
+                </span>
+              ))}
           </div>
         </div>
       </div>

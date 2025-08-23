@@ -1,11 +1,15 @@
 // Mock API service to simulate Django backend endpoints
 // This can be replaced with real Django API calls later
 
+export interface UserPreferences {
+  preferred_activities: string[];
+}
+
 export interface UserProfile {
   id: number;
   user: number;
   reward_points: number;
-  preferences: Record<string, any>;
+  preferences: UserPreferences;
 }
 
 export interface Booking {
@@ -137,9 +141,11 @@ export const mockApi = {
     return { ...booking!, ...data };
   },
 
-  deleteBooking: async (_id: number): Promise<void> => {
+  deleteBooking: async (id: number): Promise<void> => {
     await delay(300);
-    // In real implementation, remove from array using _id
+    // In real implementation, remove from array using id
+    const index = mockBookings.findIndex(b => b.id === id);
+    if (index > -1) mockBookings.splice(index, 1);
   },
 
   // Trip History

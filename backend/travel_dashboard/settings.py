@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'corsheaders',
     'core',
+    'rag',
 ]
 
 REST_FRAMEWORK = {
@@ -156,3 +157,31 @@ if CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET:
         api_secret=CLOUDINARY_API_SECRET,
         secure=True,
     )
+
+OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '')
+OPENROUTER_MODEL = os.getenv('OPENROUTER_MODEL', 'qwen/qwen-2.5-32b-instruct')
+
+# WhatsApp API Integration Settings
+WHATSAPP_API_URL = os.getenv('WHATSAPP_API_URL', 'http://localhost:4001')
+WHATSAPP_API_KEY = os.getenv('WHATSAPP_API_KEY', 'change-me')  
+WHATSAPP_WEBHOOK_SECRET = os.getenv('WHATSAPP_WEBHOOK_SECRET', 'shared-secret')
+
+# WhatsApp Sessions Configuration
+WHATSAPP_SESSIONS = {
+    'customer_support': {
+        'purpose': 'General inquiries and support',
+        'auto_respond': True
+    },
+    'sales': {
+        'purpose': 'Booking and sales conversations', 
+        'auto_respond': True
+    },
+    'payments': {
+        'purpose': 'Payment reminders and confirmations',
+        'auto_respond': False
+    },
+    'notifications': {
+        'purpose': 'Trip updates and notifications',
+        'auto_respond': False
+    }
+}

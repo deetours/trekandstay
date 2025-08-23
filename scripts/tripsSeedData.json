@@ -1,0 +1,214 @@
+{
+  "trips": [
+    {
+      "name": "Maharashtra Waterfall Edition (5 Days)",
+      "slug": "maharashtra-waterfall-edition-5d",
+      "location": "Maharashtra (Pune / Satara Region)",
+      "duration": "5D / 4N",
+      "spotsAvailable": 20,
+      "nextDeparture": "2025-08-13",
+      "safetyRecord": "Excellent",
+      "price": 9000,
+      "bookingAdvance": 2000,
+      "difficulty": "Easy to Moderate",
+      "highlights": [
+        "Nanemachi Waterfall",
+        "Satsada Waterfall",
+        "Shevate Waterfall",
+        "Devkund Waterfall",
+        "Kumbhe Waterfall",
+        "Secret Waterfall",
+        "Kalu Waterfall"
+      ],
+      "itinerary": [
+        "Day 1: Evening 6:00 PM departure from Bengaluru to Pune/Satara (Overnight travel)",
+        "Day 2: Reach Pune/Satara early morning. Transfers (~4h) to waterfall bases: Nanemachi, Satsada, Shevate (Trek 2+2 km, Difficulty: Easy)",
+        "Day 3: Devkund, Kumbhe & Secret Waterfall (Entry self) (Trek 6+6 km, Difficulty: Easy to Moderate). Evening long transfer (~6h) to next base.",
+        "Day 4: Kalu Waterfall Trek (4+4 km). Afternoon journey back to Pune. Night departure to Bengaluru.",
+        "Day 5: Evening arrival back in Bengaluru"
+      ],
+      "equipment": ["Backpack","Trekking shoes","Rain jacket","Water bottle 2L","Energy snacks"],
+      "essentials": ["Government ID","Personal meds","Poncho","Power bank"],
+      "safety": ["Certified trek leads","First aid support","Emergency response plan"],
+      "guide": {"name": "Lead Trek Team","experience": "Multi-day Western Ghats operations","bio": "Experienced in coordinating waterfall & monsoon treks."},
+      "reviews": [],
+      "images": [
+        "https://images.pexels.com/photos/29613184/pexels-photo-29613184.jpeg",
+        "https://images.pexels.com/photos/27743006/pexels-photo-27743006.jpeg",
+        "https://images.pexels.com/photos/213872/pexels-photo-213872.jpeg"
+      ],
+      "tags": ["waterfalls","multi-day","maharashtra"],
+      "includes": ["Accommodation (Tent/Dorm/Shared Room)","Tempo Traveller / Mini Bus Transport","Basic Vegetarian Meals","Entry Fees (except Secret Waterfall)","Basic First Aid"],
+      "excludes": ["GST","Travel Insurance","Hospital Expenses beyond first aid","Off-road extra transport","Personal expenses"],
+      "contactNumber": "9902937730"
+    },
+    {
+      "name": "Dudhsagar Trek (2 Nights / 3 Days)",
+      "slug": "dudhsagar-trek-3d",
+      "location": "Kulem, Goa (from Bengaluru)",
+      "duration": "3D / 2N (Train based)",
+      "spotsAvailable": 25,
+      "nextDeparture": "2025-08-15",
+      "safetyRecord": "Excellent",
+      "price": 4500,
+      "bookingAdvance": 1500,
+      "difficulty": "Moderate",
+      "highlights": ["Dudhsagar Falls full trek","Monsoon forest trail"],
+      "itinerary": [
+        "Day 1: Afternoon 3:00 PM train departure from Bengaluru to Kulem, Goa (Overnight journey)",
+        "Day 2: Early arrival, freshen up, breakfast, start Dudhsagar trek 7:00 AM (10+10 km, Moderate). Evening rest.",
+        "Night: 12:30 AM return train journey to Bengaluru.",
+        "Day 3: Afternoon ~12:30 PM arrival in Bengaluru"
+      ],
+      "equipment": ["Backpack","Trekking shoes","Rain cover","Water bottle 2L"],
+      "essentials": ["ID proof","Snacks","Light towel","Poncho"],
+      "safety": ["Experienced leaders","Guide charges included","First aid support"],
+      "guide": {"name": "Regional Trek Lead","experience": "Goa & Western Ghats treks","bio": "Focused on safe monsoon route management."},
+      "reviews": [],
+      "images": [],
+      "tags": ["waterfalls","goa","monsoon"],
+      "includes": ["Basic Stay for fresh-up/rest","Tempo/Bus/Train Transport","1 Breakfast","1 Lunch","1 Dinner","Entry & Guide Fees","Basic First Aid"],
+      "excludes": ["GST","Travel Insurance","Extra transport (off-road)","Personal expenses"],
+      "contactNumber": "9902937730"
+    },
+    {
+      "name": "Explore Maharashtra (7 Days)",
+      "slug": "explore-maharashtra-7d",
+      "location": "Maharashtra Circuit",
+      "duration": "8D / 7N (incl. travel)",
+      "spotsAvailable": 22,
+      "nextDeparture": "2025-08-12",
+      "safetyRecord": "Excellent",
+      "price": 15000,
+      "bookingAdvance": 2000,
+      "difficulty": "Easy to Moderate",
+      "highlights": [
+        "Savlya Ghat","Kumbhe Waterfall","Devkund Waterfall","Nanemachi Waterfall","Satsada Waterfall","Shevate Waterfall","Rajmachi Fort","Bhimashankar Temple","Kalu Waterfall","Adra Jungle Trek","Bhandardara Reverse Waterfall","Vasundhara Waterfall","Necklace Waterfall","Gondeshwara Temple","Sandan Valley View Point","Trimbakeshwar Temple","Durgewadi Waterfall"
+      ],
+      "itinerary": [
+        "Day 1: Evening 6:00 PM departure from Bengaluru to Pune (Overnight)",
+        "Day 2: Early arrival Pune/Satara - Savlya Ghat & Kumbhe Waterfall (2+2 km, Easy)",
+        "Day 3: Devkund, Nanemachi, Satsada, Shevate Waterfalls (6+6 km, Easy to Moderate)",
+        "Day 4: Rajmachi Fort (Jeep self) & Bhimashankar Temple",
+        "Day 5: Kalu Waterfall & Adra Jungle Trek (4+4 km, Easy to Moderate)",
+        "Day 6: Bhandardara Reverse, Vasundhara, Necklace Waterfalls + Gondeshwara Temple + Sandan Valley View Point",
+        "Day 7: Trimbakeshwar Temple & Durgewadi Waterfall. Evening departure from Nasik to Bengaluru.",
+        "Day 8: Morning/Day arrival in Bengaluru"
+      ],
+      "equipment": ["Backpack","Trekking shoes","Rain jacket","Headlamp","Water bottle 2L"],
+      "essentials": ["ID proof","Energy bars","Medications","Poncho"],
+      "safety": ["Certified trek leaders","First aid & emergency kit","Structured evacuation plan"],
+      "guide": {"name": "Senior Trek Captain","experience": "Long multi-day Maharashtra circuits","bio": "Expert in logistics across multi-region routes."},
+      "reviews": [],
+      "images": [],
+      "tags": ["maharashtra","long-journey","multi-day"],
+      "includes": ["Accommodation (Mixed stays)","All Surface Transport","Basic Vegetarian Meals","Entry & Guide Fees","Basic First Aid"],
+      "excludes": ["GST","Travel Insurance","Off-road vehicles","Personal expenses"],
+      "contactNumber": "9902937730"
+    },
+    {
+      "name": "Kumbhe Waterfall Rappelling – 5 Days Adventure",
+      "slug": "kumbhe-waterfall-rappelling-5d",
+      "location": "Kumbhe, Maharashtra (via Pune)",
+      "duration": "5D / 4N",
+      "spotsAvailable": 20,
+      "nextDeparture": "2025-08-28",
+      "safetyRecord": "Excellent",
+      "price": 9500,
+      "bookingAdvance": 2000,
+      "difficulty": "Moderate",
+      "category": "adventure",
+      "highlights": [
+        "Waterfall Rappelling Adventure",
+        "Nanemachi Waterfall - Turquoise Waters",
+        "Satsada Waterfall - Seven Cascading Falls",
+        "Shevate Waterfall - Untouched Nature",
+        "Devkund Waterfall - Iconic Blue Pool",
+        "Professional Safety Equipment",
+        "Expert Rappelling Guides",
+        "Camping Experience"
+      ],
+      "itinerary": [
+        "Day 1: 4:30 AM departure from Bengaluru by train to Pune. Journey begins with scenic landscape transformation.",
+        "Day 2: Morning arrival in Pune. Transfer to Kumbhe Waterfall. Safety briefing and rappelling adventure begins. Evening campfire and overnight stay.",
+        "Day 3: Waterfall exploration day - Nanemachi (crystal turquoise), Satsada (seven cascades), Shevate (pristine gem). Trek: 2+2 km easy trail.",
+        "Day 4: Early trek to iconic Devkund Waterfall from Bhira village. 6+6 km moderate trek through forests and meadows. Night train return.",
+        "Day 5: 11:30 AM arrival back in Bengaluru with unforgettable memories."
+      ],
+      "equipment": [
+        "Sturdy trekking shoes + extra slippers",
+        "Trekking outfits & clothes for 5 days",
+        "Raincoat / Umbrella (monsoon essential)",
+        "10L backpack for treks",
+        "Reusable water bottle",
+        "Power bank for charging devices",
+        "Torch / Headlamp",
+        "Trekking poles (optional)"
+      ],
+      "essentials": [
+        "Valid ID card (mandatory)",
+        "Hard cash (limited ATMs in remote areas)",
+        "Basic first aid kit",
+        "Personal medicines",
+        "Energy snacks: chocolates, glucose, dry fruits, ORS",
+        "Mosquito & leech repellent",
+        "Blanket / Sweater / Thermals for nights",
+        "Toiletries (toothbrush, soap, towel, sanitizer)",
+        "Sunglasses, sunscreen, cap/hat"
+      ],
+      "safety": [
+        "Certified rappelling instructors",
+        "Professional grade safety equipment",
+        "Comprehensive safety briefing",
+        "First aid trained guides",
+        "Emergency evacuation plan",
+        "Weather monitoring protocols"
+      ],
+      "guide": {
+        "name": "Adventure Sports Team",
+        "experience": "5+ years in waterfall rappelling and Maharashtra treks",
+        "bio": "Specialized team of certified rappelling instructors and trek leaders with extensive experience in Maharashtra's waterfalls and adventure sports."
+      },
+      "reviews": [],
+      "images": [
+        "https://images.pexels.com/photos/33041/antelope-canyon-lower-canyon-arizona.jpg",
+        "https://images.pexels.com/photos/237018/pexels-photo-237018.jpeg",
+        "https://images.pexels.com/photos/29613184/pexels-photo-29613184.jpeg",
+        "https://images.pexels.com/photos/27743006/pexels-photo-27743006.jpeg"
+      ],
+      "tags": [
+        "adventure",
+        "rappelling",
+        "waterfall",
+        "maharashtra",
+        "camping",
+        "multi-day",
+        "monsoon",
+        "thrill-seeking"
+      ],
+      "includes": [
+        "Accommodation: Tent stay / Dormitory stay / Shared rooms",
+        "Transportation: Tempo Traveller / Mini Bus / Bus / Train",
+        "Food: 3 Breakfasts & 2 Dinners (vegetarian meals)",
+        "Entry fees & Guide charges",
+        "Professional rappelling equipment and safety gear",
+        "Expert rappelling instructors and guides",
+        "Basic first aid support"
+      ],
+      "excludes": [
+        "GST charges",
+        "Travel insurance",
+        "Hospital expenses (except first aid)",
+        "Lunch (self-sponsored at local eateries)",
+        "Off-road vehicle or extra transport charges",
+        "Personal expenses and shopping",
+        "Anything not mentioned in inclusions"
+      ],
+      "contactNumber": "9902937730",
+      "rating": 4.8,
+      "reviewCount": 25,
+      "active": true,
+      "featured": true
+    }
+  ]
+}

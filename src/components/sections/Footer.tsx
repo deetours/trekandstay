@@ -11,6 +11,7 @@ import {
   Heart 
 } from 'lucide-react';
 import { Logo } from '../common/Logo';
+import { Link } from 'react-router-dom';
 
 export const Footer: React.FC = () => {
   const quickLinks = [
@@ -91,12 +92,12 @@ export const Footer: React.FC = () => {
                   whileHover={{ x: 5 }}
                   transition={{ type: 'spring', stiffness: 400, damping: 10 }}
                 >
-                  <a
-                    href={link.href}
+                  <Link
+                    to={link.href}
                     className="text-stone-gray hover:text-adventure-orange transition-colors duration-200 font-inter"
                   >
                     {link.name}
-                  </a>
+                  </Link>
                 </motion.li>
               ))}
             </ul>
@@ -117,12 +118,12 @@ export const Footer: React.FC = () => {
                   whileHover={{ x: 5 }}
                   transition={{ type: 'spring', stiffness: 400, damping: 10 }}
                 >
-                  <a
-                    href={adventure.href}
+                  <Link
+                    to={adventure.href}
                     className="text-stone-gray hover:text-adventure-orange transition-colors duration-200 font-inter"
                   >
                     {adventure.name}
-                  </a>
+                  </Link>
                 </motion.li>
               ))}
             </ul>

@@ -1,0 +1,31 @@
+version: '3.9'
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+  whatsapp-api:
+    build: .
+    restart: unless-stopped
+    environment:
+      - PORT=4001
+      - MONGO_URI=mongodb://mongo:27017/whatsapp
+      - API_KEY=${API_KEY:-change-me}
+      - WEBHOOK_TARGET_URL=${WEBHOOK_TARGET_URL:-}
+      - WEBHOOK_AUTH_HEADER=X-Webhook-Token
+      - WEBHOOK_AUTH_TOKEN=${WEBHOOK_AUTH_TOKEN:-shared-secret}
+      - LOG_LEVEL=info
+      - SESSION_DIR=/.wawsessions
+      - ALLOW_ORIGINS=*
+    ports:
+      - "4001:4001"
+    depends_on:
+      - mongo
+    volumes:
+      - sessions:/app/.wawsessions
+volumes:
+  mongo_data:
+  sessions:

@@ -1,0 +1,42 @@
+export const products = [
+  {
+    id: 'honey',
+    name: 'Organic Honey',
+    price: 299,
+    image: '/shop/honey.jpg',
+    description: 'Pure, local honey from the Western Ghats.',
+    category: 'Food',
+  },
+  {
+    id: 'turmeric',
+    name: 'Wild Turmeric',
+    price: 199,
+    image: '/shop/turmeric.jpg',
+    description: 'Aromatic wild turmeric powder.',
+    category: 'Food',
+  },
+  {
+    id: 'pickles',
+    name: 'Homemade Pickles',
+    price: 149,
+    image: '/shop/pickles.jpg',
+    description: 'Traditional pickles, assorted flavors.',
+    category: 'Food',
+  },
+  {
+    id: 'papad',
+    name: 'Crispy Papad',
+    price: 99,
+    image: '/shop/papad.jpg',
+    description: 'Handmade, sun-dried papad.',
+    category: 'Food',
+  },
+  {
+    id: 'tshirt',
+    name: 'Travel T-shirt',
+    price: 499,
+    image: '/shop/tshirt.jpg',
+    description: 'Comfortable cotton T-shirt for travelers.',
+    category: 'Apparel',
+  },
+];

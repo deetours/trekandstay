@@ -5,14 +5,18 @@ import { FeaturedDestinations } from '../components/sections/FeaturedDestination
 import { StoriesWidget } from '../components/dashboard/StoriesWidget';
 import { TrustStrip } from '../components/sections/TrustStrip';
 import { ValueProps } from '../components/sections/ValueProps';
-import { FAQ } from '../components/sections/FAQ';
+import FAQ from '../components/sections/FAQ';
 import { NewsletterCTA } from '../components/sections/NewsletterCTA';
 import { PartnerLogos } from '../components/sections/PartnerLogos';
+import { LocalScene } from '../components/3d/LocalScene';
 
 export function HomePage() {
   return (
     <PageTransition>
-      <HeroSection />
+      <div className="relative">
+        <LocalScene variant="compass" size={260} />
+        <HeroSection />
+      </div>
       <div className="-mt-10 relative z-10 px-4">
         <TrustStrip />
       </div>

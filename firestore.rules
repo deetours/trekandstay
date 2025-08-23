@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { return request.auth != null && request.auth.token.admin == true; }
+
+    // Trips: public can read only active trips; admins full CRUD
+    match /trips/{tripId} {
+      allow read: if resource.data.active == true || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Trip itinerary subcollection: readable if parent trip readable; write only by admin
+    match /trips/{tripId}/itinerary/{itemId} {
+      allow read: if get(/databases/$(database)/documents/trips/$(tripId)).data.active == true || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Stories moderation: only approved visible publicly; authors can create pending; only admin can change status / rejectionReason
+    match /stories/{storyId} {
+      allow create: if true; // unauthenticated submit allowed (adjust if needed)
+      allow read: if resource.data.status == 'approved' || isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    // Leads: only admins can read; anyone can create
+    match /leads/{leadId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Products: public read active products; admins manage
+    match /products/{productId} {
+      allow read: if resource.data.active == true || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+  }
+}
+
+// Deploy with: firebase deploy --only firestore:rules
+// Ensure admin users have custom claim {admin: true} via Firebase Admin SDK.

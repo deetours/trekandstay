@@ -1,4 +1,4 @@
-import React, { useRef, useMemo } from 'react';
+import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
@@ -11,9 +11,9 @@ export const ParticleSystem: React.FC<ParticleSystemProps> = ({
   count = 50,
   type = 'leaves'
 }) => {
-  const mesh = useRef<THREE.Points>(null);
-  const particles = useRef<Float32Array>();
-  const velocities = useRef<Float32Array>();
+  const mesh = useRef<THREE.Points | null>(null);
+  const particles = useRef<Float32Array | null>(null);
+  const velocities = useRef<Float32Array | null>(null);
 
   // Generate particle positions and velocities
   const { positions, colors } = useMemo(() => {
@@ -85,8 +85,8 @@ export const ParticleSystem: React.FC<ParticleSystemProps> = ({
       colors[i3 + 2] = b;
     }
 
-    particles.current = positions;
-    velocities.current = vels;
+  particles.current = positions;
+  velocities.current = vels;
 
     return { positions, colors };
   }, [count, type]);
@@ -95,7 +95,9 @@ export const ParticleSystem: React.FC<ParticleSystemProps> = ({
   useFrame((state) => {
     if (!mesh.current || !particles.current || !velocities.current) return;
 
-    const positions = mesh.current.geometry.attributes.position.array as Float32Array;
+    const posAttr = mesh.current.geometry.getAttribute('position') as THREE.BufferAttribute | undefined;
+    if (!posAttr || !posAttr.array) return;
+    const positions = posAttr.array as Float32Array;
     const time = state.clock.getElapsedTime();
 
     for (let i = 0; i < count; i++) {
@@ -126,7 +128,7 @@ export const ParticleSystem: React.FC<ParticleSystemProps> = ({
       }
     }
 
-    mesh.current.geometry.attributes.position.needsUpdate = true;
+  posAttr.needsUpdate = true;
   });
 
   const getPointSize = () => {
@@ -145,13 +147,13 @@ export const ParticleSystem: React.FC<ParticleSystemProps> = ({
         <bufferAttribute
           attach="attributes-position"
           array={positions}
-          count={count}
+          count={positions.length / 3}
           itemSize={3}
         />
         <bufferAttribute
           attach="attributes-color"
           array={colors}
-          count={count}
+          count={colors.length / 3}
           itemSize={3}
         />
       </bufferGeometry>

@@ -7,14 +7,99 @@
     --bg: #ffffff;
     --text: #0B0F10;
     --card: #ffffff;
+    --border: #e5e7eb;
+    --muted: #6b7280;
+    --bg-alt: #f3f4f6;
+    --surface: #ffffff;
+    --surface-alt: #f8fafc;
+    --accent: #0d9488; /* teal-600 */
+    --accent-foreground: #ffffff;
+    --danger: #dc2626;
+    --warning: #d97706;
+    --info: #2563eb;
+    --ring: #0ea5e9;
+    --focus: 0 0 0 3px rgba(14,165,233,0.45);
   }
   .dark {
     --bg: #0B0F10;
-    --text: #E5E7EB;
-    --card: #111827;
+    --text: #f1f5f9; /* slate-100 */
+    --card: #111827; /* slate-900 */
+    --border: #1e293b; /* slate-800 */
+    --muted: #94a3b8; /* slate-400 */
+    --bg-alt: #0f172a; /* slate-950-ish */
+    --surface: #1e293b; /* elevate slightly */
+    --surface-alt: #162132;
+    --accent: #14b8a6; /* teal-500 brighter */
+    --accent-foreground: #ffffff;
+    --danger: #f87171;
+    --warning: #fbbf24;
+    --info: #60a5fa;
+    --ring: #38bdf8;
   }
   body {
     background-color: var(--bg);
     color: var(--text);
+    transition: background-color 0.35s ease, color 0.35s ease;
+    color-scheme: light dark;
   }
+  ::selection { background: var(--accent); color: var(--accent-foreground); }
+  .dark ::selection { background: var(--accent); color: var(--accent-foreground); }
+
+  /* Unified form control baseline (light mode) */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="date"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="search"],
+  textarea,
+  select {
+    @apply bg-white text-gray-900 placeholder:text-gray-400 border border-[var(--border)] rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors;
+  }
+  /* Remove inner spin / calendar dark artifacts (WebKit) */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type="number"] { -moz-appearance: textfield; }
+  /* Date input icon coloring (WebKit) */
+  input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0); opacity: 0.7; cursor: pointer; }
+  input[type="date"]:hover::-webkit-calendar-picker-indicator { opacity: 1; }
+
+  /* Dark mode overrides */
+  .dark input[type="text"],
+  .dark input[type="email"],
+  .dark input[type="password"],
+  .dark input[type="number"],
+  .dark input[type="date"],
+  .dark input[type="tel"],
+  .dark input[type="url"],
+  .dark input[type="search"],
+  .dark textarea,
+  .dark select {
+    @apply bg-[var(--surface)] text-[var(--text)] placeholder:text-slate-400 border-[var(--border)] focus:ring-emerald-400/40 focus:border-emerald-400;
+  }
+  .dark input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) hue-rotate(180deg); }
+}
+
+@layer components {
+  .themed-surface { @apply bg-[var(--card)] border border-[var(--border)] transition-colors; }
+  .themed-text-muted { color: var(--muted); }
+  .surface { background: var(--surface); border: 1px solid var(--border); }
+  .surface-alt { background: var(--surface-alt); border: 1px solid var(--border); }
+  .elevated { background: var(--card); box-shadow: 0 4px 32px -8px rgba(0,0,0,0.12); border: 1px solid var(--border); }
+  .dark .elevated { box-shadow: 0 4px 30px -12px rgba(0,0,0,0.6); }
+}
+
+@layer utilities {
+  /* Subtle adaptive text overrides for better dark mode contrast when legacy gray classes are used */
+  .dark .text-gray-600 { color: #cbd5e1 !important; }
+  .dark .text-gray-500 { color: #94a3b8 !important; }
+  .dark .text-gray-400 { color: #64748b !important; }
+  .dark .text-gray-700 { color: #e2e8f0 !important; }
+  .dark .text-gray-900 { color: var(--text) !important; }
+  .dark .bg-white { background-color: var(--card) !important; }
+  .dark .bg-gray-50 { background-color: #1e293b !important; }
+  .focus-ring:focus-visible { outline: var(--focus); outline-offset: 2px; }
+  .dark .focus-ring:focus-visible { outline: var(--focus); }
 }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { storiesApi } from '../services/stories';
+import { LocalScene } from '../components/3d/LocalScene';
 
 export function CreateStoryPage() {
   const navigate = useNavigate();
@@ -20,7 +21,7 @@ export function CreateStoryPage() {
 
   const onPickImages = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    setImages(files.slice(0, 6));
+    setImages(files.slice(0,6));
   };
 
   const onPickAudio = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,7 +64,8 @@ export function CreateStoryPage() {
         await storiesApi.uploadStoryAudio(storyRes.id, audioFile);
       }
       setSubmitted(true);
-      setTimeout(() => navigate('/stories'), 1200);
+      // Delay navigation so user sees moderation message
+      setTimeout(() => navigate('/stories'), 2500);
     } catch (err) {
       console.error(err);
       alert('Failed to submit. Please try again.');
@@ -73,7 +75,8 @@ export function CreateStoryPage() {
   };
 
   return (
-    <main className="px-4 py-10 md:px-8 bg-gradient-to-b from-white to-blue-50 min-h-screen pt-24">
+    <main className="px-4 py-10 md:px-8 bg-gradient-to-b from-white to-blue-50 min-h-screen pt-24 relative">
+      <div className="absolute top-4 right-4 opacity-40"><LocalScene variant="breathing" size={150} /></div>
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">Share Your Story</h1>
@@ -85,7 +88,8 @@ export function CreateStoryPage() {
             <div className="text-center py-8">
               <div className="text-2xl mb-2">🎉</div>
               <div className="font-semibold text-gray-900">Story submitted!</div>
-              <div className="text-gray-600 text-sm">Thanks for sharing your experience. Redirecting…</div>
+              <div className="text-gray-600 text-sm">Your story is now pending review by an admin before it becomes visible.</div>
+              <div className="mt-2 text-xs text-gray-500">You will be redirected shortly…</div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { mockApi, TripHistory } from '../../services/mockApi';
+import { fetchTripHistory, type TripHistory } from '../../services/api';
 import { motion } from 'framer-motion';
-import { MapPin, Calendar } from 'lucide-react';
+import { MapPin, Calendar, Star } from 'lucide-react';
 
 export function TripHistoryWidget() {
   const [history, setHistory] = useState<TripHistory[]>([]);
@@ -12,9 +12,9 @@ export function TripHistoryWidget() {
     const fetchHistory = async () => {
       try {
         setLoading(true);
-        const data = await mockApi.getTripHistory();
+        const data = await fetchTripHistory();
         setHistory(data);
-      } catch (err) {
+      } catch {
         setError('Failed to load trip history');
       } finally {
         setLoading(false);
@@ -72,6 +72,12 @@ export function TripHistoryWidget() {
             </div>
             {trip.feedback && (
               <p className="text-sm text-gray-700 italic">"{trip.feedback}"</p>
+            )}
+            {trip.rating && (
+              <div className="flex items-center gap-1 mt-2">
+                <Star className="w-4 h-4 text-yellow-500" fill="currentColor" />
+                <span className="text-sm text-gray-600">{trip.rating}/5</span>
+              </div>
             )}
           </motion.div>
         ))}

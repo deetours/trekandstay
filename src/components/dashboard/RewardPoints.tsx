@@ -10,7 +10,7 @@ export function RewardPoints({ points }: { points: number }) {
       onUpdate: (v) => setDisplay(Math.round(v)),
     });
     return () => controls.stop();
-  }, [points]);
+  }, [points, display]);
   return (
     <motion.div className="text-3xl font-bold text-yellow-400">
       <span>{display}</span> Reward Points

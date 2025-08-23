@@ -14,7 +14,6 @@ export const PageTransition: React.FC<PageTransitionProps> = ({
   loadingDelay = 30
 }) => {
   const isLoading = useLazyLoading(loadingDelay);
-  console.log('[PageTransition] isLoading:', isLoading);
 
   return (
     <AnimatePresence mode="wait">

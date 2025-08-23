@@ -19,6 +19,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { PageTransition } from '../components/layout/PageTransition';
 import { format } from 'date-fns';
+import { LocalScene } from '../components/3d/LocalScene';
 
 interface Booking {
   id: string;
@@ -263,7 +264,10 @@ export const BookingsPage: React.FC = () => {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-stone-gray pt-24 pb-16">
+      <div className="min-h-screen bg-stone-gray pt-24 pb-16 relative">
+        <div className="absolute top-6 right-8 opacity-50">
+          <LocalScene variant="fireflies" size={160} />
+        </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Page Header */}
           <motion.div

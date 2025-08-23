@@ -1,64 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Star as StarIcon, Clock, Users, ArrowRight, X } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Link } from 'react-router-dom';
+import { collection, getDocs, query, limit } from 'firebase/firestore';
+import { db, getDbOrThrow, waitForFirestore } from '../../firebase';
 
-const destinations = [
-	{
-		id: '1',
-		name: 'Dudhsagar Waterfalls',
-		category: 'waterfall',
-		location: 'Goa-Karnataka Border',
-		difficulty: 'Moderate',
-		duration: '2 Days',
-		price: 2999,
-		rating: 4.8,
-		reviewCount: 156,
-		image: 'https://images.pexels.com/photos/547115/pexels-photo-547115.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop',
-		highlights: ['Milky white cascade', 'Train trek', 'Wildlife spotting'],
-	},
-	{
-		id: '2',
-		name: 'Raigad Fort',
-		category: 'fort',
-		location: 'Maharashtra',
-		difficulty: 'Challenging',
-		duration: '1 Day',
-		price: 1899,
-		rating: 4.6,
-		reviewCount: 203,
-		image: 'https://images.pexels.com/photos/1619317/pexels-photo-1619317.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop',
-		highlights: ['Historical significance', 'Ropeway ride', 'Panoramic views'],
-	},
-	{
-		id: '3',
-		name: 'Gokarna Beach',
-		category: 'beach',
-		location: 'Karnataka Coast',
-		difficulty: 'Easy',
-		duration: '3 Days',
-		price: 3499,
-		rating: 4.9,
-		reviewCount: 89,
-		image: 'https://images.pexels.com/photos/1001682/pexels-photo-1001682.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop',
-		highlights: ['Pristine beaches', 'Temple town', 'Sunset views'],
-	},
-	{
-		id: '4',
-		name: 'Western Ghats Trek',
-		category: 'hill',
-		location: 'Karnataka Highlands',
-		difficulty: 'Extreme',
-		duration: '5 Days',
-		price: 5999,
-		rating: 4.7,
-		reviewCount: 74,
-		image: 'https://images.pexels.com/photos/1271619/pexels-photo-1271619.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop',
-		highlights: ['Biodiversity hotspot', 'Cloud forests', 'Endemic species'],
-	},
-];
+interface TripDoc {
+	id: string;
+	name: string;
+	location: string;
+	difficulty?: string;
+	duration?: string;
+	price?: number;
+	highlights?: string[];
+	images?: string[];
+	rating?: number;
+	reviewCount?: number;
+	category?: string; // derived if absent
+	tags?: string[];
+	spotsAvailable?: number;
+	nextDeparture?: string; // ISO or YYYY-MM-DD
+}
+
+// Derive category from tags / name if not present
+function deriveCategory(t: TripDoc): string {
+	if (t.category) return t.category;
+	const tags = (t.tags || []).map(s => s.toLowerCase());
+	const name = t.name.toLowerCase();
+	if (tags.includes('waterfalls') || tags.includes('waterfall') || name.includes('falls') || name.includes('waterfall')) return 'waterfall';
+	if (tags.includes('fort') || name.includes('fort')) return 'fort';
+	if (tags.includes('beach') || name.includes('beach')) return 'beach';
+	if (tags.includes('mountain') || tags.includes('peak') || name.includes('peak')) return 'hill';
+	return 'adventure';
+}
 
 const categoryColors = {
 	waterfall: 'text-waterfall-blue bg-waterfall-blue/10',
@@ -76,6 +52,98 @@ const difficultyColors = {
 
 export const FeaturedDestinations: React.FC = () => {
 	const [quickView, setQuickView] = useState<typeof destinations[number] | null>(null);
+	const [trips, setTrips] = useState<TripDoc[]>([]);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+
+	useEffect(() => {
+		let active = true;
+		(async () => {
+			try {
+				let activeDb = db;
+				if (!activeDb) {
+					try {
+						activeDb = await waitForFirestore(3000);
+					} catch {
+						try { activeDb = getDbOrThrow(); } catch (err) {
+							console.warn('Firestore still unavailable after wait. Falling back.', err);
+							setError('Firestore unavailable');
+							return;
+						}
+					}
+				}
+				const snap = await getDocs(query(collection(activeDb, 'trips'), limit(8)));
+				if (!active) return;
+				const docs: TripDoc[] = snap.docs.map(d => {
+					const data = d.data();
+					return {
+						id: d.id,
+						name: data.name,
+						location: data.location,
+						difficulty: data.difficulty,
+						duration: data.duration,
+						price: data.price,
+						highlights: data.highlights,
+						images: data.images,
+						rating: data.rating,
+						reviewCount: data.reviewCount,
+						category: data.category,
+						tags: data.tags,
+						spotsAvailable: data.spotsAvailable,
+						nextDeparture: data.nextDeparture
+					};
+				});
+				// Filter to show only "near" trips (nextDeparture within 45 days) if date present
+				const NEAR_DAYS = 45;
+				const now = new Date();
+				const near = docs
+					.map(t => ({
+						...t,
+						__departureTs: (() => {
+							if (!t.nextDeparture) return Number.MAX_SAFE_INTEGER; // put undated trips at end
+							// Accept YYYY-MM-DD or full ISO
+							const parsed = new Date(t.nextDeparture);
+							return isNaN(parsed.getTime()) ? Number.MAX_SAFE_INTEGER : parsed.getTime();
+						})()
+					}))
+					.sort((a,b) => a.__departureTs - b.__departureTs)
+					.filter(t => {
+						if (!t.nextDeparture) return true; // keep if no date
+						const dt = new Date(t.nextDeparture);
+						if (isNaN(dt.getTime())) return true;
+						const diffDays = (dt.getTime() - now.getTime()) / 86400000;
+						return diffDays >= 0 && diffDays <= NEAR_DAYS;
+					})
+					.slice(0,8)
+					.map(obj => {
+						interface WithTs extends TripDoc { __departureTs?: number }
+						// eslint-disable-next-line @typescript-eslint/no-unused-vars
+						const { __departureTs, ...rest } = obj as WithTs;
+						return rest;
+					});
+				setTrips(near.length ? near : docs.slice(0,8));
+			} catch (e) {
+				setError(e instanceof Error ? e.message : 'Failed to load');
+			} finally {
+				if (active) setLoading(false);
+			}
+		})();
+		return () => { active = false; };
+	}, []);
+
+	const destinations = useMemo(() => trips.map(t => ({
+		id: t.id,
+		name: t.name,
+		category: deriveCategory(t),
+		location: t.location,
+		difficulty: t.difficulty || 'Moderate',
+		duration: t.duration || '3 Days',
+		price: t.price || 0,
+		rating: t.rating || 4.7,
+		reviewCount: t.reviewCount || 12,
+		image: (t.images && t.images[0]) || 'https://via.placeholder.com/400x300?text=Adventure',
+		highlights: t.highlights && t.highlights.length ? t.highlights : ['Scenic views','Great experience','Guided trek']
+	})), [trips]);
 
 	const containerVariants = {
 		hidden: { opacity: 0 },
@@ -92,6 +160,25 @@ export const FeaturedDestinations: React.FC = () => {
 		hidden: { opacity: 0, y: 30 },
 		show: { opacity: 1, y: 0 },
 	};
+
+	if (loading) {
+		return (
+			<section id="destinations" className="py-20 bg-gradient-to-br from-stone-gray to-white">
+				<div className="max-w-7xl mx-auto px-4">
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+						{Array.from({ length: 4 }).map((_,i) => (
+							<div key={i} className="h-80 rounded-2xl bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 animate-pulse" />
+						))}
+					</div>
+				</div>
+			</section>
+		);
+	}
+	if (error) {
+		return (
+			<section id="destinations" className="py-20"><div className="max-w-4xl mx-auto px-4 text-center text-red-600">{error}</div></section>
+		);
+	}
 
 	return (
 		<section id="destinations" className="py-20 bg-gradient-to-br from-stone-gray to-white">
@@ -127,43 +214,43 @@ export const FeaturedDestinations: React.FC = () => {
 								glow={index % 2 === 0}
 							>
 								<div className="relative overflow-hidden aspect-[4/3] bg-gray-100">
-									<motion.img
-										src={destination.image}
-										alt={destination.name}
-										className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-										loading="lazy"
-										decoding="async"
-										sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-									/>
+									   <motion.img
+										   src={destination.image}
+										   alt={destination.name}
+										   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+										   loading="lazy"
+										   decoding="async"
+										   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+									   />
 
-									{/* Image Overlay */}
-									<div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+									   {/* Image Overlay */}
+									   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-									{/* Category Badge */}
-									<div className="absolute top-4 left-4">
-										<span
-											className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${categoryColors[destination.category as keyof typeof categoryColors]}`}
-										>
-											{destination.category}
-										</span>
-									</div>
+									   {/* Category Badge */}
+									   <div className="absolute top-4 left-4">
+										   <span
+											   className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${categoryColors[destination.category as keyof typeof categoryColors]}`}
+										   >
+											   {destination.category}
+										   </span>
+									   </div>
 
-									{/* Difficulty Badge */}
-									<div className="absolute top-4 right-4">
-										<span
-											className={`px-3 py-1 rounded-full text-xs font-medium ${difficultyColors[destination.difficulty as keyof typeof difficultyColors]}`}
-										>
-											{destination.difficulty}
-										</span>
-									</div>
+									   {/* Difficulty Badge */}
+									   <div className="absolute top-4 right-4">
+										   <span
+											   className={`px-3 py-1 rounded-full text-xs font-medium ${difficultyColors[destination.difficulty as keyof typeof difficultyColors]}`}
+										   >
+											   {destination.difficulty}
+										   </span>
+									   </div>
 
-									{/* Rating */}
-									<div className="absolute bottom-4 left-4 flex items-center space-x-1 text-white">
-										<StarIcon className="w-4 h-4 fill-current text-sunset-yellow" />
-										<span className="text-sm font-medium">{destination.rating}</span>
-										<span className="text-xs opacity-80">({destination.reviewCount})</span>
-									</div>
-								</div>
+									   {/* Rating */}
+									   <div className="absolute bottom-4 left-4 flex items-center space-x-1 text-white">
+										   <StarIcon className="w-4 h-4 fill-current text-sunset-yellow" />
+										   <span className="text-sm font-medium">{destination.rating}</span>
+										   <span className="text-xs opacity-80">({destination.reviewCount})</span>
+									   </div>
+								   </div>
 
 								{/* Content */}
 								<div className="p-6">
@@ -253,10 +340,10 @@ export const FeaturedDestinations: React.FC = () => {
 							</Button>
 						</Link>
 						<Link
-							to="/destinations"
+							to="/catalog"
 							className="text-mountain-blue hover:text-forest-green underline-offset-2 hover:underline"
 						>
-							or browse the full catalog
+							or open the full catalog explorer
 						</Link>
 					</div>
 				</motion.div>

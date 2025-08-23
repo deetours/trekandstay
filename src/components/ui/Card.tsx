@@ -33,7 +33,7 @@ export const Card: React.FC<CardProps> = ({
   return (
     <motion.div
       className={cn(
-        'bg-white rounded-xl shadow-lg border border-stone-gray/50 overflow-hidden backdrop-blur-sm',
+        'bg-white dark:bg-[var(--card)] rounded-xl shadow-lg border border-stone-gray/50 dark:border-white/10 overflow-hidden backdrop-blur-sm transition-colors',
         glow && 'shadow-glow',
         className
       )}
@@ -51,7 +51,7 @@ export const Card: React.FC<CardProps> = ({
       }}
     >
       {/* Gradient overlay for depth */}
-      <div className="absolute inset-0 bg-gradient-to-br from-white/50 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-white/50 to-transparent dark:from-white/10 dark:to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
       
       {/* Content */}
       <div className="relative z-10">

@@ -21,6 +21,7 @@ import { Card } from '../components/ui/Card';
 import { PageTransition } from '../components/layout/PageTransition';
 import { StoriesWidget } from '../components/dashboard/StoriesWidget';
 import { Logo } from '../components/common/Logo';
+import { LocalScene } from '../components/3d/LocalScene';
 
 interface ContactForm {
   name: string;
@@ -151,7 +152,10 @@ export const ContactPage: React.FC = () => {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-stone-gray pt-24 pb-16">
+      <div className="min-h-screen bg-stone-gray pt-24 pb-16 relative">
+        <div className="absolute top-8 left-8 opacity-50">
+          <LocalScene variant="compass" size={180} />
+        </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Hero Section */}
           <motion.div

@@ -74,6 +74,7 @@ export interface User {
   completedTrips: number;
   badges: string[];
   preferences: UserPreferences;
+  isAdmin?: boolean; // added: admin flag for moderation UI
 }
 
 export interface UserPreferences {
@@ -81,4 +82,41 @@ export interface UserPreferences {
   difficulty: string[];
   budget: [number, number];
   notifications: boolean;
+}
+
+// Dashboard domain types
+export interface Booking {
+  id: number;
+  user: number;
+  destination: string;
+  trip?: number | string;
+  date: string; // ISO or display
+  status: 'pending' | 'confirmed' | 'cancelled';
+  amount: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface WishlistItem {
+  id: number;
+  trip: number | string;
+  trip_name?: string;
+  trip_image?: string;
+  notes?: string;
+  created_at?: string;
+}
+
+export interface RecommendationItem {
+  id: number | string;
+  trip?: number | string;
+  destination: string;
+  reason?: string;
+}
+
+export interface TripHistoryItem {
+  id: number;
+  trip?: number | string;
+  destination: string;
+  date: string;
+  feedback?: boolean;
 }

@@ -20,6 +20,7 @@ import { Card } from '../components/ui/Card';
 import { PageTransition } from '../components/layout/PageTransition';
 import { StoriesWidget } from '../components/dashboard/StoriesWidget';
 import { Logo } from '../components/common/Logo';
+import { LocalScene } from '../components/3d/LocalScene';
 
 const stats = [
   { icon: Users, label: 'Happy Adventurers', value: '2000+' },
@@ -81,8 +82,11 @@ const team = [
 export const AboutPage: React.FC = () => {
   return (
     <PageTransition>
-      <div className="min-h-screen bg-stone-gray pt-24 pb-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-stone-gray pt-24 pb-16 relative overflow-x-hidden">
+        <div className="absolute -top-10 -right-10 opacity-50 max-w-[90vw] sm:max-w-none">
+          <LocalScene variant="globe" size={260} />
+        </div>
+        <div className="max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8">
           {/* Hero Section */}
           <motion.div
             className="text-center mb-16"
@@ -93,13 +97,13 @@ export const AboutPage: React.FC = () => {
             <div className="flex flex-col items-center mb-4">
               <Logo size="lg" showText={false} />
             </div>
-            <h1 className="text-4xl lg:text-6xl font-oswald font-bold text-forest-green mb-6">
+            <h1 className="text-3xl sm:text-4xl lg:text-6xl font-oswald font-bold text-forest-green mb-4 sm:mb-6">
               Trek & Stay
             </h1>
-            <p className="text-xl text-mountain-blue font-inter max-w-4xl mx-auto leading-relaxed">
+            <p className="text-lg sm:text-xl text-mountain-blue font-inter max-w-4xl mx-auto leading-relaxed">
               Our Adventure Story
             </p>
-            <p className="text-xl text-mountain-blue font-inter max-w-4xl mx-auto leading-relaxed mt-2">
+            <p className="text-base sm:text-xl text-mountain-blue font-inter max-w-4xl mx-auto leading-relaxed mt-3 sm:mt-2 px-1">
               Trek & Stay was born from a passion for exploring Karnataka's untouched beauty. 
               We believe every mountain has a story, every waterfall whispers ancient secrets, 
               and every adventure creates memories that last a lifetime.
@@ -108,7 +112,7 @@ export const AboutPage: React.FC = () => {
 
           {/* Stats Section */}
           <motion.div
-            className="grid grid-cols-2 lg:grid-cols-4 gap-8 mb-20"
+            className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-8 mb-16 sm:mb-20"
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
@@ -122,7 +126,7 @@ export const AboutPage: React.FC = () => {
                   whileHover={{ scale: 1.05 }}
                   transition={{ type: "spring", stiffness: 300 }}
                 >
-                  <Card className="p-6 hover:shadow-xl transition-all duration-300">
+                  <Card className="p-4 sm:p-6 hover:shadow-xl transition-all duration-300 w-full">
                     <motion.div
                       className="flex justify-center mb-4"
                       animate={{ y: [0, -5, 0] }}
@@ -135,7 +139,7 @@ export const AboutPage: React.FC = () => {
                     >
                       <Icon className="w-12 h-12 text-adventure-orange" />
                     </motion.div>
-                    <h3 className="text-3xl font-oswald font-bold text-forest-green mb-2">
+                    <h3 className="text-2xl sm:text-3xl font-oswald font-bold text-forest-green mb-1 sm:mb-2">
                       {stat.value}
                     </h3>
                     <p className="text-gray-600 font-inter">{stat.label}</p>
@@ -147,7 +151,7 @@ export const AboutPage: React.FC = () => {
 
           {/* Mission Statement */}
           <motion.div
-            className="bg-gradient-to-r from-forest-green to-mountain-blue rounded-3xl p-8 lg:p-12 text-white mb-20"
+            className="bg-gradient-to-r from-forest-green to-mountain-blue rounded-2xl sm:rounded-3xl p-4 sm:p-8 lg:p-12 text-white mb-16 sm:mb-20 w-full"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, delay: 0.4 }}
@@ -160,10 +164,10 @@ export const AboutPage: React.FC = () => {
               >
                 <Globe className="w-16 h-16 mx-auto opacity-80" />
               </motion.div>
-              <h2 className="text-3xl lg:text-5xl font-oswald font-bold mb-6">
+              <h2 className="text-2xl sm:text-3xl lg:text-5xl font-oswald font-bold mb-5 sm:mb-6">
                 Our Mission
               </h2>
-              <p className="text-xl leading-relaxed mb-8 opacity-90">
+              <p className="text-base sm:text-xl leading-relaxed mb-6 sm:mb-8 opacity-90 px-0.5">
                 To make Karnataka's natural wonders accessible to every adventurer while preserving 
                 their pristine beauty for future generations. We're not just tour operators – 
                 we're storytellers, conservationists, and dream makers.
@@ -192,16 +196,16 @@ export const AboutPage: React.FC = () => {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.6 }}
           >
-            <div className="text-center mb-12">
-              <h2 className="text-3xl lg:text-5xl font-oswald font-bold text-forest-green mb-4">
+            <div className="text-center mb-10 sm:mb-12">
+              <h2 className="text-2xl sm:text-3xl lg:text-5xl font-oswald font-bold text-forest-green mb-4">
                 What Drives Us
               </h2>
-              <p className="text-xl text-mountain-blue font-inter max-w-3xl mx-auto">
+              <p className="text-base sm:text-xl text-mountain-blue font-inter max-w-3xl mx-auto px-1">
                 Our core values shape every adventure we craft and every relationship we build.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
               {values.map((value, index) => {
                 const Icon = value.icon;
                 return (
@@ -212,7 +216,7 @@ export const AboutPage: React.FC = () => {
                     transition={{ duration: 0.8, delay: 0.2 * index }}
                     whileHover={{ y: -8 }}
                   >
-                    <Card className="p-6 h-full hover:shadow-xl transition-all duration-300">
+                    <Card className="p-4 sm:p-6 h-full hover:shadow-xl transition-all duration-300 w-full">
                       <div className="flex items-start space-x-4">
                         <motion.div
                           className="flex-shrink-0 bg-adventure-orange/10 rounded-xl p-3"
@@ -244,16 +248,16 @@ export const AboutPage: React.FC = () => {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.8 }}
           >
-            <div className="text-center mb-12">
-              <h2 className="text-3xl lg:text-5xl font-oswald font-bold text-forest-green mb-4">
+            <div className="text-center mb-10 sm:mb-12">
+              <h2 className="text-2xl sm:text-3xl lg:text-5xl font-oswald font-bold text-forest-green mb-4">
                 Meet Our Adventure Squad
               </h2>
-              <p className="text-xl text-mountain-blue font-inter max-w-3xl mx-auto">
+              <p className="text-base sm:text-xl text-mountain-blue font-inter max-w-3xl mx-auto px-1">
                 Passionate adventurers and local experts who make every journey unforgettable.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8">
               {team.map((member, index) => (
                 <motion.div
                   key={index}
@@ -263,13 +267,14 @@ export const AboutPage: React.FC = () => {
                   whileHover={{ y: -8 }}
                   className="group"
                 >
-                  <Card className="overflow-hidden hover:shadow-2xl transition-all duration-300">
+                  <Card className="overflow-hidden hover:shadow-2xl transition-all duration-300 w-full">
                     {/* Image */}
-                    <div className="relative h-64 overflow-hidden">
+                    <div className="relative h-52 sm:h-64 overflow-hidden">
                       <img
                         src={member.image}
                         alt={member.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 max-w-full"
+                        style={{ display: 'block' }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       
@@ -284,7 +289,7 @@ export const AboutPage: React.FC = () => {
 
                     {/* Content */}
                     <div className="p-6">
-                      <h3 className="text-xl font-oswald font-bold text-forest-green mb-1">
+                      <h3 className="text-lg sm:text-xl font-oswald font-bold text-forest-green mb-1">
                         {member.name}
                       </h3>
                       <p className="text-adventure-orange font-medium mb-3">
@@ -327,7 +332,7 @@ export const AboutPage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 1 }}
           >
-            <Card className="bg-gradient-to-br from-stone-gray to-white p-12">
+            <Card className="bg-gradient-to-br from-stone-gray to-white p-6 sm:p-12 w-full">
               <motion.div
                 animate={{ scale: [1, 1.1, 1] }}
                 transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
@@ -335,19 +340,19 @@ export const AboutPage: React.FC = () => {
                 <Compass className="w-16 h-16 text-adventure-orange mx-auto mb-6" />
               </motion.div>
               
-              <h2 className="text-3xl lg:text-4xl font-oswald font-bold text-forest-green mb-4">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-oswald font-bold text-forest-green mb-4">
                 Ready for Your Next Adventure?
               </h2>
-              <p className="text-xl text-mountain-blue mb-8 max-w-2xl mx-auto">
+              <p className="text-base sm:text-xl text-mountain-blue mb-6 sm:mb-8 max-w-2xl mx-auto px-1">
                 Join thousands of adventurers who have discovered Karnataka's hidden treasures with us.
                 Your next unforgettable journey is just one click away.
               </p>
               
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button variant="adventure" size="xl" className="font-oswald text-lg px-8 py-4">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+                <Button variant="adventure" size="xl" className="font-oswald text-base sm:text-lg px-6 sm:px-8 py-4">
                   Start Your Adventure
                 </Button>
-                <Button variant="secondary" size="xl" className="font-oswald text-lg px-8 py-4">
+                <Button variant="secondary" size="xl" className="font-oswald text-base sm:text-lg px-6 sm:px-8 py-4">
                   Contact Our Team
                 </Button>
               </div>
@@ -355,7 +360,7 @@ export const AboutPage: React.FC = () => {
           </motion.div>
         </div>
       </div>
-      <div className="max-w-4xl mx-auto mt-16">
+      <div className="max-w-4xl w-full mx-auto mt-16 px-3">
         <StoriesWidget />
       </div>
     </PageTransition>
