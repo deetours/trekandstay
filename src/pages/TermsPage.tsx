@@ -173,7 +173,7 @@ export const TermsPage: React.FC = () => {
                 <p className="text-sm text-gray-600 mb-4">Need clarification on any clause? Reach out—clarity before commitment is our policy.</p>
                 <div className="space-y-2 text-sm text-gray-700">
                   <p>Email: <span className="font-medium">support@trekandstay.com</span></p>
-                  <p>Emergency: <span className="font-medium">+91-8000-123-456</span></p>
+                  <p>Emergency: <span className="font-medium">+91-99029-37730</span></p>
                   <p>Office Hours: 9:00–18:00 IST (Mon–Sat)</p>
                 </div>
               </Card>

@@ -261,7 +261,7 @@ const BookingFlow: React.FC<BookingFlowProps> = ({
                       value={bookingData.travelerPhone}
                       onChange={(e) => updateBookingData('travelerPhone', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                      placeholder="+91 9876543210"
+                      placeholder="+91 9902937730"
                       required
                     />
                   </div>

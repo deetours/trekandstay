@@ -10,7 +10,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
 const DEFAULT_UPI_ID = 'trekandstay@ybl';
-const WHATSAPP_NUMBER = '+919876543210';
+const WHATSAPP_NUMBER = '+919902937730';
 
 const LazyCanvas = React.lazy(() => import('@react-three/fiber').then(m => ({ default: m.Canvas })));
 
@@ -274,3 +274,5 @@ export const PaymentPage: React.FC = () => {
     </div>
   );
 };
+
+export default PaymentPage;

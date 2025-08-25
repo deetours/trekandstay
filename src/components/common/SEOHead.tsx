@@ -75,12 +75,14 @@ export const SEOHead: React.FC<SEOProps> = (props) => {
       "url": seo.url,
       "logo": "/favicon.png",
       "image": seo.image,
-      "telephone": "+91-98765-43210",
+      "telephone": "+91-99029-37730",
       "email": "adventures@trekandstay.com",
       "address": {
         "@type": "PostalAddress",
-        "addressLocality": "Bangalore",
+        "streetAddress": "Dali, Near Kollur",
+        "addressLocality": "Kollur",
         "addressRegion": "Karnataka",
+        "postalCode": "576220",
         "addressCountry": "IN"
       },
       "geo": {

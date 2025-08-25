@@ -5,8 +5,9 @@ django-cors-headers==4.4.0
 Pillow==10.4.0
 python-dotenv==1.0.1
 cloudinary>=1.41
-# Optional Postgres (enable when using PostgreSQL)
-# psycopg2-binary==2.9.9
+# Production database
+dj-database-url==2.2.0
+psycopg2-binary==2.9.9
 # Optional S3 storage
 boto3==1.35.1
 django-storages==1.14.4
@@ -15,3 +16,5 @@ sentence-transformers==3.0.1
 numpy==2.1.3
 # --- Added for Google auth ---
 google-auth==2.34.0
+# Production server
+gunicorn==21.2.0

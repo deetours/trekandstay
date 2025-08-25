@@ -12,7 +12,6 @@ from .views import (
     ReviewViewSet,
     me,
     dashboard_summary,
-    seed_dashboard_data,
     WishlistViewSet,
     PaymentViewSet,
     TripHistoryViewSet,
@@ -33,7 +32,7 @@ from .views import (
     send_whatsapp_message_endpoint,
     whatsapp_sessions_status,
 )
-from core.views import chat_retrieve, chat_complete, auth_google
+from core.views import chat_retrieve, chat_complete, auth_google, capture_lead
 
 
 router = DefaultRouter()
@@ -59,7 +58,6 @@ urlpatterns = [
     path('auth/token/', obtain_auth_token, name='api_token_auth'),
     path('auth/me/', me, name='api_me'),
     path('dashboard/summary/', dashboard_summary, name='dashboard_summary'),
-    path('dashboard/seed-data/', seed_dashboard_data, name='seed_dashboard_data'),
     path('', include(router.urls)),
     path('chat/retrieve/', chat_retrieve, name='chat_retrieve'),
     path('chat/complete/', chat_complete, name='chat_complete'),
@@ -76,4 +74,5 @@ urlpatterns = [
     path('whatsapp/incoming/', whatsapp_incoming_webhook, name='whatsapp_incoming_webhook'),
     path('whatsapp/send-message/', send_whatsapp_message_endpoint, name='send_whatsapp_message'),
     path('whatsapp/sessions/', whatsapp_sessions_status, name='whatsapp_sessions_status'),
+    path('leads/capture/', capture_lead, name='capture_lead'),
 ]

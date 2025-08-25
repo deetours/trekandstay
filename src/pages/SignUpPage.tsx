@@ -108,8 +108,8 @@ export const SignUpPage: React.FC = () => {
       
       setSuccess(true);
       setTimeout(() => { 
-        console.log('🚀 Navigating to Enhanced Dashboard');
-        navigate('/dashboard/ai'); 
+        console.log('🚀 Navigating to User Dashboard');
+        navigate('/dashboard'); 
       }, 1500);
       
     } catch (error: unknown) {
@@ -139,8 +139,8 @@ export const SignUpPage: React.FC = () => {
             });
             setSuccess(true);
             setTimeout(() => { 
-              console.log('🚀 Navigating to Enhanced Dashboard (email already exists)');
-              navigate('/dashboard/ai'); 
+              console.log('🚀 Navigating to User Dashboard (email already exists)');
+              navigate('/dashboard'); 
             }, 1500);
           } catch (e2) {
             const msg = e2 instanceof Error ? e2.message : 'Sign in failed - email exists but password incorrect';
@@ -247,8 +247,8 @@ export const SignUpPage: React.FC = () => {
       
       setSuccess(true);
       setTimeout(() => {
-        console.log('🚀 Navigating to Enhanced Dashboard (Google sign-up)');
-        navigate('/dashboard/ai');
+        console.log('🚀 Navigating to User Dashboard (Google sign-up)');
+        navigate('/dashboard');
       }, 1500);
       
     } catch (error: unknown) {

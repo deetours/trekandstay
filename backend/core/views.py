@@ -1447,3 +1447,159 @@ def whatsapp_sessions_status(request):
         
     except Exception as e:
         return Response({'error': str(e)}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def capture_lead(request):
+    """
+    Capture lead from interactive popup with trip preferences
+    """
+    try:
+        data = request.data
+        
+        # Extract lead data
+        name = data.get('name', '').strip()
+        email = data.get('email', '').strip()
+        whatsapp = data.get('whatsapp', '').strip()
+        budget = data.get('budget', [5000, 50000])
+        preferred_dates = data.get('preferredDates', {})
+        interested_trips = data.get('interested_trips', [])
+        lead_source = data.get('leadSource', 'popup')
+        current_page = data.get('currentPage', 'unknown')
+        
+        # Validation
+        if not all([name, email, whatsapp]):
+            return Response({
+                'error': 'Name, email, and WhatsApp number are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Email validation
+        import re
+        email_pattern = r'^[^\s@]+@[^\s@]+\.[^\s@]+$'
+        if not re.match(email_pattern, email):
+            return Response({
+                'error': 'Please provide a valid email address'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # WhatsApp validation (10-digit Indian number)
+        whatsapp_clean = re.sub(r'\D', '', whatsapp)
+        if len(whatsapp_clean) != 10 or not whatsapp_clean.startswith(('6', '7', '8', '9')):
+            return Response({
+                'error': 'Please provide a valid 10-digit mobile number'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check for existing lead
+        existing_lead = Lead.objects.filter(
+            Q(email=email) | Q(whatsapp_number=whatsapp_clean)
+        ).first()
+        
+        if existing_lead:
+            # Update existing lead with new preferences
+            existing_lead.name = name
+            existing_lead.metadata = existing_lead.metadata or {}
+            existing_lead.metadata.update({
+                'budget_range': budget,
+                'preferred_dates': preferred_dates,
+                'interested_trips': interested_trips,
+                'lead_source': lead_source,
+                'capture_page': current_page,
+                'last_popup_submission': timezone.now().isoformat()
+            })
+            existing_lead.save()
+            lead = existing_lead
+        else:
+            # Create new lead
+            lead = Lead.objects.create(
+                name=name,
+                email=email,
+                phone=whatsapp_clean,
+                whatsapp_number=whatsapp_clean,
+                source=f'popup_{current_page}',
+                stage='interested',
+                metadata={
+                    'budget_range': budget,
+                    'preferred_dates': preferred_dates,
+                    'interested_trips': interested_trips,
+                    'lead_source': lead_source,
+                    'capture_page': current_page,
+                    'popup_submission': timezone.now().isoformat()
+                }
+            )
+        
+        # Create lead event
+        LeadEvent.objects.create(
+            lead=lead,
+            event_type='popup_form_submission',
+            metadata={
+                'form_data': {
+                    'budget_range': budget,
+                    'preferred_dates': preferred_dates,
+                    'interested_trips': interested_trips,
+                    'source_page': current_page
+                },
+                'submission_timestamp': timezone.now().isoformat()
+            }
+        )
+        
+        # Send welcome WhatsApp message
+        try:
+            welcome_message = f"""Hi {name}! 👋
+
+Thank you for your interest in Trek and Stay adventures! 
+
+Based on your preferences:
+💰 Budget: ₹{budget[0]:,} - ₹{budget[1]:,}
+{f'📅 Dates: {preferred_dates.get("startDate", "Flexible")}' if preferred_dates.get('startDate') else '📅 Dates: Flexible'}
+
+Our travel expert will connect with you shortly to:
+✅ Share personalized trip recommendations
+✅ Provide detailed itineraries
+✅ Assist with booking and planning
+
+Reply anytime if you have questions! 🏔️
+
+- Team Trek and Stay"""
+            
+            send_whatsapp_message(
+                phone=whatsapp_clean,
+                message=welcome_message,
+                session_id='lead_capture'
+            )
+            
+        except Exception as e:
+            logger.warning(f"Failed to send welcome WhatsApp message: {str(e)}")
+        
+        # Send follow-up template message if available
+        try:
+            template = MessageTemplate.objects.filter(
+                name='lead_capture_followup',
+                active=True
+            ).first()
+            
+            if template:
+                enqueue_template_message(
+                    lead_id=lead.id,
+                    template_name='lead_capture_followup',
+                    variables={
+                        'name': name,
+                        'budget_min': budget[0],
+                        'budget_max': budget[1],
+                        'trip_count': len(interested_trips)
+                    },
+                    scheduled_for=timezone.now() + timedelta(minutes=5)
+                )
+        except Exception as e:
+            logger.warning(f"Failed to enqueue follow-up message: {str(e)}")
+        
+        return Response({
+            'success': True,
+            'message': 'Lead captured successfully',
+            'lead_id': lead.id
+        }, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        logger.error(f"Lead capture error: {str(e)}")
+        return Response({
+            'error': 'Failed to process lead capture'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

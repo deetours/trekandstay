@@ -6,7 +6,10 @@ import './index.css';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/sections/Footer';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { Dashboard } from './components/dashboard/Dashboard';
 import { ChatWidget } from './components/chat';
+import { LeadCaptureModal } from './components/modals/LeadCaptureModal';
+import { usePopupTriggers } from './hooks/usePopupTriggers';
 import { useAdventureStore } from './store/adventureStore';
 import { CartProvider } from './components/shop/CartContext';
 import { ProductsProvider } from './components/shop/ProductsContext';
@@ -14,42 +17,48 @@ import { initializeAnalytics } from './utils/analyticsInit';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { DebugPage } from './components/DebugPage';
 import { useAuthInitializer } from './hooks/useAuthInitializer';
-import './utils/firebaseConnectionTest'; // Import Firebase connection test for debugging
-import './utils/firebaseMinimalTest'; // Import minimal Firebase test
+// import './utils/firebaseConnectionTest'; // Import Firebase connection test for debugging
+// import './utils/firebaseMinimalTest'; // Import minimal Firebase test
 import ShopPage from './pages/ShopPage';
 import CartPage from './components/shop/CartPage';
 import RequestProductPage from './pages/RequestProductPage';
 // import WishlistPage from './components/shop/WishlistPage';
 
-const HomePage = lazy(() => import('./pages/HomePage').then(m => ({ default: m.HomePage })));
-const DestinationsPage = lazy(() => import('./pages/DestinationsPage').then(m => ({ default: m.DestinationsPage })));
-const TripDetailsPage = lazy(() => import('./pages/TripDetailsPage').then(m => ({ default: m.TripDetailsPage })));
-const CatalogPage = lazy(() => import('./pages/CatalogPage').then(m => ({ default: m.CatalogPage || m.default })));
-const PaymentPage = lazy(() => import('./pages/PaymentPage').then(m => ({ default: m.PaymentPage })));
-const BookingsPage = lazy(() => import('./pages/BookingsPage').then(m => ({ default: m.BookingsPage })));
-const AboutPage = lazy(() => import('./pages/AboutPage').then(m => ({ default: m.AboutPage })));
-const ContactPage = lazy(() => import('./pages/ContactPage').then(m => ({ default: m.ContactPage })));
-const DevAdminPage = lazy(() => import('./pages/DevAdminPage.tsx').then(m => ({ default: m.DevAdminPage || m.default })));
-const CreateStoryPage = lazy(() => import('./pages/CreateStoryPage').then(m => ({ default: m.CreateStoryPage })));
-const StoriesPage = lazy(() => import('./pages/StoriesPage').then(m => ({ default: m.StoriesPage })));
-const StoryDetailPage = lazy(() => import('./pages/StoryDetailPage').then(m => ({ default: m.StoryDetailPage })));
-const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
-const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then(m => ({ default: m.default })));
-const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
-const EnhancedDashboardPage = lazy(() => import('./pages/EnhancedDashboardPage').then(m => ({ default: m.default })));
-const SignUpPage = lazy(() => import('./pages/SignUpPage').then(m => ({ default: m.SignUpPage })));
-const SignInPage = lazy(() => import('./pages/SignInPage').then(m => ({ default: m.SignInPage })));
-const SafetyPage = lazy(() => import('./pages/SafetyPage.tsx').then(m => ({ default: m.SafetyPage || m.default })));
-const TermsPage = lazy(() => import('./pages/TermsPage.tsx').then(m => ({ default: m.TermsPage || m.default })));
+const HomePage = lazy(() => import('./pages/HomePage'));
+const DestinationsPage = lazy(() => import('./pages/DestinationsPage'));
+const TripDetailsPage = lazy(() => import('./pages/TripDetailsPage'));
+const CatalogPage = lazy(() => import('./pages/CatalogPage'));
+const PaymentPage = lazy(() => import('./pages/PaymentPage').then(module => ({ default: module.PaymentPage }))); 
+const BookingsPage = lazy(() => import('./pages/BookingsPage'));
+const AboutPage = lazy(() => import('./pages/AboutPage'));
+const ContactPage = lazy(() => import('./pages/ContactPage'));
+const DevAdminPage = lazy(() => import('./pages/DevAdminPage'));
+const CreateStoryPage = lazy(() => import('./pages/CreateStoryPage'));
+const StoriesPage = lazy(() => import('./pages/StoriesPage'));
+const StoryDetailPage = lazy(() => import('./pages/StoryDetailPage'));
+const StaysPage = lazy(() => import('./pages/StaysPage'));
+const StayDetailPage = lazy(() => import('./pages/StayDetailPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const EnhancedDashboardPage = lazy(() => import('./pages/EnhancedDashboardPage'));
+const SignUpPage = lazy(() => import('./pages/SignUpPage'));
+const SignInPage = lazy(() => import('./pages/SignInPage'));
+const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'));
+const SafetyPage = lazy(() => import('./pages/SafetyPage'));
+const TermsPage = lazy(() => import('./pages/TermsPage'));
 // Admin pages (lazy)
 // Individual admin pages are now accessed through AdminPortal tabs; keep itinerary page if needed standalone
-const AdminItineraryPage = lazy(() => import('./pages/admin/AdminItineraryPage').then(m => ({ default: m.default })));
+const AdminItineraryPage = lazy(() => import('./pages/admin/AdminItineraryPage'));
 
 function App() {
   const { theme } = useAdventureStore();
   
   // Initialize authentication state listener
   useAuthInitializer();
+  
+  // Initialize popup triggers
+  usePopupTriggers();
   
   // Initialize analytics components on app start
   useEffect(() => {
@@ -65,7 +74,18 @@ function App() {
             <Header />
             {/* <ThreeRoot /> */}
             <main>
-              <Suspense fallback={<div style={{display:'none'}} />}>
+              <Suspense fallback={
+                <div style={{
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  minHeight: '50vh',
+                  fontSize: '1.2rem',
+                  color: '#666'
+                }}>
+                  Loading...
+                </div>
+              }>
                 <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/debug" element={<DebugPage />} />
@@ -85,12 +105,20 @@ function App() {
                 <Route path="/stories/new" element={<CreateStoryPage />} />
                 <Route path="/stories" element={<StoriesPage />} />
                 <Route path="/stories/:id" element={<StoryDetailPage />} />
+                <Route path="/stays" element={<StaysPage />} />
+                <Route path="/stays/:id" element={<StayDetailPage />} />
+                {/* Category specific routes for stays */}
+                <Route path="/hotels" element={<StaysPage />} />
+                <Route path="/homestays" element={<StaysPage />} />
+                <Route path="/resorts" element={<StaysPage />} />
+                <Route path="/villas" element={<StaysPage />} />
                 <Route path="/login" element={<LoginPage />} />
-                <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+                <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="/dashboard/ai" element={<ProtectedRoute><EnhancedDashboardPage /></ProtectedRoute>} />
                 <Route path="/dashboard/basic" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
                 <Route path="/signup" element={<SignUpPage />} />
                 <Route path="/signin" element={<SignInPage />} />
+                <Route path="/admin/login" element={<AdminLoginPage />} />
                 <Route path="/safety" element={<SafetyPage />} />
                 <Route path="/terms" element={<TermsPage />} />
                 {/* Shop routes */}
@@ -113,6 +141,7 @@ function App() {
           </main>
           <Footer />
           <ChatWidget />
+          <LeadCaptureModal />
         </div>
       </ProductsProvider>
       </CartProvider>

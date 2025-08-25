@@ -22,8 +22,8 @@ class RAGService:
         # Initialize Chroma client
         self.chroma_client = chromadb.Client()
         
-        # Initialize sentence transformer for embeddings
-        self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+        # Lazy load sentence transformer for embeddings
+        self._embedding_model = None
         
         # Create or get collection
         self.collection = self.chroma_client.get_or_create_collection(
@@ -36,12 +36,26 @@ class RAGService:
         if not self.openrouter_api_key:
             logger.warning("OPENROUTER_API_KEY not found in environment variables")
             
-        # Initialize with basic knowledge if collection is empty
-        self._initialize_knowledge_base()
-        
         # Track last sync time
         self.last_firestore_sync = None
         self.sync_interval = timedelta(hours=1)  # Sync every hour
+        self._initialized = False
+        
+    def _ensure_initialized(self):
+        """Ensure the knowledge base is initialized (lazy initialization)"""
+        if not self._initialized:
+            logger.info("Initializing knowledge base...")
+            self._initialize_knowledge_base()
+            self._initialized = True
+    
+    @property
+    def embedding_model(self):
+        """Lazy load the embedding model only when needed"""
+        if self._embedding_model is None:
+            logger.info("Loading SentenceTransformer model...")
+            self._embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+            logger.info("SentenceTransformer model loaded successfully")
+        return self._embedding_model
 
     def _initialize_knowledge_base(self):
         """Initialize knowledge base with Firestore data or fallback to basic knowledge"""
@@ -264,6 +278,9 @@ class RAGService:
     def search_similar(self, query: str, n_results: int = 5) -> List[Dict[str, Any]]:
         """Search for similar documents"""
         try:
+            # Ensure the service is initialized
+            self._ensure_initialized()
+            
             # Create query embedding
             query_embedding = self.embedding_model.encode(query).tolist()
             
@@ -348,6 +365,9 @@ Provide a SPECIFIC, DETAILED response using exact information from the context. 
     
     def query(self, user_query: str) -> RAGQuery:
         """Main RAG pipeline with auto-sync check"""
+        # Ensure the service is initialized
+        self._ensure_initialized()
+        
         # Check for Firestore updates before processing query
         self._check_and_sync_firestore_updates()
         

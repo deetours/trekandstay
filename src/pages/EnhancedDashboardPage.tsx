@@ -13,6 +13,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { LocalScene } from '../components/3d/LocalScene';
 import { useToast } from '../components/ui/useToast';
 import type { Booking, WishlistItem, RecommendationItem } from '../types';
+import { DashboardNavigation } from '../components/dashboard/DashboardNavigation';
 
 // AI-Enhanced Components
 import AITravelAssistant from '../components/dashboard/AITravelAssistant';
@@ -301,6 +302,7 @@ export const EnhancedDashboardPage: React.FC = () => {
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-white via-stone-50 to-blue-50" aria-live="polite">
+      <DashboardNavigation />
       <LocalScene variant="dust" size={200} />
       <AIWelcomeModal />
       <Joyride 
@@ -327,7 +329,7 @@ export const EnhancedDashboardPage: React.FC = () => {
       <div className="pointer-events-none absolute -top-24 -left-24 w-[28rem] h-[28rem] rounded-full bg-emerald-200/50 blur-[110px]" />
       <div className="pointer-events-none absolute -bottom-20 -right-20 w-[28rem] h-[28rem] rounded-full bg-indigo-200/50 blur-[110px]" />
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 pt-20 sm:pt-24 pb-12 sm:pb-16">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 pt-24 sm:pt-28 pb-12 sm:pb-16">
         {/* Enhanced Hero Section */}
         <div id="enhanced-dash-hero" className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-white/60 bg-white/70 backdrop-blur shadow-xl mb-6 sm:mb-8">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(16,185,129,.08),transparent_40%),radial-gradient(circle_at_80%_0,rgba(59,130,246,.08),transparent_40%)]" />

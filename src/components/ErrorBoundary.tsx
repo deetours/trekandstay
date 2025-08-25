@@ -44,7 +44,29 @@ export class ErrorBoundary extends Component<Props, State> {
         );
       }
 
-      // For other errors, use the provided fallback or default
+      // For other errors, show a more helpful fallback in development
+      const isDev = !!import.meta.env.DEV;
+      if (isDev) {
+        return this.props.fallback || (
+          <div className="m-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+            <div className="font-semibold">Something went wrong</div>
+            <div className="text-sm mt-1">Please refresh the page.</div>
+            {this.state.error && (
+              <details className="mt-3 whitespace-pre-wrap break-words text-xs text-red-800" open>
+                <summary className="cursor-pointer text-red-600">Error details (dev only)</summary>
+                <div className="mt-2">
+                  <div><span className="font-medium">Message:</span> {this.state.error.message}</div>
+                  { (this.state.error as unknown as { stack?: string }).stack && (
+                    <pre className="mt-2 overflow-auto max-h-48">{(this.state.error as unknown as { stack?: string }).stack}</pre>
+                  )}
+                </div>
+              </details>
+            )}
+          </div>
+        );
+      }
+
+      // Production: simple fallback
       return this.props.fallback || (
         <div className="bg-red-50 rounded-lg p-4 border border-red-200">
           <div className="text-center text-red-600">

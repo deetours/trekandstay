@@ -36,7 +36,7 @@ export const Header: React.FC = () => {
   const navigationItems = [
     { label: 'Home', href: '/', icon: Compass },
     { label: 'Destinations', href: '/destinations', icon: MapPin },
-    { label: 'Stories', href: '/stories', icon: Calendar },
+    { label: 'Stays', href: '/stays', icon: Calendar },
     { label: 'Shop', href: '/shop', icon: Sun },
     { label: 'About', href: '/about', icon: Mountain },
     { label: 'Contact', href: '/contact', icon: Phone },
@@ -49,7 +49,7 @@ export const Header: React.FC = () => {
   const navStyles: Record<string, { ring: string; icon: string; gradient: string; hover: string; darkGradient: string }> = {
     Home: { ring: 'ring-teal-300/40', icon: 'text-teal-600 dark:text-teal-300', gradient: 'from-teal-50 to-cyan-50', hover:'hover:from-teal-100 hover:to-cyan-100', darkGradient:'dark:from-teal-900/40 dark:to-cyan-900/30' },
     Destinations: { ring: 'ring-rose-300/40', icon: 'text-rose-600 dark:text-rose-300', gradient: 'from-rose-50 to-pink-50', hover:'hover:from-rose-100 hover:to-pink-100', darkGradient:'dark:from-rose-900/40 dark:to-pink-900/30' },
-    Stories: { ring: 'ring-amber-300/40', icon: 'text-amber-600 dark:text-amber-300', gradient: 'from-amber-50 to-orange-50', hover:'hover:from-amber-100 hover:to-orange-100', darkGradient:'dark:from-amber-900/40 dark:to-orange-900/30' },
+    Stays: { ring: 'ring-amber-300/40', icon: 'text-amber-600 dark:text-amber-300', gradient: 'from-amber-50 to-orange-50', hover:'hover:from-amber-100 hover:to-orange-100', darkGradient:'dark:from-amber-900/40 dark:to-orange-900/30' },
     Shop: { ring: 'ring-yellow-300/40', icon: 'text-yellow-600 dark:text-yellow-300', gradient: 'from-yellow-50 to-orange-50', hover:'hover:from-yellow-100 hover:to-orange-100', darkGradient:'dark:from-yellow-900/40 dark:to-orange-900/30' },
     Cart: { ring: 'ring-blue-300/40', icon: 'text-blue-600 dark:text-blue-300', gradient: 'from-blue-50 to-cyan-50', hover:'hover:from-blue-100 hover:to-cyan-100', darkGradient:'dark:from-blue-900/40 dark:to-cyan-900/30' },
     Wishlist: { ring: 'ring-pink-300/40', icon: 'text-pink-600 dark:text-pink-300', gradient: 'from-pink-50 to-rose-50', hover:'hover:from-pink-100 hover:to-rose-100', darkGradient:'dark:from-pink-900/40 dark:to-rose-900/30' },

@@ -102,4 +102,217 @@
   .dark .bg-gray-50 { background-color: #1e293b !important; }
   .focus-ring:focus-visible { outline: var(--focus); outline-offset: 2px; }
   .dark .focus-ring:focus-visible { outline: var(--focus); }
+
+  /* Lead Capture Popup Styles */
+  .popup-overlay {
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  /* Custom Range Slider Styles */
+  .slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    pointer-events: none;
+  }
+
+  .slider-thumb::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    background: #ea580c;
+    cursor: pointer;
+    pointer-events: all;
+    border: 2px solid #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .slider-thumb::-moz-range-thumb {
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    background: #ea580c;
+    cursor: pointer;
+    pointer-events: all;
+    border: 2px solid #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .slider-thumb::-webkit-slider-track {
+    background: #e5e7eb;
+    height: 8px;
+    border-radius: 4px;
+  }
+
+  .slider-thumb::-moz-range-track {
+    background: #e5e7eb;
+    height: 8px;
+    border-radius: 4px;
+    border: none;
+  }
+
+  /* Modal Scrollbar Styling */
+  .modal-content::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .modal-content::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 3px;
+  }
+
+  .modal-content::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+
+  .modal-content::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+
+  .dark .modal-content::-webkit-scrollbar-track {
+    background: #1e293b;
+  }
+
+  .dark .modal-content::-webkit-scrollbar-thumb {
+    background: #475569;
+  }
+
+  .dark .modal-content::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+  }
+
+  /* Trip Card Interaction States */
+  .trip-card {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateZ(0);
+  }
+
+  .trip-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px -8px rgba(0, 0, 0, 0.1);
+  }
+
+  .trip-card.selected {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px -4px rgba(234, 88, 12, 0.3);
+  }
+
+  .dark .trip-card:hover {
+    box-shadow: 0 8px 25px -8px rgba(0, 0, 0, 0.4);
+  }
+
+  .dark .trip-card.selected {
+    box-shadow: 0 4px 20px -4px rgba(234, 88, 12, 0.5);
+  }
+
+  /* Progress Indicator Animation */
+  .progress-step {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .progress-step.active {
+    animation: pulse-orange 2s infinite;
+  }
+
+  @keyframes pulse-orange {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.7);
+    }
+    50% {
+      box-shadow: 0 0 0 8px rgba(234, 88, 12, 0);
+    }
+  }
+
+  /* Loading Animation */
+  .loading-spinner {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* Form Field Focus Animation */
+  .form-field {
+    position: relative;
+  }
+
+  .form-field input:focus + .field-highlight {
+    transform: scaleX(1);
+  }
+
+  .field-highlight {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #ea580c;
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+  }
+
+  /* Mobile Optimizations */
+  @media (max-width: 640px) {
+    .popup-overlay {
+      padding: 16px;
+    }
+
+    .modal-content {
+      max-height: 90vh;
+      border-radius: 16px;
+    }
+
+    .trip-card {
+      padding: 12px;
+    }
+
+    .slider-thumb::-webkit-slider-thumb {
+      height: 24px;
+      width: 24px;
+    }
+
+    .slider-thumb::-moz-range-thumb {
+      height: 24px;
+      width: 24px;
+    }
+  }
+
+  /* Accessibility Improvements */
+  @media (prefers-reduced-motion: reduce) {
+    .trip-card,
+    .progress-step,
+    .loading-spinner {
+      animation: none;
+      transition: none;
+    }
+
+    .trip-card:hover {
+      transform: none;
+    }
+  }
+
+  /* High Contrast Mode Support */
+  @media (prefers-contrast: high) {
+    .trip-card {
+      border-width: 2px;
+    }
+
+    .progress-step {
+      border-width: 3px;
+    }
+
+    .slider-thumb::-webkit-slider-thumb {
+      border-width: 3px;
+    }
+  }
 }

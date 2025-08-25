@@ -4,6 +4,12 @@ service cloud.firestore {
     function isSignedIn() { return request.auth != null; }
     function isAdmin() { return request.auth != null && request.auth.token.admin == true; }
 
+    // User profiles: users can read/write their own data
+    match /users/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      allow read, write: if isAdmin();
+    }
+
     // Trips: public can read only active trips; admins full CRUD
     match /trips/{tripId} {
       allow read: if resource.data.active == true || isAdmin();
@@ -33,6 +39,11 @@ service cloud.firestore {
     match /products/{productId} {
       allow read: if resource.data.active == true || isAdmin();
       allow create, update, delete: if isAdmin();
+    }
+
+    // Allow authenticated users to access general collections they might need
+    match /{document=**} {
+      allow read: if isSignedIn();
     }
   }
 }

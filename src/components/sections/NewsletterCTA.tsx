@@ -39,7 +39,7 @@ export const NewsletterCTA: React.FC = () => {
             value={phone}
             onChange={(e) => { setPhone(e.target.value); if(status!=='idle') { setStatus('idle'); setMessage(''); } }}
             className={`px-4 py-3 rounded-xl border w-full sm:w-96 focus:outline-none focus:ring-2 focus:ring-adventure-orange/40 bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-white ${status==='error' ? 'border-red-400 focus:ring-red-300' : ''}`}
-            placeholder="Enter your WhatsApp number (e.g. +91 98765 43210)"
+            placeholder="Enter your WhatsApp number (e.g. +91 99029 37730)"
             aria-invalid={status==='error'}
             aria-describedby={message ? 'whatsapp-helper' : undefined}
             pattern="[+0-9 ()-]{7,}"

@@ -18,7 +18,7 @@ import {
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { PageTransition } from '../components/layout/PageTransition';
-import { StoriesWidget } from '../components/dashboard/StoriesWidget';
+import { StoriesWidget } from '../components/dashboard/StoriesWidgetNew';
 import { Logo } from '../components/common/Logo';
 import { LocalScene } from '../components/3d/LocalScene';
 
@@ -366,3 +366,5 @@ export const AboutPage: React.FC = () => {
     </PageTransition>
   );
 };
+
+export default AboutPage;

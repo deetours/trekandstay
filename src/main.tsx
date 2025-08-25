@@ -11,3 +11,5 @@ createRoot(document.getElementById('root')!).render(
     </ToastProvider>
   </StrictMode>
 );
+
+console.log('✅ Main.tsx loaded successfully');

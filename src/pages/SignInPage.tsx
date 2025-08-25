@@ -7,6 +7,14 @@ import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+// Inline admin email check to avoid import issues
+const isAdminEmail = (email: string | null | undefined): boolean => {
+  if (!email) return false;
+  const adminEmails = import.meta.env.VITE_ADMIN_EMAILS?.split(',')
+    .map((e: string) => e.trim().toLowerCase()) || [];
+  return adminEmails.includes(email.toLowerCase());
+};
+
 export const SignInPage: React.FC = () => {
   const { setUser, setLoading, isLoading } = useAdventureStore(s => ({ 
     setUser: s.setUser, 
@@ -47,26 +55,47 @@ export const SignInPage: React.FC = () => {
       // Check if user profile exists in Firestore
       if (db) {
         console.log('📄 Checking Firestore for user profile...');
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        const userData = userDoc.exists() ? userDoc.data() : {};
-        console.log('👤 User data from Firestore:', userData);
-        
-        setUser({
-          id: user.uid,
-          name: user.displayName || userData.name || email.split('@')[0],
-          email: user.email || email,
-          avatar: user.photoURL || userData.avatar || '',
-          adventurePoints: userData.adventurePoints || 0,
-          completedTrips: userData.completedTrips || 0,
-          badges: userData.badges || [],
-          preferences: userData.preferences || {
-            favoriteCategories: [],
-            difficulty: [],
-            budget: [0, 0],
-            notifications: true
-          },
-          isAdmin: userData.role === 'admin'
-        });
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          const userData = userDoc.exists() ? userDoc.data() : {};
+          console.log('👤 User data from Firestore:', userData);
+          
+          setUser({
+            id: user.uid,
+            name: user.displayName || userData.name || email.split('@')[0],
+            email: user.email || email,
+            avatar: user.photoURL || userData.avatar || '',
+            adventurePoints: userData.adventurePoints || 0,
+            completedTrips: userData.completedTrips || 0,
+            badges: userData.badges || [],
+            preferences: userData.preferences || {
+              favoriteCategories: [],
+              difficulty: [],
+              budget: [0, 0],
+              notifications: true
+            },
+            isAdmin: userData.role === 'admin' || isAdminEmail(user.email)
+          });
+        } catch (firestoreError) {
+          console.warn('⚠️ Firestore permission error, using fallback data:', firestoreError);
+          // Continue with basic user data even if Firestore fails
+          setUser({
+            id: user.uid,
+            name: user.displayName || email.split('@')[0],
+            email: user.email || email,
+            avatar: user.photoURL || '',
+            adventurePoints: 0,
+            completedTrips: 0,
+            badges: [],
+            preferences: {
+              favoriteCategories: [],
+              difficulty: [],
+              budget: [0, 0],
+              notifications: true
+            },
+            isAdmin: isAdminEmail(user.email)
+          });
+        }
       } else {
         console.log('⚠️ Firestore not available, using fallback user data');
         // Fallback if Firestore is not available
@@ -93,7 +122,7 @@ export const SignInPage: React.FC = () => {
       console.log('🚀 Redirecting to dashboard in 1.5 seconds...');
       setTimeout(() => {
         console.log('🔄 Redirecting now...');
-        navigate('/dashboard/ai', { replace: true });
+        navigate('/dashboard', { replace: true });
       }, 1500);
       
     } catch (error: unknown) {
@@ -143,73 +172,77 @@ export const SignInPage: React.FC = () => {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       
-      // Create or update user profile in Firestore
+      console.log('Google sign-in successful:', user.email);
+      
+      // Set user in store with basic info first
+      const basicUserData = {
+        id: user.uid,
+        name: user.displayName || user.email?.split('@')[0] || 'User',
+        email: user.email || '',
+        avatar: user.photoURL || '',
+        adventurePoints: 0,
+        completedTrips: 0,
+        badges: [],
+        preferences: {
+          favoriteCategories: [],
+          difficulty: [],
+          budget: [0, 0] as [number, number],
+          notifications: true
+        },
+        isAdmin: false
+      };
+      
+      // Try to create/update user profile in Firestore (but don't block on it)
       if (db) {
-        const userRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userRef);
-        
-        if (!userDoc.exists()) {
-          // Create new user profile
-          await setDoc(userRef, {
-            email: user.email,
-            name: user.displayName,
-            avatar: user.photoURL,
-            role: 'user',
-            createdAt: Date.now(),
-            adventurePoints: 0,
-            completedTrips: 0,
-            badges: [],
-            preferences: {
-              favoriteCategories: [],
-              difficulty: [],
-              budget: [0, 0],
-              notifications: true
-            }
-          });
+        try {
+          const userRef = doc(db, 'users', user.uid);
+          const userDoc = await getDoc(userRef);
+          
+          if (!userDoc.exists()) {
+            // Try to create new user profile
+            await setDoc(userRef, {
+              email: user.email,
+              name: user.displayName,
+              avatar: user.photoURL,
+              role: 'user',
+              createdAt: Date.now(),
+              adventurePoints: 0,
+              completedTrips: 0,
+              badges: [],
+              preferences: {
+                favoriteCategories: [],
+                difficulty: [],
+                budget: [0, 0],
+                notifications: true
+              }
+            });
+            console.log('Created new user profile in Firestore');
+          } else {
+            // Update user data with Firestore data
+            const userData = userDoc.data();
+            basicUserData.adventurePoints = userData.adventurePoints || 0;
+            basicUserData.completedTrips = userData.completedTrips || 0;
+            basicUserData.badges = userData.badges || [];
+            basicUserData.preferences = userData.preferences || basicUserData.preferences;
+            basicUserData.isAdmin = userData.role === 'admin';
+            console.log('Loaded existing user profile from Firestore');
+          }
+        } catch (firestoreError) {
+          console.warn('Firestore operation failed, continuing with basic user data:', firestoreError);
+          // Continue with basic user data even if Firestore fails
         }
-        
-        const userData = userDoc.exists() ? userDoc.data() : {};
-        
-        setUser({
-          id: user.uid,
-          name: user.displayName || userData.name || 'User',
-          email: user.email || '',
-          avatar: user.photoURL || userData.avatar || '',
-          adventurePoints: userData.adventurePoints || 0,
-          completedTrips: userData.completedTrips || 0,
-          badges: userData.badges || [],
-          preferences: userData.preferences || {
-            favoriteCategories: [],
-            difficulty: [],
-            budget: [0, 0],
-            notifications: true
-          },
-          isAdmin: userData.role === 'admin'
-        });
-      } else {
-        // Fallback if Firestore is not available
-        setUser({
-          id: user.uid,
-          name: user.displayName || 'User',
-          email: user.email || '',
-          avatar: user.photoURL || '',
-          adventurePoints: 0,
-          completedTrips: 0,
-          badges: [],
-          preferences: {
-            favoriteCategories: [],
-            difficulty: [],
-            budget: [0, 0],
-            notifications: true
-          },
-          isAdmin: false
-        });
       }
       
+      // Set user in store
+      setUser(basicUserData);
+      
       setSuccess(true);
+      console.log('Google sign-in complete, redirecting to dashboard...');
+      
+      // Navigate to dashboard immediately
       setTimeout(() => {
-        navigate('/dashboard/ai', { replace: true });
-      }, 1500);
+        navigate('/dashboard', { replace: true });
+      }, 1000);
       
     } catch (error: unknown) {
       console.error('Google sign in error:', error);
@@ -226,6 +259,9 @@ export const SignInPage: React.FC = () => {
             break;
           case 'auth/cancelled-popup-request':
             errorMessage = 'Sign-in was cancelled';
+            break;
+          case 'auth/network-request-failed':
+            errorMessage = 'Network error. Please check your connection';
             break;
           default:
             errorMessage = firebaseError.message || 'Failed to sign in with Google';

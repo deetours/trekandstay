@@ -70,7 +70,27 @@ export const useAdventureStore = create<AdventureStore>((set) => ({
   
   // Actions
   setUser: (user) => set({ user, isAuthenticated: !!user }),
-  logout: () => set({ user: null, isAuthenticated: false }),
+  logout: () => {
+    // Clear user from store
+    set({ user: null, isAuthenticated: false, currentBooking: null, bookingStep: 0 });
+    
+    // Sign out from Firebase Auth
+    import('../firebase').then(({ auth }) => {
+      if (auth?.currentUser) {
+        import('firebase/auth').then(({ signOut }) => {
+          signOut(auth).catch((error) => {
+            console.error('Error signing out:', error);
+          });
+        });
+      }
+    });
+    
+    // Clear any persisted data
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('userSession');
+    }
+  },
   setDestinations: (destinations) => set({ destinations }),
   setSelectedDestination: (destination) => set({ selectedDestination: destination }),
   updateFilters: (newFilters) => set((state) => ({

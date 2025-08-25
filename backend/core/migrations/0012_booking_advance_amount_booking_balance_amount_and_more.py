@@ -8,7 +8,8 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0011_seatlock_and_booking_split'),
+        ('core', '0009_embedding'),
+        ('core', '0011_messagetemplate_booking_advance_amount_and_more'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

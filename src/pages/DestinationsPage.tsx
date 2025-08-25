@@ -16,6 +16,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { PageTransition } from '../components/layout/PageTransition';
 import { Link, useLocation } from 'react-router-dom';
+import { usePopupTriggers } from '../hooks/usePopupTriggers';
 import { Logo } from '../components/common/Logo';
 import { LocalScene } from '../components/3d/LocalScene';
 import { collection, getDocs } from 'firebase/firestore';
@@ -55,6 +56,8 @@ const routeCategoryMeta: Record<string,{title:string;subtitle:string}> = {
 
 export const DestinationsPage: React.FC = () => {
   const location = useLocation();
+  const { trackTripView } = usePopupTriggers();
+  
   // Derive path segment once
   const pathSegment = location.pathname.split('/').filter(Boolean).pop() || '';
   const [rawTrips, setRawTrips] = useState<TripDoc[]>([]);
@@ -339,7 +342,7 @@ export const DestinationsPage: React.FC = () => {
 
                         {/* Action Buttons */}
                         <div className="flex space-x-2">
-                          <Link to={`/trip/${d.id}`} className="flex-1">
+                          <Link to={`/trip/${d.id}`} className="flex-1" onClick={trackTripView}>
                             <Button
                               variant="adventure"
                               size="sm"
@@ -401,3 +404,5 @@ export const DestinationsPage: React.FC = () => {
     </PageTransition>
   );
 };
+
+export default DestinationsPage;

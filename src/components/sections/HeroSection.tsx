@@ -4,7 +4,7 @@ import { ArrowDown, Play, MapPin, Users, Star } from 'lucide-react';
 import { Button } from '../ui/Button';
 
 const videos = [
-  'https://res.cloudinary.com/ddw48hdrf/video/upload/v1754946636/t_s_ftcqdx.mp4',
+  'https://res.cloudinary.com/ddw48hdrf/video/upload/v1756152096/t_s_wfbtzn.mp4', // Your local video - make sure it exists in public/videos/
   'https://cdn.pixabay.com/video/2025/01/07/251262_large.mp4',
   'https://cdn.pixabay.com/video/2019/06/17/24515-343454414_large.mp4',
   

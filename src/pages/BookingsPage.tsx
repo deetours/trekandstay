@@ -508,3 +508,5 @@ export const BookingsPage: React.FC = () => {
     </PageTransition>
   );
 };
+
+export default BookingsPage;

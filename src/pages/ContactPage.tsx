@@ -19,7 +19,7 @@ import {
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { PageTransition } from '../components/layout/PageTransition';
-import { StoriesWidget } from '../components/dashboard/StoriesWidget';
+import { StoriesWidget } from '../components/dashboard/StoriesWidgetNew';
 import { Logo } from '../components/common/Logo';
 import { LocalScene } from '../components/3d/LocalScene';
 
@@ -47,9 +47,9 @@ const contactInfo = [
   {
     icon: Phone,
     title: 'Call Us',
-    content: '+91 98765 43210',
+    content: '+91 99029 37730',
     subContent: 'Mon-Sat, 9AM-7PM',
-    action: 'tel:+919876543210'
+    action: 'tel:+919902937730'
   },
   {
     icon: Mail,
@@ -61,8 +61,8 @@ const contactInfo = [
   {
     icon: MapPin,
     title: 'Visit Us',
-    content: 'MG Road, Bangalore',
-    subContent: 'Karnataka, India 560001',
+    content: 'Dali, Near Kollur',
+    subContent: 'Karnataka, India 576220',
     action: 'https://maps.google.com'
   },
   {
@@ -340,7 +340,7 @@ export const ContactPage: React.FC = () => {
                             className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-adventure-orange focus:border-transparent transition-all duration-200 ${
                               errors.phone ? 'border-red-500 bg-red-50' : 'border-gray-200'
                             }`}
-                            placeholder="+91 98765 43210"
+                            placeholder="+91 99029 37730"
                           />
                           {errors.phone && (
                             <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
@@ -558,3 +558,5 @@ export const ContactPage: React.FC = () => {
     </PageTransition>
   );
 };
+
+export default ContactPage;

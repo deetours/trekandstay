@@ -1,7 +1,7 @@
-import { useToast } from '../components/ui/useToast';
 import React, { useEffect, useRef, useState, startTransition } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useToast } from '../components/ui/useToast';
 import { Card } from '../components/ui/Card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
 import { Button } from '../components/ui/Button';
@@ -423,7 +423,7 @@ function GuideCard({ guide }: { guide: TripData['guide'] }) {
   );
 }
 
-export const TripDetailsPage: React.FC = () => {
+const TripDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast, success, error } = useToast();
@@ -977,7 +977,7 @@ export const TripDetailsPage: React.FC = () => {
             <Button
               type="button"
               variant="secondary"
-              onClick={()=>{ vibrate(); window.open('tel:+919999999999','_self'); }}
+              onClick={()=>{ vibrate(); window.open('tel:+919902937730','_self'); }}
               aria-label="Call us"
               className="h-12 rounded-xl flex flex-col items-center justify-center gap-1 text-[11px] font-medium bg-gradient-to-b from-slate-50 to-white border border-slate-200 shadow-sm"
             >
@@ -1040,7 +1040,7 @@ export const TripDetailsPage: React.FC = () => {
               {/* Call */}
               <Button
                 variant="secondary"
-                onClick={()=>window.open('tel:+919999999999','_self')}
+                onClick={()=>window.open('tel:+919902937730','_self')}
                 aria-label="Call us"
                 className="relative h-11 px-4 rounded-xl bg-gradient-to-r from-slate-50 to-white text-slate-700 border border-slate-200 hover:from-slate-100 hover:to-white shadow-sm hover:shadow group"
               >
@@ -1102,3 +1102,6 @@ const DropletFallback: React.FC<{ className?: string }> = ({ className }) => (
     <path d="M12 2.5c-2.5 4.5-7 8-7 12a7 7 0 0 0 14 0c0-4-4.5-7.5-7-12z" />
   </svg>
 );
+
+
+export default TripDetailsPage;

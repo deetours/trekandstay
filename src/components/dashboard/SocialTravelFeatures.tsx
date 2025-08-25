@@ -277,7 +277,7 @@ const SocialTravelFeatures: React.FC = () => {
         id: 'buddy2',
         name: 'Nisha Agarwal',
         avatar: '/api/placeholder/60/60',
-        location: 'Bangalore, Karnataka',
+        location: 'Dali, Near Kollur, Karnataka',
         travelStyle: ['Cultural', 'Food', 'Photography'],
         completedTrips: 31,
         rating: 4.9,
