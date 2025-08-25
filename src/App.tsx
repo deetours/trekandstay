@@ -57,9 +57,6 @@ function App() {
   // Initialize authentication state listener
   useAuthInitializer();
   
-  // Initialize popup triggers
-  usePopupTriggers();
-  
   // Initialize analytics components on app start
   useEffect(() => {
     initializeAnalytics();
@@ -68,6 +65,18 @@ function App() {
   return (
     <ErrorBoundary>
       <Router>
+        <AppContent theme={theme} />
+      </Router>
+    </ErrorBoundary>
+  );
+}
+
+// Separate component inside Router context
+function AppContent({ theme }: { theme: string }) {
+  // Initialize popup triggers (must be inside Router context)
+  usePopupTriggers();
+  
+  return (
         <CartProvider>
         <ProductsProvider>
     <div className={`min-h-screen transition-colors ${theme === 'dark' ? 'dark' : ''}`} style={{ background:'var(--bg)', color:'var(--text)'}}>
@@ -145,8 +154,6 @@ function App() {
         </div>
       </ProductsProvider>
       </CartProvider>
-    </Router>
-    </ErrorBoundary>
   );
 }
 
