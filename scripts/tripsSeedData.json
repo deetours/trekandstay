@@ -1,6 +1,103 @@
 {
   "trips": [
     {
+      "name": "Adventure Maharashtra 5 Days Trek",
+      "slug": "adventure-maharashtra-5days-trek",
+      "location": "Maharashtra (Sahyadris)",
+      "duration": "5D / 4N",
+      "spotsAvailable": 25,
+      "nextDeparture": "2024-09-18",
+      "safetyRecord": "Excellent",
+      "price": 9500,
+      "bookingAdvance": 2000,
+      "difficulty": "Moderate to Difficult",
+      "category": "adventure",
+      "highlights": [
+        "Jivdhan Fort Trek - Historical Sahyadri Fort",
+        "Reverse Waterfall at Naneghat - Nature's Wonder",
+        "Bhairavgad Fort - Thrilling Vertical Rock Patches",
+        "Ratangad Fort - Views of Kalsubai Peak",
+        "Sandan Valley - Maharashtra's Grand Canyon",
+        "Adventure Rappelling Experience",
+        "Professional Trek Leadership",
+        "Multi-fort Adventure Circuit"
+      ],
+      "itinerary": [
+        "Day 1 (18th/25th Sept): Evening 4:00 PM departure from Bengaluru. Overnight journey to Pune/Satara by train/tempo traveller. Bonding & ice-breaking sessions.",
+        "Day 2 (19th/26th Sept): Early arrival in Pune/Satara. Road transfer (~4h) to trek base. Jivdhan Fort Trek (8km, 4+4, Moderate difficulty). Visit Reverse Waterfall near Naneghat. Tent/dorm stay.",
+        "Day 3 (20th/27th Sept): Bhairavgad Fort Trek (12km, 6+6, Difficult). Thrilling vertical rock patches and exposed ridges with safety precautions. Expert trek leaders guidance.",
+        "Day 4 (21st/28th Sept): Ratangad Fort Trek (12km, 6+6, Moderate). Views of Kalsubai Peak and Bhandardara region. Explore Nedhe, caves and scenic landscapes. Sandan Valley exploration with rappelling and boulder hopping. Evening departure from Nasik.",
+        "Day 5 (22nd/29th Sept): Morning arrival in Bengaluru with unforgettable memories of Maharashtra's adventurous trails."
+      ],
+      "batchDates": [
+        "September 18th - 22nd, 2024",
+        "September 25th - 29th, 2024"
+      ],
+      "equipment": [
+        "Trekking shoes + extra slippers",
+        "10L backpack for trek essentials",
+        "Trekking outfits + 5-day clothing",
+        "Raincoat / poncho / umbrella",
+        "Blanket / thermals / jacket",
+        "Sunglasses, sunscreen & cap",
+        "Water bottle & energy snacks",
+        "Power bank & torch",
+        "Trekking pole (recommended)"
+      ],
+      "essentials": [
+        "ID card (mandatory)",
+        "Basic medicines + personal prescriptions",
+        "Leech & mosquito repellents",
+        "Toiletries & towel"
+      ],
+      "safety": [
+        "Experienced trek leaders with safety certification",
+        "Basic first-aid support and emergency response",
+        "All safety precautions for vertical rock climbing",
+        "Weather monitoring and route assessment",
+        "Emergency evacuation protocols"
+      ],
+      "guide": {
+        "name": "Expert Sahyadri Trek Team",
+        "experience": "Specialized in Maharashtra fort treks and adventure activities",
+        "bio": "Professional team with extensive experience in Sahyadri mountain range, fort trekking, and adventure sports including rappelling and rock climbing."
+      },
+      "reviews": [],
+      "images": [
+        "https://images.pexels.com/photos/29613184/pexels-photo-29613184.jpeg",
+        "https://images.pexels.com/photos/27743006/pexels-photo-27743006.jpeg",
+        "https://images.pexels.com/photos/213872/pexels-photo-213872.jpeg",
+        "https://images.pexels.com/photos/33041/antelope-canyon-lower-canyon-arizona.jpg"
+      ],
+      "tags": [
+        "adventure",
+        "forts",
+        "maharashtra",
+        "sahyadris",
+        "multi-day",
+        "rappelling",
+        "difficult-trek",
+        "monsoon",
+        "historical"
+      ],
+      "includes": [
+        "Accommodation: Tent stay / dormitory / shared room",
+        "Transportation: Train / tempo traveller / mini bus / bus (as per group size)",
+        "Food: 3 breakfasts + 3 dinners (Veg)",
+        "Trek entry fees & guide charges",
+        "Experienced trek leaders & basic first-aid support"
+      ],
+      "excludes": [
+        "GST & Travel Insurance",
+        "All lunches (self-sponsored)",
+        "Medical expenses beyond first aid",
+        "Off-road vehicle charges (if applicable)",
+        "Anything not mentioned in inclusions"
+      ],
+      "contactNumber": "9902937730",
+      "active": true
+    },
+    {
       "name": "Maharashtra Waterfall Edition (5 Days)",
       "slug": "maharashtra-waterfall-edition-5d",
       "location": "Maharashtra (Pune / Satara Region)",
