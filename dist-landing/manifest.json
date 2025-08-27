@@ -1,0 +1,53 @@
+{
+  "name": "Trek & Stay - Karnataka Adventures",
+  "short_name": "Trek & Stay",
+  "description": "Discover Karnataka's hidden gems through guided adventures",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1B4332",
+  "theme_color": "#FF6B35",
+  "orientation": "portrait-primary",
+  "categories": ["travel", "lifestyle", "tourism"],
+  "lang": "en",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Explore Destinations",
+      "short_name": "Destinations",
+      "description": "Browse available adventure destinations",
+      "url": "/destinations",
+      "icons": [
+        {
+          "src": "/favicon.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "My Bookings",
+      "short_name": "Bookings",
+      "description": "View and manage your bookings",
+      "url": "/bookings",
+      "icons": [
+        {
+          "src": "/favicon.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

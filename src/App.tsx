@@ -50,6 +50,7 @@ const TermsPage = lazy(() => import('./pages/TermsPage'));
 // Admin pages (lazy)
 // Individual admin pages are now accessed through AdminPortal tabs; keep itinerary page if needed standalone
 const AdminItineraryPage = lazy(() => import('./pages/admin/AdminItineraryPage'));
+const TripLandingPage = lazy(() => import('./pages/TripLandingPage'));
 
 function App() {
   const { theme } = useAdventureStore();
@@ -98,6 +99,8 @@ function AppContent({ theme }: { theme: string }) {
                 <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/debug" element={<DebugPage />} />
+                {/* Landing pages for trip marketing */}
+                <Route path="/land/:slug" element={<TripLandingPage />} />
                 <Route path="/destinations" element={<DestinationsPage />} />
                 <Route path="/catalog" element={<CatalogPage />} />
                 {/* Category specific routes reuse DestinationsPage */}

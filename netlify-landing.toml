@@ -1,0 +1,44 @@
+[build]
+  publish = "dist-landing"
+  command = "npm run build:landing"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+[[redirects]]
+  from = "/land/:slug"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/:slug"
+  to = "/index.html"
+  status = 200
+
+# Catch all other routes
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Headers for better SEO and sharing
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Cache static assets
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000"
+
+# API proxy to backend (optional)
+[[redirects]]
+  from = "/api/*"
+  to = "https://your-backend-url.railway.app/api/:splat"
+  status = 200
+  force = true

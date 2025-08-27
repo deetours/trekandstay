@@ -272,6 +272,30 @@ export const adminAPI = {
   // Get lead events/history
   async getLeadEvents(leadId: string) {
     return await apiCall<LeadEvent[]>(`/leads/${leadId}/events/`);
+  },
+
+  // Create new lead
+  async createLead(leadData: any) {
+    return await apiCall('/leads/', {
+      method: 'POST',
+      body: JSON.stringify(leadData)
+    });
+  },
+
+  // Create booking
+  async createBooking(bookingData: any) {
+    return await apiCall('/bookings/', {
+      method: 'POST',
+      body: JSON.stringify(bookingData)
+    });
+  },
+
+  // Update booking status
+  async updateBookingStatus(bookingId: string, status: string) {
+    return await apiCall(`/bookings/${bookingId}/status/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status })
+    });
   }
 };
 
