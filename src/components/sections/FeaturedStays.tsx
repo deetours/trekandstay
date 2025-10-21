@@ -185,7 +185,7 @@ export function FeaturedStays() {
                   
                   <Button
                     onClick={() => navigate(`/stays/${stay.id}`)}
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 transform group-hover:scale-105"
+                    className="w-full bg-gradient-to-r from-forest-green to-waterfall-blue hover:from-forest-green/90 hover:to-waterfall-blue/90 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 transform group-hover:scale-105"
                   >
                     Book Now
                   </Button>
@@ -205,7 +205,7 @@ export function FeaturedStays() {
           <Button
             onClick={() => navigate('/stays')}
             size="lg"
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 transform hover:scale-105"
+            className="bg-gradient-to-r from-forest-green to-waterfall-blue hover:from-forest-green/90 hover:to-waterfall-blue/90 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 transform hover:scale-105"
           >
             Explore All Stays
           </Button>

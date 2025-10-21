@@ -1,3 +1,2 @@
-// This file imports and re-exports the TripLandingPage from the main src
-// This allows the landing app to use the existing component without duplication
-export { default } from '../../src/pages/TripLandingPage';
+// Enhanced Interactive Trip Landing Page that combines trip details with interactive homepage
+export { default } from './InteractiveTripLandingPage';

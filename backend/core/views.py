@@ -6,7 +6,7 @@ from django.db import transaction, models
 from django.db.models import Avg
 from django.utils import timezone
 import cloudinary.uploader as cloud_uploader
-from .models import UserProfile, Booking, TripHistory, TripRecommendation, Lead, Author, Story, StoryImage, StoryAudio, StoryRating, Trip, Guide, Review, Wishlist, Payment, ChatFAQ, SeatLock, MessageTemplate, LeadEvent, OutboundMessage, Task
+from .models import UserProfile, Booking, TripHistory, TripRecommendation, Lead, Author, Story, StoryImage, StoryAudio, StoryRating, Trip, Guide, Review, Wishlist, Payment, ChatFAQ, SeatLock, MessageTemplate, LeadEvent, OutboundMessage, Task, PaymentVerificationLog, TransactionAudit, UserProgress, PointTransaction, Badge, BadgeUnlock, GamificationEvent, Challenge, UserChallengeProgress, LeadQualificationScore, LeadQualificationRule, LeadPrioritizationQueue
 from .serializers import (
     UserProfileSerializer,
     BookingSerializer,
@@ -1603,3 +1603,1187 @@ Reply anytime if you have questions! 🏔️
         return Response({
             'error': 'Failed to process lead capture'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ============================================
+# PAYMENT VERIFICATION API ENDPOINTS
+# ============================================
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@csrf_exempt
+def create_payment(request):
+    """
+    Create a payment record for a booking.
+    Generates a reference number and UPI deep link.
+    
+    POST /api/payments/create/
+    {
+        "booking_id": 123,
+        "amount": 5000,
+        "customer_vpa": "customer@upi" (optional)
+    }
+    """
+    try:
+        booking_id = request.data.get('booking_id')
+        amount = request.data.get('amount')
+        customer_vpa = request.data.get('customer_vpa', '')
+        
+        if not booking_id or not amount:
+            return Response({
+                'error': 'booking_id and amount are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verify booking exists
+        try:
+            booking = Booking.objects.get(id=booking_id)
+        except Booking.DoesNotExist:
+            return Response({
+                'error': 'Booking not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Check for existing pending payment
+        existing_payment = Payment.objects.filter(
+            booking=booking,
+            status__in=['pending', 'initiated', 'waiting']
+        ).first()
+        
+        if existing_payment:
+            return Response({
+                'message': 'Payment already exists',
+                'payment': PaymentSerializer(existing_payment).data
+            }, status=status.HTTP_200_OK)
+        
+        # Create reference number
+        reference_number = f"TAS{int(timezone.now().timestamp())}"
+        
+        # Calculate expiry (24 hours from now)
+        expires_at = timezone.now() + timedelta(hours=24)
+        
+        # Create payment record
+        payment = Payment.objects.create(
+            booking=booking,
+            amount=amount,
+            customer_vpa=customer_vpa,
+            reference_number=reference_number,
+            expires_at=expires_at,
+            status='pending'
+        )
+        
+        # Calculate initial risk score
+        payment.calculate_risk_score()
+        payment.save()
+        
+        # Create audit trail
+        TransactionAudit.objects.create(
+            payment=payment,
+            event_type='created',
+            new_value='pending',
+            details={'amount': float(amount)}
+        )
+        
+        # Generate UPI deep link
+        merchant_vpa = 'trekandstay@ybl'
+        merchant_name = 'Trek and Stay Adventures'
+        note = f"Advance booking - {booking.destination}"
+        
+        upi_link = f"upi://pay?pa={merchant_vpa}&pn={merchant_name}&am={int(amount)}&cu=INR&tn={note}&tr={reference_number}"
+        
+        logger.info(f"Payment created: {reference_number} for booking {booking_id}")
+        
+        return Response({
+            'success': True,
+            'payment': PaymentSerializer(payment).data,
+            'upi_link': upi_link,
+            'reference_number': reference_number,
+            'expires_at': expires_at.isoformat()
+        }, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        logger.error(f"Payment creation error: {str(e)}")
+        return Response({
+            'error': 'Failed to create payment'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@csrf_exempt
+def initiate_payment(request):
+    """
+    Mark payment as initiated (user clicked pay button).
+    Starts the verification timer.
+    
+    POST /api/payments/{payment_id}/initiate/
+    """
+    try:
+        payment_id = request.data.get('payment_id')
+        customer_vpa = request.data.get('customer_vpa', '')
+        
+        try:
+            payment = Payment.objects.get(id=payment_id)
+        except Payment.DoesNotExist:
+            return Response({
+                'error': 'Payment not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Check if already expired
+        if payment.is_expired():
+            payment.status = 'expired'
+            payment.save()
+            return Response({
+                'error': 'Payment window has expired. Please create a new payment.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        payment.status = 'initiated'
+        payment.payment_initiated_at = timezone.now()
+        if customer_vpa:
+            payment.customer_vpa = customer_vpa
+        payment.save()
+        
+        # Create audit trail
+        TransactionAudit.objects.create(
+            payment=payment,
+            event_type='status_changed',
+            old_value='pending',
+            new_value='initiated'
+        )
+        
+        logger.info(f"Payment initiated: {payment.reference_number}")
+        
+        return Response({
+            'success': True,
+            'payment': PaymentSerializer(payment).data,
+            'expires_at': payment.expires_at.isoformat()
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Payment initiation error: {str(e)}")
+        return Response({
+            'error': 'Failed to initiate payment'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@csrf_exempt
+def submit_payment_proof(request):
+    """
+    User submits payment proof (screenshot or manual confirmation).
+    Automatically marks as 'waiting' for verification.
+    
+    POST /api/payments/{payment_id}/submit-proof/
+    {
+        "upi_txn_id": "UPI123456789",
+        "customer_vpa": "customer@upi",
+        "proof_image_url": "https://..."  (optional)
+    }
+    """
+    try:
+        payment_id = request.data.get('payment_id')
+        upi_txn_id = request.data.get('upi_txn_id', '')
+        customer_vpa = request.data.get('customer_vpa', '')
+        proof_image_url = request.data.get('proof_image_url', '')
+        
+        try:
+            payment = Payment.objects.get(id=payment_id)
+        except Payment.DoesNotExist:
+            return Response({
+                'error': 'Payment not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Check expiry
+        if payment.is_expired():
+            payment.status = 'expired'
+            payment.save()
+            return Response({
+                'error': 'Payment window has expired'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Update payment with submission details
+        payment.upi_txn_id = upi_txn_id
+        payment.customer_vpa = customer_vpa
+        payment.status = 'waiting'
+        payment.save()
+        
+        # Create verification log for manual review
+        verification_log = PaymentVerificationLog.objects.create(
+            payment=payment,
+            method='user_proof',
+            status='pending',
+            proof_document=proof_image_url,
+            notes=f"UPI TXN: {upi_txn_id}"
+        )
+        
+        # Create audit trail
+        TransactionAudit.objects.create(
+            payment=payment,
+            event_type='status_changed',
+            old_value='initiated',
+            new_value='waiting',
+            details={'upi_txn_id': upi_txn_id}
+        )
+        
+        # Send WhatsApp notification to admin/team
+        try:
+            booking = payment.booking
+            admin_message = f"""
+🔔 Payment Proof Received
+
+Reference: {payment.reference_number}
+Amount: ₹{payment.amount}
+UPI TXN: {upi_txn_id}
+Customer VPA: {customer_vpa}
+
+Booking: {booking.destination}
+Status: Awaiting verification
+
+Please verify at admin dashboard.
+            """
+            # You would send this to your team via WhatsApp or email
+        except Exception as e:
+            logger.warning(f"Failed to send admin notification: {str(e)}")
+        
+        logger.info(f"Payment proof submitted: {payment.reference_number}")
+        
+        return Response({
+            'success': True,
+            'message': 'Payment proof received. We will verify it shortly.',
+            'payment': PaymentSerializer(payment).data
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Payment proof submission error: {str(e)}")
+        return Response({
+            'error': 'Failed to submit payment proof'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def verify_payment(request):
+    """
+    Admin endpoint to verify a payment.
+    Only staff/admin users can verify payments.
+    
+    POST /api/payments/{payment_id}/verify/
+    {
+        "verified": true,
+        "notes": "Payment verified manually",
+        "confirmation_method": "manual/bank_api/sms"
+    }
+    """
+    try:
+        if not request.user.is_staff:
+            return Response({
+                'error': 'Only staff can verify payments'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        payment_id = request.data.get('payment_id')
+        verified = request.data.get('verified', False)
+        notes = request.data.get('notes', '')
+        confirmation_method = request.data.get('confirmation_method', 'manual')
+        
+        try:
+            payment = Payment.objects.get(id=payment_id)
+        except Payment.DoesNotExist:
+            return Response({
+                'error': 'Payment not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        if verified:
+            payment.verification_status = 'verified'
+            payment.status = 'verified'
+            payment.verified_by = request.user
+            payment.verification_timestamp = timezone.now()
+            payment.verification_notes = notes
+            payment.save()
+            
+            # Create verification log
+            PaymentVerificationLog.objects.create(
+                payment=payment,
+                method=confirmation_method,
+                status='verified',
+                verified_by=request.user,
+                notes=notes
+            )
+            
+            # Create audit trail
+            TransactionAudit.objects.create(
+                payment=payment,
+                event_type='verified',
+                new_value='verified',
+                details={'verified_by': request.user.username},
+                created_by=request.user
+            )
+            
+            logger.info(f"Payment verified: {payment.reference_number} by {request.user.username}")
+            
+            return Response({
+                'success': True,
+                'message': 'Payment verified successfully',
+                'payment': PaymentSerializer(payment).data
+            }, status=status.HTTP_200_OK)
+        else:
+            payment.verification_status = 'rejected'
+            payment.status = 'failed'
+            payment.verified_by = request.user
+            payment.verification_timestamp = timezone.now()
+            payment.verification_notes = notes
+            payment.save()
+            
+            # Create verification log
+            PaymentVerificationLog.objects.create(
+                payment=payment,
+                method=confirmation_method,
+                status='rejected',
+                verified_by=request.user,
+                notes=notes
+            )
+            
+            logger.warning(f"Payment rejected: {payment.reference_number} - {notes}")
+            
+            return Response({
+                'success': True,
+                'message': 'Payment rejected',
+                'payment': PaymentSerializer(payment).data
+            }, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        logger.error(f"Payment verification error: {str(e)}")
+        return Response({
+            'error': 'Failed to verify payment'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def confirm_booking_after_payment(request):
+    """
+    Confirm booking and create order after payment is verified.
+    Sends confirmation email and WhatsApp.
+    
+    POST /api/payments/{payment_id}/confirm-booking/
+    """
+    try:
+        payment_id = request.data.get('payment_id')
+        
+        try:
+            payment = Payment.objects.get(id=payment_id)
+        except Payment.DoesNotExist:
+            return Response({
+                'error': 'Payment not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        if payment.verification_status != 'verified':
+            return Response({
+                'error': 'Payment is not verified'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        booking = payment.booking
+        
+        # Update booking status
+        booking.status = 'confirmed'
+        booking.save()
+        
+        payment.booking_confirmed = True
+        payment.payment_confirmed_at = timezone.now()
+        payment.status = 'confirmed'
+        payment.save()
+        
+        # Create audit trail
+        TransactionAudit.objects.create(
+            payment=payment,
+            event_type='booked',
+            new_value='confirmed',
+            details={'booking_id': booking.id}
+        )
+        
+        # Send confirmation email
+        try:
+            send_booking_confirmation_email(booking, payment)
+            payment.confirmation_email_sent = True
+            payment.save()
+        except Exception as e:
+            logger.warning(f"Failed to send confirmation email: {str(e)}")
+        
+        # Send WhatsApp confirmation
+        try:
+            send_booking_confirmation_whatsapp(booking, payment)
+            payment.confirmation_whatsapp_sent = True
+            payment.save()
+        except Exception as e:
+            logger.warning(f"Failed to send WhatsApp confirmation: {str(e)}")
+        
+        logger.info(f"Booking confirmed: {booking.id} - Payment {payment.reference_number}")
+        
+        return Response({
+            'success': True,
+            'message': 'Booking confirmed successfully',
+            'booking': BookingSerializer(booking).data,
+            'payment': PaymentSerializer(payment).data
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Booking confirmation error: {str(e)}")
+        return Response({
+            'error': 'Failed to confirm booking'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_pending_payments(request):
+    """
+    Get all pending payments for verification dashboard.
+    Only staff can access.
+    
+    GET /api/payments/pending/
+    """
+    try:
+        if not request.user.is_staff:
+            return Response({
+                'error': 'Only staff can access this endpoint'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Get pending payments sorted by risk level
+        payments = Payment.objects.filter(
+            verification_status='pending'
+        ).select_related('booking').order_by('-risk_score', '-created_at')
+        
+        # Group by risk level
+        high_risk = payments.filter(risk_level__in=['high', 'fraud'])
+        medium_risk = payments.filter(risk_level='medium')
+        low_risk = payments.filter(risk_level='low')
+        
+        return Response({
+            'high_risk': PaymentSerializer(high_risk, many=True).data,
+            'medium_risk': PaymentSerializer(medium_risk, many=True).data,
+            'low_risk': PaymentSerializer(low_risk, many=True).data,
+            'total_pending': payments.count(),
+            'high_risk_count': high_risk.count(),
+            'total_amount_pending': float(payments.aggregate(total=models.Sum('amount'))['total'] or 0)
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Get pending payments error: {str(e)}")
+        return Response({
+            'error': 'Failed to retrieve pending payments'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_payment_status(request):
+    """
+    Check payment status (for user to poll).
+    
+    GET /api/payments/{payment_id}/status/
+    """
+    try:
+        payment_id = request.query_params.get('payment_id')
+        reference_number = request.query_params.get('reference')
+        
+        try:
+            if payment_id:
+                payment = Payment.objects.get(id=payment_id)
+            elif reference_number:
+                payment = Payment.objects.get(reference_number=reference_number)
+            else:
+                return Response({
+                    'error': 'payment_id or reference is required'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Payment.DoesNotExist:
+            return Response({
+                'error': 'Payment not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Check expiry
+        if payment.is_expired() and payment.status != 'confirmed':
+            payment.status = 'expired'
+            payment.save()
+        
+        return Response({
+            'payment': PaymentSerializer(payment).data
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Get payment status error: {str(e)}")
+        return Response({
+            'error': 'Failed to retrieve payment status'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# Helper functions for email and WhatsApp
+def send_booking_confirmation_email(booking, payment):
+    """Send booking confirmation email"""
+    # This would integrate with SendGrid or similar
+    pass
+
+def send_booking_confirmation_whatsapp(booking, payment):
+    """Send booking confirmation via WhatsApp"""
+    # This would integrate with WhatsApp Business API
+    pass
+
+
+# ============================================
+# GAMIFICATION API ENDPOINTS
+# ============================================
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def user_progress(request):
+    """
+    Get or update user progress/gamification data.
+    
+    GET /api/user/progress/
+    Returns: {
+        points, level, badges, totalBookings, streak, challenges
+    }
+    
+    POST /api/user/progress/update-event/
+    Accepts: {
+        event_type: 'trip_view' | 'booking_completed' | etc,
+        trip_id: 123 (optional),
+        booking_id: 456 (optional),
+        metadata: {} (optional)
+    }
+    """
+    try:
+        # Get or create user progress
+        progress, created = UserProgress.objects.get_or_create(
+            user=request.user,
+            defaults={
+                'points': 0,
+                'level': 1,
+                'badges': [],
+                'completed_challenges': []
+            }
+        )
+        
+        if request.method == 'GET':
+            # Get user progress with full details
+            from .serializers import UserProgressSerializer
+            
+            # Get active challenges
+            active_challenges = UserChallengeProgress.objects.filter(
+                user=request.user,
+                completed=False,
+                challenge__is_active=True
+            ).select_related('challenge')
+            
+            challenge_data = [
+                {
+                    'id': cp.challenge.id,
+                    'name': cp.challenge.name,
+                    'current_progress': cp.current_progress,
+                    'target': cp.challenge.target_count,
+                    'reward': cp.challenge.reward_points,
+                    'completed': cp.completed
+                }
+                for cp in active_challenges
+            ]
+            
+            # Get recent badges
+            recent_badges = BadgeUnlock.objects.filter(
+                user=request.user
+            ).order_by('-unlocked_at')[:5]
+            
+            return Response({
+                'success': True,
+                'progress': {
+                    'points': progress.points,
+                    'level': progress.level,
+                    'totalEarnedPoints': progress.total_earned_points,
+                    'badges': progress.badges,
+                    'completedChallenges': progress.completed_challenges,
+                    'dailyStreak': progress.daily_streak,
+                    'totalBookings': progress.total_bookings,
+                    'totalTripViews': progress.total_trip_views,
+                    'totalShares': progress.total_shares,
+                    'totalReviews': progress.total_reviews,
+                },
+                'activeChallenges': challenge_data,
+                'recentBadges': [
+                    {
+                        'id': b.badge_id,
+                        'unlockedAt': b.unlocked_at.isoformat()
+                    }
+                    for b in recent_badges
+                ],
+                'pointsToNextLevel': progress.calculate_level() - progress.level
+            }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"User progress error: {str(e)}")
+        return Response({
+            'error': 'Failed to retrieve user progress'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@csrf_exempt
+def track_gamification_event(request):
+    """
+    Track a gamification event and award points.
+    
+    POST /api/gamification/track-event/
+    {
+        "event_type": "trip_view",
+        "user_id": 123 (optional - for auth users),
+        "guest_id": "guest_123" (for anonymous users),
+        "trip_id": 456 (optional),
+        "booking_id": 789 (optional),
+        "metadata": { "custom": "data" }
+    }
+    """
+    try:
+        event_type = request.data.get('event_type')
+        user_id = request.data.get('user_id')
+        guest_id = request.data.get('guest_id')
+        trip_id = request.data.get('trip_id')
+        booking_id = request.data.get('booking_id')
+        metadata = request.data.get('metadata', {})
+        
+        if not event_type:
+            return Response({
+                'error': 'event_type is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get user if authenticated
+        user = None
+        if request.user.is_authenticated:
+            user = request.user
+        elif user_id:
+            try:
+                user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                pass
+        
+        # Get related objects
+        trip = None
+        booking = None
+        if trip_id:
+            try:
+                trip = Trip.objects.get(id=trip_id)
+            except Trip.DoesNotExist:
+                pass
+        if booking_id:
+            try:
+                booking = Booking.objects.get(id=booking_id)
+            except Booking.DoesNotExist:
+                pass
+        
+        # Point allocation based on event type
+        points_map = {
+            'trip_view': 5,
+            'trip_bookmark': 10,
+            'booking_started': 15,
+            'booking_completed': 200,
+            'review_written': 50,
+            'trip_shared': 20,
+            'referral_sent': 100,
+            'daily_login': 10,
+            'lead_submitted': 25,
+            'challenge_completed': 150,
+        }
+        
+        points_awarded = points_map.get(event_type, 0)
+        badges_unlocked = []
+        
+        # Create gamification event record
+        gam_event = GamificationEvent.objects.create(
+            user=user,
+            guest_id=guest_id or '',
+            event_type=event_type,
+            trip=trip,
+            booking=booking,
+            points_awarded=points_awarded,
+            metadata=metadata
+        )
+        
+        # Award points if user exists
+        if user:
+            progress, _ = UserProgress.objects.get_or_create(user=user)
+            
+            # Update event counters
+            if event_type == 'trip_view':
+                progress.total_trip_views += 1
+            elif event_type == 'booking_completed':
+                progress.total_bookings += 1
+            elif event_type == 'review_written':
+                progress.total_reviews += 1
+            elif event_type == 'trip_shared':
+                progress.total_shares += 1
+            
+            # Update daily streak
+            today = timezone.now().date()
+            if progress.last_activity_date != today:
+                if progress.last_activity_date == (today - timezone.timedelta(days=1)):
+                    progress.daily_streak += 1
+                else:
+                    progress.daily_streak = 1
+                progress.last_activity_date = today
+            
+            # Award points and check for level up
+            leveled_up = progress.add_points(points_awarded, event_type)
+            
+            # Check badge unlocks
+            badges_unlocked = check_badge_unlocks(user, progress)
+            
+            if badges_unlocked:
+                gam_event.badges_unlocked = [b.id for b in badges_unlocked]
+                gam_event.save(update_fields=['badges_unlocked'])
+            
+            # Update challenge progress
+            update_user_challenges(user, event_type)
+            
+            logger.info(f"Gamification event: {user.username} - {event_type} +{points_awarded}pts (L{progress.level})")
+        
+        return Response({
+            'success': True,
+            'pointsAwarded': points_awarded,
+            'badgesUnlocked': [b.id for b in badges_unlocked],
+            'eventId': gam_event.id
+        }, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        logger.error(f"Gamification tracking error: {str(e)}")
+        return Response({
+            'error': 'Failed to track event'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_leaderboard(request):
+    """
+    Get global leaderboard.
+    
+    GET /api/gamification/leaderboard/?limit=100&timeframe=alltime
+    Timeframe: 'week' | 'month' | 'alltime'
+    """
+    try:
+        limit = min(int(request.query_params.get('limit', 100)), 1000)
+        timeframe = request.query_params.get('timeframe', 'alltime')
+        
+        query = UserProgress.objects.select_related('user').order_by('-points')
+        
+        # Filter by timeframe
+        if timeframe == 'week':
+            week_ago = timezone.now() - timezone.timedelta(days=7)
+            query = query.filter(updated_at__gte=week_ago)
+        elif timeframe == 'month':
+            month_ago = timezone.now() - timezone.timedelta(days=30)
+            query = query.filter(updated_at__gte=month_ago)
+        
+        leaderboard = query[:limit]
+        
+        # Add ranking
+        data = []
+        for idx, entry in enumerate(leaderboard, 1):
+            data.append({
+                'rank': idx,
+                'userId': entry.user.id,
+                'username': entry.user.username,
+                'points': entry.points,
+                'level': entry.level,
+                'badgeCount': len(entry.badges),
+                'totalBookings': entry.total_bookings,
+            })
+        
+        # Get user's ranking
+        user_rank = UserProgress.objects.filter(
+            points__gt=request.user.progress.points
+        ).count() + 1
+        
+        return Response({
+            'success': True,
+            'leaderboard': data,
+            'userRank': user_rank,
+            'timeframe': timeframe
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Leaderboard error: {str(e)}")
+        return Response({
+            'error': 'Failed to retrieve leaderboard'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_badges(request):
+    """
+    Get all available badges and user's badge progress.
+    
+    GET /api/gamification/badges/
+    """
+    try:
+        all_badges = Badge.objects.all()
+        user_badges = BadgeUnlock.objects.filter(user=request.user).values_list('badge_id', flat=True)
+        
+        badges_data = []
+        for badge in all_badges:
+            badges_data.append({
+                'id': badge.id,
+                'name': badge.name,
+                'description': badge.description,
+                'icon': badge.icon_name,
+                'points': badge.points_reward,
+                'rarity': badge.rarity,
+                'unlocked': badge.id in user_badges,
+                'category': badge.category,
+            })
+        
+        return Response({
+            'success': True,
+            'badges': badges_data,
+            'unlockedCount': len(user_badges)
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Get badges error: {str(e)}")
+        return Response({
+            'error': 'Failed to retrieve badges'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def claim_challenge_reward(request):
+    """
+    Claim reward for completed challenge.
+    
+    POST /api/gamification/challenges/{challenge_id}/claim/
+    """
+    try:
+        challenge_id = request.data.get('challenge_id')
+        
+        try:
+            progress = UserChallengeProgress.objects.get(
+                user=request.user,
+                challenge_id=challenge_id
+            )
+        except UserChallengeProgress.DoesNotExist:
+            return Response({
+                'error': 'Challenge progress not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        if not progress.completed:
+            return Response({
+                'error': 'Challenge not completed'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if progress.reward_claimed:
+            return Response({
+                'error': 'Reward already claimed'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Award points
+        user_progress = UserProgress.objects.get(user=request.user)
+        user_progress.add_points(progress.challenge.reward_points, 'challenge_completed')
+        
+        # Mark reward as claimed
+        progress.reward_claimed = True
+        progress.claimed_at = timezone.now()
+        progress.save()
+        
+        return Response({
+            'success': True,
+            'pointsAwarded': progress.challenge.reward_points,
+            'message': 'Challenge reward claimed!'
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Claim challenge reward error: {str(e)}")
+        return Response({
+            'error': 'Failed to claim reward'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ============================================
+# GAMIFICATION HELPER FUNCTIONS
+# ============================================
+
+def check_badge_unlocks(user, progress):
+    """Check if user has unlocked any new badges"""
+    unlocked_badges = []
+    already_unlocked = set(BadgeUnlock.objects.filter(user=user).values_list('badge_id', flat=True))
+    
+    # Define unlock conditions
+    conditions = {
+        'explorer': lambda p: p.total_trip_views >= 5,
+        'early-bird': lambda p: p.total_bookings >= 1,  # Would need booking date check in real scenario
+        'social-butterfly': lambda p: p.total_shares >= 3,
+        'photographer': lambda p: p.total_reviews >= 10,  # Placeholder
+        'summit-master': lambda p: p.total_bookings >= 5,
+        'loyal-adventurer': lambda p: p.total_bookings >= 10,
+        'level-5': lambda p: p.level >= 5,
+        'points-500': lambda p: p.points >= 500,
+        'points-1000': lambda p: p.points >= 1000,
+    }
+    
+    for badge_id, condition in conditions.items():
+        if badge_id not in already_unlocked and condition(progress):
+            try:
+                badge = Badge.objects.get(id=badge_id)
+                BadgeUnlock.objects.create(user=user, badge_id=badge_id)
+                progress.badges.append(badge_id)
+                unlocked_badges.append(badge)
+            except Badge.DoesNotExist:
+                pass
+    
+    if unlocked_badges:
+        progress.save(update_fields=['badges'])
+    
+    return unlocked_badges
+
+
+def update_user_challenges(user, event_type):
+    """Update user's challenge progress based on event"""
+    active_challenges = UserChallengeProgress.objects.filter(
+        user=user,
+        completed=False,
+        challenge__event_type=event_type,
+        challenge__is_active=True
+    )
+    
+    for progress in active_challenges:
+        progress.current_progress += 1
+        
+        if progress.current_progress >= progress.challenge.target_count:
+            progress.completed = True
+            progress.completed_at = timezone.now()
+        
+        progress.save()
+        
+        logger.info(f"Challenge progress: {user.username} - {progress.challenge.id}: {progress.current_progress}/{progress.challenge.target_count}")
+
+
+# ============================================
+# LEAD QUALIFICATION SYSTEM
+# ============================================
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def lead_qualification_score(request, lead_id):
+    """Get or recalculate lead qualification score"""
+    try:
+        lead = Lead.objects.get(id=lead_id)
+        
+        if request.method == 'GET':
+            score_obj, created = LeadQualificationScore.objects.get_or_create(lead=lead)
+            return Response({
+                'lead_id': lead.id,
+                'lead_name': lead.name,
+                'total_score': score_obj.total_score,
+                'qualification_status': score_obj.qualification_status,
+                'engagement_score': score_obj.engagement_score,
+                'intent_score': score_obj.intent_score,
+                'fit_score': score_obj.fit_score,
+                'urgency_score': score_obj.urgency_score,
+                'scoring_reason': score_obj.scoring_reason,
+                'last_scored_at': score_obj.last_scored_at
+            }, status=status.HTTP_200_OK)
+        
+        elif request.method == 'POST':
+            # Recalculate score
+            score_obj, created = LeadQualificationScore.objects.get_or_create(lead=lead)
+            new_score = score_obj.calculate_score()
+            
+            # Log the scoring
+            logger.info(f"Lead {lead.name} rescored: {new_score} ({score_obj.qualification_status})")
+            
+            return Response({
+                'success': True,
+                'total_score': new_score,
+                'qualification_status': score_obj.qualification_status,
+                'message': f"Lead scored: {new_score} - {score_obj.qualification_status.upper()}"
+            }, status=status.HTTP_200_OK)
+    
+    except Lead.DoesNotExist:
+        return Response({'error': 'Lead not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Lead qualification error: {str(e)}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def lead_priority_queue(request):
+    """Get prioritized lead queue for sales team"""
+    try:
+        from .models import LeadPrioritizationQueue
+        
+        # Get all active leads in priority queue
+        queue_items = LeadPrioritizationQueue.objects.filter(
+            is_active=True,
+            resolution_status='pending'
+        ).select_related('lead', 'assigned_to')[:50]
+        
+        lead_queue = []
+        for item in queue_items:
+            score_obj = LeadQualificationScore.objects.filter(lead=item.lead).first()
+            lead_queue.append({
+                'queue_id': item.id,
+                'lead_id': item.lead.id,
+                'lead_name': item.lead.name,
+                'lead_phone': item.lead.phone,
+                'lead_email': item.lead.email,
+                'priority_level': item.priority_level,
+                'qualification_status': score_obj.qualification_status if score_obj else 'unknown',
+                'qualification_score': score_obj.total_score if score_obj else 0,
+                'assigned_to': item.assigned_to.username if item.assigned_to else 'Unassigned',
+                'follow_up_date': item.follow_up_date,
+                'last_follow_up': item.last_follow_up,
+                'follow_up_count': item.follow_up_count,
+                'queue_position': item.queue_position
+            })
+        
+        return Response({
+            'total_leads': len(lead_queue),
+            'leads': lead_queue
+        }, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        logger.error(f"Priority queue error: {str(e)}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def assign_lead_to_sales_rep(request):
+    """Assign lead to sales representative"""
+    try:
+        from .models import LeadPrioritizationQueue
+        
+        lead_id = request.data.get('lead_id')
+        sales_rep_id = request.data.get('sales_rep_id')
+        follow_up_date = request.data.get('follow_up_date')
+        
+        if not lead_id or not sales_rep_id:
+            return Response({'error': 'lead_id and sales_rep_id required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        lead = Lead.objects.get(id=lead_id)
+        sales_rep = User.objects.get(id=sales_rep_id)
+        
+        # Update or create priority queue entry
+        queue_item, created = LeadPrioritizationQueue.objects.get_or_create(lead=lead)
+        queue_item.assigned_to = sales_rep
+        queue_item.assigned_at = timezone.now()
+        if follow_up_date:
+            queue_item.follow_up_date = follow_up_date
+        queue_item.save()
+        
+        # Update lead assignment
+        lead.assigned_to = sales_rep
+        lead.save(update_fields=['assigned_to'])
+        
+        logger.info(f"Lead {lead.name} assigned to {sales_rep.username}")
+        
+        return Response({
+            'success': True,
+            'message': f"Lead assigned to {sales_rep.first_name or sales_rep.username}"
+        }, status=status.HTTP_200_OK)
+    
+    except Lead.DoesNotExist:
+        return Response({'error': 'Lead not found'}, status=status.HTTP_404_NOT_FOUND)
+    except User.DoesNotExist:
+        return Response({'error': 'Sales representative not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Lead assignment error: {str(e)}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_lead_follow_up(request):
+    """Log follow-up with lead"""
+    try:
+        from .models import LeadPrioritizationQueue
+        
+        lead_id = request.data.get('lead_id')
+        follow_up_notes = request.data.get('notes', '')
+        next_follow_up = request.data.get('next_follow_up_date')
+        
+        if not lead_id:
+            return Response({'error': 'lead_id required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        lead = Lead.objects.get(id=lead_id)
+        queue_item = LeadPrioritizationQueue.objects.get(lead=lead)
+        
+        # Update follow-up tracking
+        queue_item.last_follow_up = timezone.now()
+        queue_item.follow_up_count += 1
+        if next_follow_up:
+            queue_item.follow_up_date = next_follow_up
+        queue_item.save()
+        
+        # Update lead contact timestamp
+        lead.touch_contact()
+        if follow_up_notes:
+            lead.notes = (lead.notes or '') + f"\n[{timezone.now().strftime('%Y-%m-%d %H:%M')}] {follow_up_notes}"
+            lead.save(update_fields=['notes'])
+        
+        logger.info(f"Follow-up logged for lead {lead.name} (Count: {queue_item.follow_up_count})")
+        
+        return Response({
+            'success': True,
+            'follow_up_count': queue_item.follow_up_count,
+            'last_follow_up': queue_item.last_follow_up,
+            'message': f"Follow-up logged (Total: {queue_item.follow_up_count})"
+        }, status=status.HTTP_200_OK)
+    
+    except Lead.DoesNotExist:
+        return Response({'error': 'Lead not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Follow-up update error: {str(e)}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def resolve_lead_qualification(request):
+    """Mark lead as converted or lost"""
+    try:
+        from .models import LeadPrioritizationQueue
+        
+        lead_id = request.data.get('lead_id')
+        resolution_status = request.data.get('resolution_status')  # 'converted' or 'lost'
+        resolution_notes = request.data.get('notes', '')
+        
+        if not lead_id or resolution_status not in ['converted', 'lost']:
+            return Response({'error': 'lead_id and valid resolution_status required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        lead = Lead.objects.get(id=lead_id)
+        queue_item = LeadPrioritizationQueue.objects.get(lead=lead)
+        
+        # Mark as resolved
+        queue_item.resolution_status = resolution_status
+        queue_item.resolved_at = timezone.now()
+        queue_item.is_active = False
+        queue_item.save()
+        
+        # Update lead status
+        lead.status = 'converted' if resolution_status == 'converted' else 'lost'
+        if resolution_notes:
+            lead.notes = (lead.notes or '') + f"\n[{timezone.now().strftime('%Y-%m-%d %H:%M')}] RESOLUTION: {resolution_notes}"
+        lead.save()
+        
+        logger.info(f"Lead {lead.name} marked as {resolution_status}")
+        
+        return Response({
+            'success': True,
+            'lead_status': lead.status,
+            'resolution_status': resolution_status,
+            'message': f"Lead marked as {resolution_status.upper()}"
+        }, status=status.HTTP_200_OK)
+    
+    except Lead.DoesNotExist:
+        return Response({'error': 'Lead not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Lead resolution error: {str(e)}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

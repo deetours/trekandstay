@@ -179,10 +179,10 @@ export function StoriesWidget() {
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
-        className="text-center mt-8 p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl border border-purple-100/50 max-w-2xl mx-auto"
+        className="text-center mt-8 p-6 bg-gradient-to-br from-forest-green/10 to-waterfall-blue/10 rounded-2xl border border-forest-green/20 max-w-2xl mx-auto"
       >
         <div className="flex items-center justify-center gap-3 mb-3">
-          <div className="p-2.5 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl text-white">
+          <div className="p-2.5 bg-gradient-to-br from-forest-green to-waterfall-blue rounded-xl text-white">
             <Camera className="w-5 h-5" />
           </div>
           <h4 className="text-xl font-bold text-gray-900">Share Your Adventure</h4>
@@ -194,7 +194,7 @@ export function StoriesWidget() {
           <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
             <Button 
               onClick={() => navigate('/stories/new')} 
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg px-5 py-2 text-sm"
+              className="bg-gradient-to-r from-forest-green to-waterfall-blue hover:from-forest-green/90 hover:to-waterfall-blue/90 shadow-lg px-5 py-2 text-sm text-white"
             >
               <Camera className="w-4 h-4 mr-2" />
               Share Your Story
@@ -204,7 +204,7 @@ export function StoriesWidget() {
             <Button 
               variant="secondary" 
               onClick={() => navigate('/stories')}
-              className="px-5 py-2 text-sm"
+              className="px-5 py-2 text-sm border border-forest-green/30 text-forest-green hover:bg-forest-green/10"
             >
               View All Stories
             </Button>

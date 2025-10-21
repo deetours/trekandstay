@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import UserProfile, Booking, TripHistory, TripRecommendation, Lead, Author, Story, StoryImage, StoryAudio, StoryRating, Trip, Guide, Review, Wishlist, Payment, ChatFAQ, SeatLock, MessageTemplate, LeadEvent, OutboundMessage, Task
+from .models import UserProfile, Booking, TripHistory, TripRecommendation, Lead, Author, Story, StoryImage, StoryAudio, StoryRating, Trip, Guide, Review, Wishlist, Payment, ChatFAQ, SeatLock, MessageTemplate, LeadEvent, OutboundMessage, Task, PaymentVerificationLog, TransactionAudit, UserProgress, PointTransaction, Badge, BadgeUnlock, GamificationEvent, Challenge, UserChallengeProgress
 
 class LeadSerializer(serializers.ModelSerializer):
     class Meta:
@@ -38,10 +38,26 @@ class SeatLockSerializer(serializers.ModelSerializer):
         read_only_fields = ['status', 'created_at', 'user']
 
 class PaymentSerializer(serializers.ModelSerializer):
+    booking_destination = serializers.CharField(source='booking.destination', read_only=True)
+    verified_by_username = serializers.CharField(source='verified_by.username', read_only=True, allow_null=True)
+    verification_logs = serializers.SerializerMethodField()
+    
     class Meta:
         model = Payment
-        fields = ['id', 'booking', 'amount', 'currency', 'merchant_vpa', 'status', 'upi_txn_id', 'created_at']
-        read_only_fields = ['status', 'created_at']
+        fields = [
+            'id', 'booking', 'booking_destination', 'amount', 'currency', 'merchant_vpa', 
+            'status', 'verification_status', 'upi_txn_id', 'customer_vpa', 'reference_number',
+            'risk_level', 'risk_score', 'risk_flags',
+            'payment_initiated_at', 'payment_confirmed_at', 'expires_at',
+            'booking_confirmed', 'confirmation_email_sent', 'confirmation_whatsapp_sent',
+            'verified_by', 'verified_by_username', 'verification_notes', 'verification_timestamp',
+            'notes', 'created_at', 'verification_logs'
+        ]
+        read_only_fields = ['status', 'created_at', 'reference_number', 'risk_level', 'risk_score', 'risk_flags']
+    
+    def get_verification_logs(self, obj):
+        logs = obj.verification_logs.all().order_by('-created_at')[:5]  # Last 5 logs
+        return PaymentVerificationLogSerializer(logs, many=True).data
 
 class TripHistorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -181,3 +197,89 @@ class TaskSerializer(serializers.ModelSerializer):
         model = Task
         fields = ['id', 'lead', 'lead_name', 'type', 'status', 'title', 'notes', 'due_at', 'completed_at', 'owner', 'created_at']
         read_only_fields = ['completed_at', 'created_at']
+
+# ==============================
+# Payment Verification Serializers
+# ==============================
+
+class PaymentVerificationLogSerializer(serializers.ModelSerializer):
+    verified_by_username = serializers.CharField(source='verified_by.username', read_only=True, allow_null=True)
+    
+    class Meta:
+        model = PaymentVerificationLog
+        fields = ['id', 'payment', 'method', 'status', 'notes', 'verified_by', 'verified_by_username', 'proof_document', 'created_at']
+        read_only_fields = ['created_at']
+
+class TransactionAuditSerializer(serializers.ModelSerializer):
+    created_by_username = serializers.CharField(source='created_by.username', read_only=True, allow_null=True)
+    
+    class Meta:
+        model = TransactionAudit
+        fields = ['id', 'payment', 'event_type', 'old_value', 'new_value', 'details', 'created_by', 'created_by_username', 'created_at']
+        read_only_fields = ['created_at']
+
+# ==============================
+# Gamification Serializers
+# ==============================
+
+class UserProgressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserProgress
+        fields = [
+            'id', 'user', 'points', 'level', 'total_earned_points',
+            'daily_streak', 'total_bookings', 'total_trip_views',
+            'total_shares', 'total_reviews', 'badges', 'completed_challenges',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+
+class PointTransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PointTransaction
+        fields = [
+            'id', 'user', 'points', 'reason', 'from_level', 'to_level',
+            'metadata', 'created_at'
+        ]
+        read_only_fields = ['created_at']
+
+class BadgeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Badge
+        fields = ['id', 'name', 'description', 'icon_name', 'points_reward', 'category', 'rarity']
+
+class BadgeUnlockSerializer(serializers.ModelSerializer):
+    badge_name = serializers.CharField(source='badge_id', read_only=True)
+    
+    class Meta:
+        model = BadgeUnlock
+        fields = ['id', 'user', 'badge_id', 'badge_name', 'unlocked_at']
+        read_only_fields = ['unlocked_at']
+
+class GamificationEventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GamificationEvent
+        fields = [
+            'id', 'user', 'guest_id', 'event_type', 'trip', 'booking',
+            'points_awarded', 'badges_unlocked', 'metadata', 'created_at'
+        ]
+        read_only_fields = ['created_at']
+
+class ChallengeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Challenge
+        fields = [
+            'id', 'name', 'description', 'reward_points', 'icon_name',
+            'event_type', 'target_count', 'starts_at', 'ends_at',
+            'difficulty', 'is_active'
+        ]
+
+class UserChallengeProgressSerializer(serializers.ModelSerializer):
+    challenge = ChallengeSerializer(read_only=True)
+    
+    class Meta:
+        model = UserChallengeProgress
+        fields = [
+            'id', 'user', 'challenge', 'current_progress', 'completed',
+            'completed_at', 'reward_claimed', 'claimed_at', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']

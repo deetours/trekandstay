@@ -18,7 +18,6 @@ import {
   Zap,
   Heart,
   Send,
-  MessageCircle,
   Timer,
   AlertCircle,
   Eye,
@@ -27,7 +26,9 @@ import {
   Bell,
   CheckSquare,
   ArrowLeft,
-  ArrowRight
+  ArrowRight,
+  Trophy,
+  Lock
 } from 'lucide-react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { getDbOrThrow } from '../firebase';
@@ -40,7 +41,13 @@ import {
   TrekDiscoveryWidget,
   FloatingActionBubbles,
   LiveWeatherWidget,
-  AnimatedCTAButton
+  AnimatedCTAButton,
+  AdventurePointsSystem,
+  AchievementBadgeSystem,
+  ProgressTrackingDashboard,
+  InteractiveChallenges,
+  UserEngagementAnalytics,
+  useAdventurePoints
 } from '../../landing/components/interactive';
 
 interface Day {
@@ -113,11 +120,13 @@ const TripLandingPage: React.FC = () => {
   });
   const [countdownTimer, setCountdownTimer] = useState(600); // 10 minutes
   const [showUrgencyBanner, setShowUrgencyBanner] = useState(false);
+  const [showGamificationDashboard, setShowGamificationDashboard] = useState(false);
   const timerRef = useRef<NodeJS.Timeout>();
   const pageLoadTime = useRef<number>(Date.now());
+  const { awardPoints } = useAdventurePoints();
 
   // Helper function to normalize itinerary data
-  const normalizeItinerary = (itinerary: any): Day[] => {
+  const normalizeItinerary = (itinerary: unknown): Day[] => {
     if (!itinerary || !Array.isArray(itinerary)) {
       return [];
     }
@@ -195,6 +204,16 @@ const TripLandingPage: React.FC = () => {
             availability[i] = Math.random() > 0.2; // 80% availability
           }
           setSeatAvailability(availability);
+          
+          // Track gamification event: trip_view
+          analytics.trackGamificationEvent('trip_view', {
+            trip_id: doc.id,
+            trip_name: data.name,
+            trip_slug: slug
+          }).catch(err => console.error('Failed to track trip view:', err));
+          
+          // Award points for page load
+          setTimeout(() => awardPoints('page_load'), 1000);
         }
       } catch (error) {
         console.error('Error fetching trip:', error);
@@ -206,7 +225,7 @@ const TripLandingPage: React.FC = () => {
     if (slug) {
       fetchTrip();
     }
-  }, [slug]);
+  }, [slug, awardPoints]);
 
   // Real-time data simulation with seat updates
   useEffect(() => {
@@ -248,6 +267,7 @@ const TripLandingPage: React.FC = () => {
   useEffect(() => {
     let scrollHandler: (() => void) | null = null;
     const cleanupFunctions: (() => void)[] = [];
+    let lastScrollMilestone = 0;
     
     // Time-based trigger
     const timeoutId = setTimeout(() => {
@@ -258,9 +278,25 @@ const TripLandingPage: React.FC = () => {
     
     cleanupFunctions.push(() => clearTimeout(timeoutId));
     
-    // Scroll trigger setup
+    // Scroll trigger setup with point tracking
     scrollHandler = () => {
       const scrollPercent = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
+      
+      // Award points for scroll milestones
+      if (scrollPercent > 25 && lastScrollMilestone < 25) {
+        awardPoints('scroll_milestone', 10);
+        lastScrollMilestone = 25;
+      } else if (scrollPercent > 50 && lastScrollMilestone < 50) {
+        awardPoints('scroll_milestone', 15);
+        lastScrollMilestone = 50;
+      } else if (scrollPercent > 75 && lastScrollMilestone < 75) {
+        awardPoints('scroll_milestone', 20);
+        lastScrollMilestone = 75;
+      } else if (scrollPercent > 90 && lastScrollMilestone < 90) {
+        awardPoints('scroll_milestone', 25);
+        lastScrollMilestone = 90;
+      }
+      
       if (scrollPercent > 60 && userInteraction > 2 && !showLeadCapture && !showBookingModal) {
         setShowLeadCapture(true);
       }
@@ -276,11 +312,20 @@ const TripLandingPage: React.FC = () => {
     return () => {
       cleanupFunctions.forEach(cleanup => cleanup());
     };
-  }, [userInteraction, showLeadCapture, showBookingModal]);
+  }, [userInteraction, showLeadCapture, showBookingModal, awardPoints]);
 
   const handleBookNow = () => {
     setUserInteraction(prev => prev + 1);
     setShowBookingModal(true);
+    
+    // Award points for booking action
+    awardPoints('booking_start', 75);
+    
+    // Track gamification event: booking_started
+    analytics.trackGamificationEvent('booking_started', {
+      trip_id: trip?.id,
+      trip_name: trip?.name
+    }).catch(err => console.error('Failed to track booking start:', err));
     
     // Analytics tracking
     analytics.trackInteraction('hero_book_button', 'click', {
@@ -341,6 +386,11 @@ const TripLandingPage: React.FC = () => {
     
     if (!isAvailable) return;
     
+    // Award points for seat selection
+    if (!isSelected && bookingData.selectedSeats.length < bookingData.seats) {
+      awardPoints('seat_selection', 50);
+    }
+    
     // Track analytics for seat selection
     analytics.trackInteraction('seat_selection', 'click', {
       seat_number: seatNumber,
@@ -391,6 +441,14 @@ const TripLandingPage: React.FC = () => {
       // Create booking in admin dashboard
       await adminAPI.createBooking(bookingPayload);
       
+      // Track gamification event: booking_completed
+      analytics.trackGamificationEvent('booking_completed', {
+        trip_id: trip?.id,
+        trip_name: trip?.name,
+        booking_amount: (trip?.bookingAdvance || 0) * bookingData.seats,
+        seats: bookingData.seats
+      }).catch(err => console.error('Failed to track booking completion:', err));
+      
       // Analytics tracking for conversion
       trackConversion('booking', (trip?.bookingAdvance || 0) * bookingData.seats);
       trackBookingStep('booking_completed', {
@@ -433,21 +491,6 @@ Thank you for choosing Trek & Stay Adventures!`;
       // Show user-friendly error
       alert('Booking confirmation failed. Please contact us at ' + (trip?.contactNumber || '9902937730'));
     }
-  };
-
-  const handleLeadCapture = () => {
-    setUserInteraction(prev => prev + 1);
-    setShowLeadCapture(true);
-    
-    // Analytics tracking
-    analytics.trackInteraction('lead_capture_trigger', 'click', {
-      trigger_source: 'manual',
-      user_interactions: userInteraction
-    });
-    trackLeadStep('lead_modal_opened', {
-      trip_id: trip?.id,
-      trip_name: trip?.name
-    });
   };
 
   const handleLeadSubmit = async () => {
@@ -617,7 +660,7 @@ Thank you for choosing Trek & Stay Adventures!`;
       <header className="bg-black/20 backdrop-blur-md border-b border-white/10 sticky top-0 z-40">
         <div className="container mx-auto px-6">
           <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-3">
+            <a href="/" className="flex items-center space-x-3">
               <img 
                 src="/logo.png" 
                 alt="Trek and Stay Adventures" 
@@ -627,7 +670,7 @@ Thank you for choosing Trek & Stay Adventures!`;
                 <h1 className="text-xl font-bold text-white">Trek & Stay</h1>
                 <p className="text-xs text-emerald-300 font-medium">Adventures</p>
               </div>
-            </div>
+            </a>
             
             <div className="flex items-center space-x-4">
               <a 
@@ -701,28 +744,61 @@ Thank you for choosing Trek & Stay Adventures!`;
         {/* Interactive Parallax Background */}
         <ParallaxBackground />
         
-        {/* Trek Discovery Widget */}
-        <TrekDiscoveryWidget 
-          onTripSelect={(selectedTrip) => {
-            console.log('Selected trip:', selectedTrip);
-            trackInteraction('trek_discovery_select');
-          }}
-        />
-        
-        {/* Live Weather Widget */}
-        <LiveWeatherWidget 
-          location={trip?.location || 'Maharashtra'}
-          compact={false}
-          className="absolute top-24 right-8 hidden lg:block"
-        />
+        {/* Top Navigation Area - Better organized positioning */}
+        <div className="absolute top-0 left-0 right-0 z-20 p-4 lg:p-6">
+          <div className="flex justify-between items-start">
+            {/* Live Weather Widget - Compact and responsive */}
+            <LiveWeatherWidget 
+              location={trip?.location || 'Maharashtra'}
+              compact={true}
+              className=""
+            />
+            
+            {/* Trek Discovery Widget - Full component on XL screens, button on smaller */}
+            <div className="hidden xl:block">
+              <TrekDiscoveryWidget 
+                onTripSelect={(selectedTrip) => {
+                  console.log('Selected trip:', selectedTrip);
+                  trackInteraction('trek_discovery_select');
+                }}
+              />
+            </div>
+            
+            {/* Mobile Trek Discovery Trigger */}
+            <div className="xl:hidden">
+              <motion.button
+                onClick={() => {
+                  // Will be handled by TrekDiscoveryWidget's modal
+                  document.dispatchEvent(new CustomEvent('openTrekDiscovery'));
+                }}
+                className="bg-white/10 backdrop-blur-md rounded-lg p-3 border border-white/20 hover:bg-white/20 transition-all duration-300 mr-2"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <MapPin className="w-5 h-5 text-white" />
+              </motion.button>
+            </div>
+            
+            {/* Gamification Dashboard Trigger */}
+            <motion.button
+              onClick={() => setShowGamificationDashboard(true)}
+              className="bg-white/10 backdrop-blur-md rounded-lg p-3 border border-white/20 hover:bg-white/20 transition-all duration-300"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              title="View Progress & Achievements"
+            >
+              <Trophy className="w-5 h-5 text-white" />
+            </motion.button>
+          </div>
+        </div>
 
-        <div className="relative z-10 container mx-auto px-6 text-center text-white">
+        <div className="relative z-10 container mx-auto px-6 text-center text-white pt-20 lg:pt-0">
           <motion.div
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1 }}
           >
-            <div className="inline-block px-4 py-2 bg-emerald-500/20 rounded-full mb-6">
+            <div className="inline-block px-4 py-2 bg-forest-green/20 rounded-full mb-6">
               <span className="text-emerald-300 font-semibold">{(trip?.category || 'ADVENTURE').toUpperCase()}</span>
             </div>
             
@@ -755,12 +831,12 @@ Thank you for choosing Trek & Stay Adventures!`;
 
             <AnimatedCTAButton
               primaryText="🏔️ Book Your Adventure Now"
-              secondaryText="Limited Time Special Offer"
+              secondaryText="⚡ Limited Time Special Offer - Seats Filling Fast!"
               onClick={() => {
                 trackInteraction('hero_animated_cta');
                 handleBookNow();
               }}
-              variant="primary"
+              variant="premium"
               size="xl"
               showCountdown={true}
               className="mb-6"
@@ -803,7 +879,7 @@ Thank you for choosing Trek & Stay Adventures!`;
         <motion.div
           animate={{ y: [-20, 20, -20] }}
           transition={{ duration: 6, repeat: Infinity }}
-          className="absolute top-1/4 left-10 w-20 h-20 bg-emerald-500/20 rounded-full blur-xl"
+          className="absolute top-1/4 left-10 w-20 h-20 bg-forest-green/20 rounded-full blur-xl"
         />
         <motion.div
           animate={{ y: [20, -20, 20] }}
@@ -824,13 +900,23 @@ Thank you for choosing Trek & Stay Adventures!`;
             🌟 Adventure Highlights
           </motion.h2>
           
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {(trip.highlights || []).map((highlight, index) => (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            {(trip?.highlights || []).map((highlight, index) => (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: index * 0.1 }}
+                whileInView={{ 
+                  opacity: 1, 
+                  y: 0
+                }}
+                transition={{ 
+                  duration: 0.8, 
+                  delay: index * 0.1,
+                  onComplete: () => {
+                    // Award points for reading highlights
+                    if (index === 0) awardPoints('highlights_read', 20);
+                  }
+                }}
                 className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20"
               >
                 <div className="flex items-start gap-3">
@@ -840,6 +926,26 @@ Thank you for choosing Trek & Stay Adventures!`;
               </motion.div>
             ))}
           </div>
+          
+          {/* Interactive Challenges Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.5 }}
+            className="text-center"
+          >
+            <h3 className="text-2xl font-bold text-white mb-6">🎮 Test Your Adventure Knowledge</h3>
+            <InteractiveChallenges 
+              showCompact={true}
+              onChallengeComplete={(result) => {
+                console.log('Challenge completed:', result);
+                awardPoints('challenge_completed', result.totalPoints);
+              }}
+              onPointsEarned={(points, source) => {
+                console.log(`Challenge points: ${points} from ${source}`);
+              }}
+            />
+          </motion.div>
         </div>
       </section>
 
@@ -855,18 +961,32 @@ Thank you for choosing Trek & Stay Adventures!`;
             📅 Day-by-Day Itinerary
           </motion.h2>
           
-          {trip?.itinerary && trip.itinerary.length > 0 ? (
+          {trip?.itinerary && Array.isArray(trip.itinerary) && trip.itinerary.length > 0 ? (
             <div className="max-w-4xl mx-auto space-y-6">
               {trip.itinerary.map((day: Day, index: number) => (
                 <motion.div
                   key={index}
                   initial={{ opacity: 0, x: -30 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.8, delay: index * 0.1 }}
-                  className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300"
+                  whileInView={{ 
+                    opacity: 1, 
+                    x: 0
+                  }}
+                  transition={{ 
+                    duration: 0.8, 
+                    delay: index * 0.1,
+                    onComplete: () => {
+                      // Award points for viewing itinerary details
+                      if (index === 0) awardPoints('itinerary_view', 30);
+                    }
+                  }}
+                  className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300 cursor-pointer"
+                  onClick={() => {
+                    // Award points for detailed itinerary interaction
+                    awardPoints('itinerary_interaction', 15);
+                  }}
                 >
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
+                    <div className="w-12 h-12 bg-forest-green rounded-full flex items-center justify-center text-white font-bold shadow-lg">
                       {String(day?.day || index + 1)}
                     </div>
                     <h3 className="text-xl font-bold text-white">{String(day?.title || `Day ${index + 1}`)}</h3>
@@ -877,7 +997,7 @@ Thank you for choosing Trek & Stay Adventures!`;
                     <div className="text-white/80 mb-4">
                       {Array.isArray(day.content) ? (
                         <ul className="space-y-2">
-                          {day.content.map((item: string, itemIndex: number) => (
+                          {(day.content || []).map((item: string, itemIndex: number) => (
                             <li key={itemIndex} className="flex items-start gap-2">
                               <CheckCircle className="w-4 h-4 text-emerald-400 mt-1 flex-shrink-0" />
                               <span>{item}</span>
@@ -902,7 +1022,7 @@ Thank you for choosing Trek & Stay Adventures!`;
                     <div className="text-white/80 mb-4">
                       {Array.isArray(day.activities) ? (
                         <ul className="space-y-2">
-                          {day.activities.map((activity: string, actIndex: number) => (
+                          {(day.activities || []).map((activity: string, actIndex: number) => (
                             <li key={actIndex} className="flex items-start gap-2">
                               <CheckCircle className="w-4 h-4 text-emerald-400 mt-1 flex-shrink-0" />
                               <span>{activity}</span>
@@ -921,12 +1041,12 @@ Thank you for choosing Trek & Stay Adventures!`;
                   <div className="flex flex-wrap gap-4 text-sm">
                     {day?.meals && (
                       <div className="bg-emerald-500/20 px-3 py-1 rounded-full">
-                        <span className="text-emerald-300 font-semibold">🍽️ Meals: {String(day.meals)}</span>
+                        <span className="text-forest-green font-semibold">🍽️ Meals: {String(day.meals)}</span>
                       </div>
                     )}
                     {day?.accommodation && (
                       <div className="bg-blue-500/20 px-3 py-1 rounded-full">
-                        <span className="text-blue-300 font-semibold">🏨 Stay: {String(day.accommodation)}</span>
+                        <span className="text-waterfall-blue font-semibold">🏨 Stay: {String(day.accommodation)}</span>
                       </div>
                     )}
                     {day?.transport && (
@@ -971,7 +1091,7 @@ Thank you for choosing Trek & Stay Adventures!`;
             </p>
             
             <div className="flex flex-wrap justify-center gap-4 mb-8">
-              {(trip.batchDates || []).map((date, index) => (
+              {(trip?.batchDates || []).map((date, index) => (
                 <div key={index} className="bg-white/20 rounded-lg px-4 py-2">
                   <Calendar className="w-5 h-5 inline mr-2" />
                   <span className="text-white font-semibold">{date}</span>
@@ -982,7 +1102,7 @@ Thank you for choosing Trek & Stay Adventures!`;
                   {/* Enhanced CTA Button in highlights */}
                   <AnimatedCTAButton
                     primaryText="🚀 Secure Your Spot Now"
-                    secondaryText="Join 500+ Happy Adventurers"
+                    secondaryText="⚡ Join 500+ Happy Adventurers - Limited Seats!"
                     onClick={() => {
                       trackInteraction('cta_secure_spot_animated');
                       handleBookNow();
@@ -1035,7 +1155,7 @@ Thank you for choosing Trek & Stay Adventures!`;
                   {['details', 'seats', 'payment', 'confirmation'].map((step, index) => (
                     <div key={step} className="flex-1">
                       <div className={`h-2 rounded-full transition-all duration-300 ${
-                        bookingStep === step ? 'bg-emerald-500' :
+                        bookingStep === step ? 'bg-forest-green' :
                         ['details', 'seats', 'payment', 'confirmation'].indexOf(bookingStep) > index ? 'bg-emerald-300' :
                         'bg-gray-200'
                       }`} />
@@ -1097,7 +1217,7 @@ Thank you for choosing Trek & Stay Adventures!`;
                     <button
                       onClick={handleBookingNext}
                       disabled={!bookingData.name || !bookingData.email || !bookingData.phone || !bookingData.selectedBatch}
-                      className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white py-4 rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2"
+                      className="w-full bg-gradient-to-r from-forest-green to-waterfall-blue text-white py-4 rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2"
                     >
                       {!bookingData.name || !bookingData.email || !bookingData.phone || !bookingData.selectedBatch 
                         ? 'Please fill all required fields' 
@@ -1130,13 +1250,314 @@ Thank you for choosing Trek & Stay Adventures!`;
                                 whileHover={{ scale: getSeatStatus(seatNumber) !== 'occupied' ? 1.1 : 1 }}
                                 whileTap={{ scale: getSeatStatus(seatNumber) !== 'occupied' ? 0.9 : 1 }}
                                 className={'aspect-square rounded text-sm font-bold transition-all duration-200 min-h-[44px] touch-manipulation ' +
-                                  (getSeatStatus(seatNumber) === 'selected' ? 'bg-emerald-500 text-white shadow-lg' :
+                                  (getSeatStatus(seatNumber) === 'selected' ? 'bg-forest-green text-white shadow-lg' :
                                   getSeatStatus(seatNumber) === 'occupied' ? 'bg-red-200 text-red-800 cursor-not-allowed' :
                                   'bg-gray-200 text-gray-700 hover:bg-gray-300 active:bg-gray-400')}
                               >
                                 {seatNumber}
                               </motion.button>
                             ))}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex justify-center gap-6 mt-4 text-sm">
+                        <div className="flex items-center gap-2">
+                          <ArrowLeft className="w-4 h-4" />
+                          <button
+                            onClick={handleBookingPrev}
+                            className="bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-emerald-700 transition-all duration-300"
+                          >
+                            Back
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={handleBookingNext}
+                            disabled={bookingData.selectedSeats.length !== bookingData.seats}
+                            className="bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-emerald-700 transition-all duration-300"
+                          >
+                            {!bookingData.selectedSeats.length ? 'Please select seats' : 'Continue to Payment'}
+                          </button>
+                          <ArrowRight className="w-4 h-4" />
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Step 3: Payment */}
+                {bookingStep === 'payment' && (
+                  <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                    <div className="text-center">
+                      <h4 className="text-lg font-semibold mb-2">Payment Details</h4>
+                    </div>
+                    <div className="bg-gray-50 p-6 rounded-xl">
+                      <div className="max-w-md mx-auto">
+                        <div className="bg-white rounded-lg p-4 border-2 border-gray-300">
+                          <div className="text-center mb-4">
+                            <div className="inline-block bg-gray-800 text-white px-3 py-1 rounded text-sm">Payment</div>
+                          </div>
+                          <div className="grid grid-cols-1 gap-4">
+                            <div className="flex items-center gap-2">
+                              <CreditCard className="w-5 h-5 text-emerald-400" />
+                              <span className="font-semibold">UPI Payment</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Smartphone className="w-5 h-5 text-emerald-400" />
+                              <span className="font-semibold">Scan QR Code</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Zap className="w-5 h-5 text-emerald-400" />
+                              <span className="font-semibold">Pay via UPI ID</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex justify-center gap-6 mt-4 text-sm">
+                        <div className="flex items-center gap-2">
+                          <ArrowLeft className="w-4 h-4" />
+                          <button
+                            onClick={handleBookingPrev}
+                            className="bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-emerald-700 transition-all duration-300"
+                          >
+                            Back
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={handlePaymentComplete}
+                            className="bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-emerald-700 transition-all duration-300"
+                          >
+                            Complete Payment
+                          </button>
+                          <ArrowRight className="w-4 h-4" />
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Step 4: Confirmation */}
+                {bookingStep === 'confirmation' && (
+                  <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                    <div className="text-center">
+                      <h4 className="text-lg font-semibold mb-2">Booking Confirmed!</h4>
+                    </div>
+                    <div className="bg-gray-50 p-6 rounded-xl">
+                      <div className="max-w-md mx-auto">
+                        <div className="bg-white rounded-lg p-4 border-2 border-gray-300">
+                          <div className="text-center mb-4">
+                            <div className="inline-block bg-gray-800 text-white px-3 py-1 rounded text-sm">Confirmation</div>
+                          </div>
+                          <div className="grid grid-cols-1 gap-4">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle className="w-5 h-5 text-emerald-400" />
+                              <span className="font-semibold">Booking Reference: {generateBookingReference()}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Heart className="w-5 h-5 text-emerald-400" />
+                              <span className="font-semibold">Thank you for choosing Trek & Stay Adventures!</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex justify-center gap-6 mt-4 text-sm">
+                        <div className="flex items-center gap-2">
+                          <ArrowLeft className="w-4 h-4" />
+                          <button
+                            onClick={() => setShowBookingModal(false)}
+                            className="bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-emerald-700 transition-all duration-300"
+                          >
+                            Close
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Lead Capture Modal */}
+      <AnimatePresence>
+        {showLeadCapture && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative"
+            >
+              {/* Progress Header */}
+              <div className="sticky top-0 bg-white border-b border-gray-200 p-6 rounded-t-2xl">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-2xl font-bold text-gray-800">
+                    {leadCaptureStep === 'interest' && '1. Show Interest'}
+                    {leadCaptureStep === 'details' && '2. Provide Details'}
+                    {leadCaptureStep === 'success' && '3. Success!'}
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowLeadCapture(false);
+                      setLeadCaptureStep('interest');
+                    }}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <XCircle className="w-6 h-6" />
+                  </button>
+                </div>
+                
+                <div className="flex space-x-4">
+                  {['interest', 'details', 'success'].map((step, index) => (
+                    <div key={step} className="flex-1">
+                      <div className={`h-2 rounded-full transition-all duration-300 ${
+                        leadCaptureStep === step ? 'bg-emerald-500' :
+                        ['interest', 'details', 'success'].indexOf(leadCaptureStep) > index ? 'bg-emerald-300' :
+                        'bg-gray-200'
+                      }`} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-6">
+                {/* Step 1: Show Interest */}
+                {leadCaptureStep === 'interest' && (
+                  <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
+                    <div className="text-center">
+                      <h4 className="text-lg font-semibold mb-2">Show Interest in {trip?.name}</h4>
+                    </div>
+                    <div className="bg-gray-50 p-6 rounded-xl">
+                      <div className="max-w-md mx-auto">
+                        <div className="bg-white rounded-lg p-4 border-2 border-gray-300">
+                          <div className="text-center mb-4">
+                            <div className="inline-block bg-gray-800 text-white px-3 py-1 rounded text-sm">Interest</div>
+                          </div>
+                          <div className="grid grid-cols-1 gap-4">
+                            <div className="flex items-center gap-2">
+                              <Heart className="w-5 h-5 text-emerald-400" />
+                              <span className="font-semibold">I'm interested in {trip?.name}!</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex justify-center gap-6 mt-4 text-sm">
+                        <div className="flex items-center gap-2">
+                          <ArrowLeft className="w-4 h-4" />
+                          <button
+                            onClick={() => setShowLeadCapture(false)}
+                            className="bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-emerald-700 transition-all duration-300"
+                          >
+                            Close
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setLeadCaptureStep('details')}
+                            className="bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-emerald-700 transition-all duration-300"
+                          >
+                            Provide Details
+                          </button>
+                          <ArrowRight className="w-4 h-4" />
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Step 2: Provide Details */}
+                {leadCaptureStep === 'details' && (
+                  <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
+                    <div className="text-center">
+                      <h4 className="text-lg font-semibold mb-2">Provide Your Details</h4>
+                    </div>
+                    <div className="bg-gray-50 p-6 rounded-xl">
+                      <div className="max-w-md mx-auto">
+                        <div className="bg-white rounded-lg p-4 border-2 border-gray-300">
+                          <div className="text-center mb-4">
+                            <div className="inline-block bg-gray-800 text-white px-3 py-1 rounded text-sm">Details</div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <input
+                              type="text"
+                              value={leadData.name}
+                              onChange={(e) => setLeadData({ ...leadData, name: e.target.value })}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
+                              placeholder="Full Name *"
+                            />
+                            <input
+                              type="tel"
+                              value={leadData.phone}
+                              onChange={(e) => setLeadData({ ...leadData, phone: e.target.value })}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
+                              placeholder="WhatsApp Number *"
+                            />
+                            <input
+                              type="email"
+                              value={leadData.email}
+                              onChange={(e) => setLeadData({ ...leadData, email: e.target.value })}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
+                              placeholder="Email Address *"
+                            />
+                            <textarea
+                              value={leadData.interest}
+                              onChange={(e) => setLeadData({ ...leadData, interest: e.target.value })}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
+                              placeholder="Tell us more about your interest..."
+                              rows={3}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex justify-center gap-6 mt-4 text-sm">
+                        <div className="flex items-center gap-2">
+                          <ArrowLeft className="w-4 h-4" />
+                          <button
+                            onClick={() => setLeadCaptureStep('interest')}
+                            className="bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-emerald-700 transition-all duration-300"
+                          >
+                            Back
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={handleLeadSubmit}
+                            className="bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-emerald-700 transition-all duration-300"
+                          >
+                            Submit
+                          </button>
+                          <ArrowRight className="w-4 h-4" />
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Step 3: Success */}
+                {leadCaptureStep === 'success' && (
+                  <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
+                    <div className="text-center">
+                      <h4 className="text-lg font-semibold mb-2">Thank you for your interest!</h4>
+                    </div>
+                    <div className="bg-gray-50 p-6 rounded-xl">
+                      <div className="max-w-md mx-auto">
+                        <div className="bg-white rounded-lg p-4 border-2 border-gray-300">
+                          <div className="text-center mb-4">
+                            <div className="inline-block bg-gray-800 text-white px-3 py-1 rounded text-sm">Success</div>
+                          </div>
+                          <div className="grid grid-cols-1 gap-4">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle className="w-5 h-5 text-emerald-400" />
+                              <span className="font-semibold">We'll be in touch soon!</span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1178,6 +1599,13 @@ Thank you for choosing Trek & Stay Adventures!`;
                 {/* Step 3: Payment */}
                 {bookingStep === 'payment' && (
                   <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                    <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white p-4 rounded-xl flex items-center gap-3 shadow-lg">
+                      <Lock className="w-6 h-6 flex-shrink-0" />
+                      <div>
+                        <p className="font-bold">✅ Seats Secured!</p>
+                        <p className="text-sm opacity-90">Your seats are confirmed. Complete payment to finalize your booking.</p>
+                      </div>
+                    </div>
                     <div className="bg-gray-50 p-6 rounded-xl">
                       <h5 className="font-semibold mb-4">Booking Summary</h5>
                       <div className="space-y-2 text-sm">
@@ -1193,6 +1621,9 @@ Thank you for choosing Trek & Stay Adventures!`;
                       <div className="text-center mb-4">
                         <QrCode className="w-16 h-16 mx-auto text-purple-600 mb-2" />
                         <p className="font-medium">Pay with UPI</p>
+                      </div>
+                      <div className="flex justify-center mb-4">
+                        <img src="/upi.jpeg" alt="UPI Payment" className="w-48 h-auto rounded-lg shadow-md" />
                       </div>
                       <div className="bg-white p-4 rounded-lg border-dashed border-2 border-purple-300 mb-4">
                         <div className="text-sm space-y-1">
@@ -1214,8 +1645,11 @@ Thank you for choosing Trek & Stay Adventures!`;
                       <button onClick={handleBookingPrev} className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-bold flex items-center justify-center gap-2">
                         <ArrowLeft className="w-5 h-5" /> Back
                       </button>
-                      <button onClick={handlePaymentComplete} className="flex-1 bg-blue-500 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2">
-                        <CheckSquare className="w-5 h-5" /> Payment Done
+                      <button
+                        onClick={handlePaymentComplete}
+                        className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-green-500/30"
+                      >
+                        <CheckSquare className="w-5 h-5" /> Booking Confirmed - Seats Secured!
                       </button>
                     </div>
                   </motion.div>
@@ -1288,6 +1722,9 @@ Thank you for choosing Trek & Stay Adventures!`;
                     <div className="bg-gradient-to-br from-purple-50 to-indigo-50 p-6 rounded-xl">
                       <QrCode className="w-24 h-24 mx-auto text-purple-600 mb-4" />
                       <p className="text-gray-700 mb-4">Scan QR code with any UPI app</p>
+                      <div className="flex justify-center mb-4">
+                        <img src="/upi.jpeg" alt="UPI Payment" className="w-48 h-auto rounded-lg shadow-md" />
+                      </div>
                       <div className="bg-white p-4 rounded-lg border-2 border-dashed border-purple-300">
                         <p className="text-sm text-gray-600">UPI ID: <span className="font-bold">trekandstay@ybl</span></p>
                         <p className="text-sm text-gray-600">Amount: <span className="font-bold">₹{(trip.bookingAdvance * bookingData.seats).toLocaleString()}</span></p>
@@ -1524,12 +1961,51 @@ Thank you for choosing Trek & Stay Adventures!`;
         )}
       </AnimatePresence>
 
-      {/* Enhanced Floating Action Bubbles */}
-      <FloatingActionBubbles 
+      {/* Enhanced Floating Action Bubbles - Better mobile positioning */}
+      <div className="fixed bottom-20 right-6 z-40 md:bottom-6">
+        <FloatingActionBubbles 
+          tripData={trip}
+          onActionClick={(action, data) => {
+            trackInteraction(`floating_action_${action}`);
+            console.log('Action clicked:', action, data);
+          }}
+        />
+      </div>
+
+      {/* Hidden TrekDiscoveryWidget for mobile access */}
+      <div className="xl:hidden">
+        <TrekDiscoveryWidget 
+          onTripSelect={(selectedTrip) => {
+            console.log('Selected trip:', selectedTrip);
+            trackInteraction('trek_discovery_select_mobile');
+            awardPoints('trip_discovery', 25);
+          }}
+        />
+      </div>
+
+      {/* Adventure Points System - Always Active */}
+      <AdventurePointsSystem 
+        onPointsEarned={(points, action) => {
+          console.log(`Earned ${points} points for ${action}`);
+        }}
+        onAchievementUnlocked={(achievement) => {
+          console.log('Achievement unlocked:', achievement.name);
+        }}
+        onLevelUp={(newLevel) => {
+          console.log(`Level up! Now level ${newLevel}`);
+        }}
+      />
+
+      {/* User Engagement Analytics - Compact Mode */}
+      <UserEngagementAnalytics 
         tripData={trip}
-        onActionClick={(action, data) => {
-          trackInteraction(`floating_action_${action}`);
-          console.log('Action clicked:', action, data);
+        showRealTimeAnalytics={false}
+        className="fixed top-4 left-4 z-30 hidden lg:block"
+        onLeadScoreUpdate={(score) => {
+          console.log('Lead score updated:', score);
+        }}
+        onHighValueAction={(action, scoreChange) => {
+          console.log(`High value action: ${action} (${scoreChange})`);
         }}
       />
 
@@ -1551,6 +2027,89 @@ Thank you for choosing Trek & Stay Adventures!`;
           </button>
         </div>
       </div>
+
+      {/* Gamification Dashboard Modal */}
+      <AnimatePresence>
+        {showGamificationDashboard && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto"
+            >
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-3xl font-bold text-gray-800">🏆 Adventure Progress Dashboard</h2>
+                  <button
+                    onClick={() => setShowGamificationDashboard(false)}
+                    className="text-gray-500 hover:text-gray-700 transition-colors text-2xl"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Progress Tracking Dashboard */}
+                <div className="mb-8">
+                  <ProgressTrackingDashboard 
+                    showDetailed={true}
+                    onJourneyStepComplete={(step) => {
+                      console.log('Journey step completed:', step.name);
+                      awardPoints('journey_step', step.points);
+                    }}
+                  />
+                </div>
+
+                {/* Achievement Badge System */}
+                <div className="mb-8">
+                  <h3 className="text-2xl font-bold text-gray-800 mb-4">🏅 Achievements & Badges</h3>
+                  <AchievementBadgeSystem 
+                    showDetailed={true}
+                    onBadgeUnlocked={(badge) => {
+                      console.log('Badge unlocked:', badge.name);
+                    }}
+                  />
+                </div>
+
+                {/* Interactive Challenges */}
+                <div className="mb-8">
+                  <h3 className="text-2xl font-bold text-gray-800 mb-4">🎯 Adventure Challenges</h3>
+                  <InteractiveChallenges 
+                    showCompact={false}
+                    onChallengeComplete={(result) => {
+                      console.log('Challenge completed in dashboard:', result);
+                      awardPoints('dashboard_challenge', result.totalPoints);
+                    }}
+                    onPointsEarned={(points, source) => {
+                      console.log(`Dashboard challenge points: ${points} from ${source}`);
+                    }}
+                  />
+                </div>
+
+                {/* Real-time Analytics */}
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-800 mb-4">📊 Live Analytics</h3>
+                  <UserEngagementAnalytics 
+                    tripData={trip}
+                    showRealTimeAnalytics={true}
+                    onLeadScoreUpdate={(score) => {
+                      console.log('Dashboard lead score updated:', score);
+                    }}
+                    onHighValueAction={(action, scoreChange) => {
+                      console.log(`Dashboard high value action: ${action} (${scoreChange})`);
+                    }}
+                  />
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

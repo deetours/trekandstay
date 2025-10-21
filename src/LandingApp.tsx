@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { 
@@ -9,8 +9,6 @@ import {
   ArrowRight, 
   Phone, 
   Mail,
-  X,
-  Send,
   Mountain,
   Camera,
   Heart,
@@ -22,9 +20,7 @@ import {
   ChevronDown,
   Award,
   Shield,
-  Zap,
   Calendar,
-  DollarSign,
   MessageCircle,
   Timer,
   TrendingUp,
@@ -36,6 +32,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { LeadCaptureModal } from './components/modals/LeadCaptureModal';
 import { useLeadCaptureStore } from './store/leadCaptureStore';
 import { usePopupTriggers } from './hooks/usePopupTriggers';
+import { analytics } from './services/analyticsTracker';
 import './index.css';
 import HeroSVGs from './components/ui/HeroSVGs';
 
@@ -44,12 +41,36 @@ const Instagram = MessageCircle;
 const Facebook = MessageCircle; 
 const Youtube = Play;
 
+interface RecentBooking {
+  name: string;
+  location: string;
+  trip: string;
+  timeAgo: number;
+}
+
+interface Trip {
+  id: number;
+  slug: string;
+  title: string;
+  subtitle: string;
+  price: number;
+  duration: string;
+  location: string;
+  rating: number;
+  image: string;
+  highlights: string[];
+  difficulty: string;
+  spotsLeft: number;
+  nextDeparture: string;
+  originalPrice?: number;
+}
+
 // Stunning Interactive Homepage Component
 const StunningHomepage = () => {
   const [isVideoPlaying, setIsVideoPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
-  const [recentBookings, setRecentBookings] = useState<any[]>([]);
+  const [recentBookings, setRecentBookings] = useState<RecentBooking[]>([]);
   const [visitorCount, setVisitorCount] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
@@ -59,10 +80,10 @@ const StunningHomepage = () => {
   const y2 = useTransform(scrollY, [0, 300], [0, -100]);
   const opacity = useTransform(scrollY, [0, 300], [1, 0.3]);
   
-  const { openPopup, loadTripsForSelection } = useLeadCaptureStore();
+  const { loadTripsForSelection } = useLeadCaptureStore();
   const { triggerPopup } = usePopupTriggers();
 
-  const trips = [
+  const trips: Trip[] = useMemo(() => [
     {
       id: 1,
       slug: 'adventure-maharashtra-5days-trek',
@@ -159,7 +180,7 @@ const StunningHomepage = () => {
       nextDeparture: '2024-09-18',
       originalPrice: 10000
     }
-  ];
+  ], []);
 
   const testimonials = [
     {
@@ -238,7 +259,7 @@ const StunningHomepage = () => {
     setVisitorCount(baseCount + Math.floor(Math.random() * 50));
     
     return () => clearInterval(interval);
-  }, [loadTripsForSelection]);
+  }, [loadTripsForSelection, trips]);
   
   useEffect(() => {
     // Auto-rotate testimonials
@@ -272,14 +293,22 @@ const StunningHomepage = () => {
   };
   
   const handleTripInterest = (tripId: number) => {
+    // Find trip details
+    const trip = trips.find(t => t.id === tripId);
+    
+    // Track gamification event: trip_view
+    if (trip) {
+      analytics.trackGamificationEvent('trip_view', {
+        trip_id: trip.id.toString(),
+        trip_title: trip.title,
+        trip_slug: trip.slug,
+        trip_price: trip.price
+      }).catch(err => console.error('Failed to track trip view:', err));
+    }
+    
     // Track trip interest and potentially trigger popup
+    console.log('Trip interest tracked for trip:', tripId);
     triggerPopup('trip_interest', 'homepage');
-  };
-
-  const handleLeadSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // This will now be handled by the lead capture modal
-    triggerPopup('manual_form', 'homepage');
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -473,7 +502,7 @@ const StunningHomepage = () => {
             >
               <motion.button
                 onClick={handleGetStarted}
-                className="group relative bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-10 py-4 rounded-full text-lg font-semibold shadow-2xl hover:shadow-emerald-500/30 transition-all duration-300 overflow-hidden"
+                className="group relative bg-gradient-to-r from-forest-green to-waterfall-blue text-white px-10 py-4 rounded-full text-lg font-semibold shadow-2xl hover:shadow-forest-green/30 transition-all duration-300 overflow-hidden"
                 whileHover={{ scale: 1.05, y: -3 }}
                 whileTap={{ scale: 0.95 }}
               >
@@ -550,7 +579,7 @@ const StunningHomepage = () => {
                   transition={{ duration: 0.6, delay: index * 0.1 }}
                 >
                   <div className="relative mx-auto w-16 h-16 mb-4">
-                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full opacity-20 group-hover:opacity-30 transition-opacity duration-300"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-forest-green to-waterfall-blue rounded-full opacity-20 group-hover:opacity-30 transition-opacity duration-300"></div>
                     <div className="relative flex items-center justify-center w-full h-full">
                       <IconComponent className="w-8 h-8 text-emerald-600" />
                     </div>

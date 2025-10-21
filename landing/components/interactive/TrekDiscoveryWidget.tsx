@@ -94,23 +94,23 @@ export const TrekDiscoveryWidget: React.FC<TrekDiscoveryWidgetProps> = ({
   );
 
   return (
-    <>
-      {/* Trigger Button */}
+    <div>
+      {/* Trigger Button - Now relative positioned */}
       <motion.button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-20 left-6 z-40 bg-gradient-to-r from-emerald-500 to-teal-500 text-white p-4 rounded-full shadow-2xl hover:shadow-emerald-500/25 ${className}`}
+        className={`bg-gradient-to-r from-emerald-500 to-teal-500 text-white p-3 rounded-full shadow-lg hover:shadow-emerald-500/25 ${className}`}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         animate={{
           boxShadow: [
             '0 0 0 0 rgba(16, 185, 129, 0.7)',
-            '0 0 0 10px rgba(16, 185, 129, 0)',
-            '0 0 0 20px rgba(16, 185, 129, 0)'
+            '0 0 0 8px rgba(16, 185, 129, 0)',
+            '0 0 0 0 rgba(16, 185, 129, 0)'
           ]
         }}
         transition={{ duration: 2, repeat: Infinity }}
       >
-        <MapPin className="w-6 h-6" />
+        <MapPin className="w-5 h-5" />
       </motion.button>
 
       {/* Discovery Widget Modal */}
@@ -419,6 +419,6 @@ export const TrekDiscoveryWidget: React.FC<TrekDiscoveryWidgetProps> = ({
           border: none;
         }
       `}</style>
-    </>
+    </div>
   );
 };

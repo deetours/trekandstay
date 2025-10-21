@@ -25,8 +25,8 @@ interface AnimatedCTAButtonProps {
 }
 
 export const AnimatedCTAButton: React.FC<AnimatedCTAButtonProps> = ({
-  primaryText = 'Book Your Adventure Now',
-  secondaryText = 'Limited Time Offer',
+  primaryText = '🏔️ Book Your Adventure Now',
+  secondaryText = '⚡ Limited Time Special Offer - Seats Filling Fast!',
   onClick,
   disabled = false,
   variant = 'primary',
@@ -106,7 +106,7 @@ export const AnimatedCTAButton: React.FC<AnimatedCTAButtonProps> = ({
       case 'secondary':
         return 'from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600';
       case 'premium':
-        return 'from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600';
+        return 'from-yellow-400 via-orange-500 to-red-500 hover:from-yellow-500 hover:via-orange-600 hover:to-red-600 shadow-lg hover:shadow-xl transition-all duration-300';
       case 'urgency':
         return 'from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600';
       default:
@@ -132,7 +132,7 @@ export const AnimatedCTAButton: React.FC<AnimatedCTAButtonProps> = ({
   const getIcon = () => {
     if (clickCount >= 5) return Crown;
     if (clickCount >= 3) return Flame;
-    if (variant === 'premium') return Star;
+    if (variant === 'premium') return Rocket;
     if (variant === 'urgency') return Zap;
     return ArrowRight;
   };
@@ -185,16 +185,16 @@ export const AnimatedCTAButton: React.FC<AnimatedCTAButtonProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Countdown Badge */}
-      {showCountdown && countdown > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="absolute -top-3 -right-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10"
-        >
-          ⏰ {formatTime(countdown)}
-        </motion.div>
-      )}
+        {/* Countdown Badge */}
+        {showCountdown && countdown > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="absolute -top-3 -right-3 bg-gradient-to-r from-red-500 to-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10 flex items-center gap-1 shadow-lg"
+          >
+            ⏰ {formatTime(countdown)}
+          </motion.div>
+        )}
 
       {/* Achievement Badge */}
       {clickCount >= 3 && (

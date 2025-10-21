@@ -253,6 +253,48 @@ class AnalyticsTracker {
       hover_duration: duration
     });
   }
+
+  // Gamification event tracking
+  public async trackGamificationEvent(
+    eventType: string,
+    metadata: {
+      trip_id?: string;
+      booking_id?: string;
+      user_id?: string;
+      guest_id?: string;
+      [key: string]: any;
+    } = {}
+  ) {
+    try {
+      const response = await fetch('/api/gamification/track-event/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+        },
+        body: JSON.stringify({
+          event_type: eventType,
+          trip_id: metadata.trip_id,
+          booking_id: metadata.booking_id,
+          metadata: {
+            session_id: this.sessionId,
+            timestamp: Date.now(),
+            ...metadata
+          }
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`Gamification event tracked: ${eventType}`, data);
+        return data;
+      } else {
+        console.error(`Failed to track gamification event: ${eventType}`, response.status);
+      }
+    } catch (error) {
+      console.error('Gamification tracking failed:', error);
+    }
+  }
 }
 
 // Global analytics instance

@@ -1,19 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { 
-  MapPin, 
-  Clock, 
-  Star, 
   Users, 
   ArrowRight, 
   Phone, 
-  Mail,
-  X,
-  Send,
   Mountain,
   Camera,
-  Heart,
   Sparkles,
   Play,
   Pause,
@@ -21,48 +14,61 @@ import {
   VolumeX,
   ChevronDown,
   Award,
-  Shield,
-  Zap,
-  Calendar,
-  DollarSign,
-  MessageCircle,
-  Timer,
-  TrendingUp,
-  CheckCircle,
-  Quote
+  Shield
 } from 'lucide-react';
 import TripLandingPage from './pages/TripLandingPage';
+import { InteractiveHomepage } from './components/InteractiveHomepage';
+import { collection, getDocs } from 'firebase/firestore';
+import { getDbOrThrow } from '../src/firebase';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LeadCaptureModal } from './components/modals';
 import { useLeadCaptureStore } from './store';
 import { usePopupTriggers } from './hooks';
 import './index.css';
-import HeroSVGs from './components/ui/HeroSVGs';
+
+// Enhanced Interactive Components - Phase 1 & 2
+import HeroSVGs from '../src/components/ui/HeroSVGs';
+import WeatherWidget from '../src/components/ui/WeatherWidget';
+import PricingCalculator from '../src/components/ui/PricingCalculator';
+import InteractiveCalendar from '../src/components/ui/InteractiveCalendar';
+import PaymentSelector from '../src/components/ui/PaymentSelector';
+import LiveNotifications from '../src/components/ui/LiveNotifications';
+import ReviewCarousel from '../src/components/ui/ReviewCarousel';
+import { AdventurePointsSystem } from './components/gamification/AdventurePointsSystem';
+import { UserEngagementAnalytics } from './components/gamification/UserEngagementAnalytics';
 
 // Social Media Icons (using lucide-react alternatives)
-const Instagram = MessageCircle;
-const Facebook = MessageCircle; 
-const Youtube = Play;
+// const Instagram = MessageCircle;
+// const Facebook = MessageCircle; 
+// const Youtube = Play;
 
-// Stunning Interactive Homepage Component
+// Enhanced Interactive Homepage Component with Gamification and Trip Challenges
 const StunningHomepage = () => {
   const [isVideoPlaying, setIsVideoPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
-  const [currentTestimonial, setCurrentTestimonial] = useState(0);
-  const [recentBookings, setRecentBookings] = useState<any[]>([]);
-  const [visitorCount, setVisitorCount] = useState(0);
+  const [showInteractiveMode, setShowInteractiveMode] = useState(false);
+  const [allTrips, setAllTrips] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   
+  // List of video sources (fallback to main video if others don't exist)
+  const videoSources = [
+    { src: '/videos/t&s.mp4', type: 'video/mp4' },
+    { src: '/videos/t&s.mp4', type: 'video/mp4' },
+    { src: '/videos/t&s.mp4', type: 'video/mp4' },
+    { src: '/videos/t&s.mp4', type: 'video/mp4' }
+  ];
+  
   const { scrollY } = useScroll();
   const y1 = useTransform(scrollY, [0, 300], [0, -50]);
-  const y2 = useTransform(scrollY, [0, 300], [0, -100]);
   const opacity = useTransform(scrollY, [0, 300], [1, 0.3]);
   
-  const { openPopup, loadTripsForSelection } = useLeadCaptureStore();
+  const { loadTripsForSelection, openPopup } = useLeadCaptureStore();
   const { triggerPopup } = usePopupTriggers();
 
-  const trips = [
+  const trips = useMemo(() => [
     {
       id: 1,
       slug: 'adventure-maharashtra-5days-trek',
@@ -159,96 +165,72 @@ const StunningHomepage = () => {
       nextDeparture: '2024-09-18',
       originalPrice: 10000
     }
-  ];
+  ], []);
 
-  const testimonials = [
-    {
-      id: 1,
-      name: 'Priya Sharma',
-      location: 'Mumbai',
-      rating: 5,
-      text: 'An absolutely life-changing experience! The waterfall rappelling was thrilling beyond words.',
-      image: 'https://images.unsplash.com/photo-1494790108755-2616b612b47c?w=150&h=150&fit=crop',
-      trip: 'Maharashtra Adventure'
-    },
-    {
-      id: 2,
-      name: 'Rahul Verma',
-      location: 'Delhi',
-      rating: 5,
-      text: 'Perfect organization, amazing guides, and memories that will last forever!',
-      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop',
-      trip: 'Kedarnath Pilgrimage'
-    },
-    {
-      id: 3,
-      name: 'Sneha Patel',
-      location: 'Pune',
-      rating: 5,
-      text: 'Trek and Stay made my adventure dreams come true. Highly recommended!',
-      image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop',
-      trip: 'Dudhsagar Trek'
-    }
-  ];
 
-  const stats = [
+
+  const stats = useMemo(() => [
     { label: 'Happy Travelers', value: '2,500+', icon: Users },
     { label: 'Adventure Trips', value: '150+', icon: Mountain },
     { label: 'Safety Record', value: '100%', icon: Shield },
     { label: 'Years Experience', value: '8+', icon: Award }
-  ];
+  ], []);
 
+  // Fetch real trips from Firestore
   useEffect(() => {
-    // Initialize lead capture store with trip data
-    const tripPreferences = trips.map(trip => ({
-      id: trip.id.toString(),
-      name: trip.title,
-      image: trip.image,
-      price: trip.price,
-      duration: trip.duration,
-      difficulty: trip.difficulty,
-      interested: false
-    }));
-    
-    loadTripsForSelection(tripPreferences);
-    
-    // Simulate recent bookings for social proof
-    const simulateBookings = () => {
-      const names = ['Arjun', 'Priya', 'Raj', 'Sneha', 'Vikram', 'Kavya'];
-      const locations = ['Mumbai', 'Delhi', 'Bangalore', 'Pune', 'Chennai', 'Hyderabad'];
-      
-      const booking = {
-        name: names[Math.floor(Math.random() * names.length)],
-        location: locations[Math.floor(Math.random() * locations.length)],
-        trip: trips[Math.floor(Math.random() * trips.length)].title,
-        timeAgo: Math.floor(Math.random() * 30) + 1
-      };
-      
-      setRecentBookings(prev => [booking, ...prev.slice(0, 4)]);
+    const fetchTrips = async () => {
+      try {
+        const db = getDbOrThrow();
+        const tripsRef = collection(db, 'trips');
+        const querySnapshot = await getDocs(tripsRef);
+        
+        const tripsData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          slug: doc.data().slug,
+          title: doc.data().name,
+          subtitle: doc.data().subtitle || doc.data().location,
+          price: doc.data().price,
+          originalPrice: doc.data().originalPrice,
+          duration: doc.data().duration,
+          location: doc.data().location,
+          rating: doc.data().rating || 4.5,
+          image: doc.data().images?.[0] || '/default-trip.jpg',
+          spotsLeft: doc.data().spotsAvailable || 0,
+          nextDeparture: doc.data().batchDates?.[0] || '2024-12-01',
+          tags: doc.data().tags || [],
+          highlights: doc.data().highlights || [],
+          difficulty: doc.data().difficulty || 'Moderate'
+        }));
+
+        setAllTrips([...trips, ...tripsData]); // Combine hardcoded and Firestore trips
+        setLoading(false);
+        
+        // Initialize lead capture store with trip data
+        const tripPreferences = [...trips, ...tripsData].map(trip => ({
+          id: trip.id.toString(),
+          name: trip.title,
+          image: trip.image,
+          price: trip.price,
+          duration: trip.duration,
+          difficulty: trip.difficulty,
+          interested: false
+        }));
+        
+        loadTripsForSelection(tripPreferences);
+      } catch (error) {
+        console.error('Error fetching trips:', error);
+        setAllTrips(trips); // Fallback to hardcoded trips
+        setLoading(false);
+      }
     };
-    
-    // Initial booking
-    simulateBookings();
-    
-    // Random new bookings
-    const interval = setInterval(simulateBookings, 15000 + Math.random() * 10000);
-    
-    // Visitor counter
-    const baseCount = 1847;
-    setVisitorCount(baseCount + Math.floor(Math.random() * 50));
-    
-    return () => clearInterval(interval);
-  }, [loadTripsForSelection]);
+
+    fetchTrips();
+  }, [loadTripsForSelection, trips]);
   
   useEffect(() => {
-    // Auto-rotate testimonials
-    const interval = setInterval(() => {
-      setCurrentTestimonial(prev => (prev + 1) % testimonials.length);
-    }, 5000);
-    
-    return () => clearInterval(interval);
-  }, [testimonials.length]);
-  
+    triggerPopup('page_load', 'homepage');
+  }, [triggerPopup]);
+
   const handleVideoToggle = () => {
     if (videoRef.current) {
       if (isVideoPlaying) {
@@ -268,46 +250,69 @@ const StunningHomepage = () => {
   };
   
   const handleGetStarted = () => {
-    triggerPopup('cta_button', 'homepage');
-  };
-  
-  const handleTripInterest = (tripId: number) => {
-    // Track trip interest and potentially trigger popup
-    triggerPopup('trip_interest', 'homepage');
+    // Open lead capture modal directly
+    openPopup('hero_cta_button', 'homepage');
   };
 
-  const handleLeadSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // This will now be handled by the lead capture modal
-    triggerPopup('manual_form', 'homepage');
+  const handleAboutUs = () => {
+    // Navigate to about page
+    window.location.href = '/about';
   };
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty.toLowerCase()) {
-      case 'easy': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      case 'moderate': return 'bg-amber-100 text-amber-700 border-amber-200';
-      case 'challenging': return 'bg-orange-100 text-orange-700 border-orange-200';
-      case 'expert': return 'bg-red-100 text-red-700 border-red-200';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200';
-    }
+  const handleTripInteraction = (tripId: string) => {
+    console.log('User interacted with trip:', tripId);
   };
-  
-  const getUrgencyColor = (spotsLeft: number) => {
-    if (spotsLeft <= 3) return 'text-red-600 bg-red-50';
-    if (spotsLeft <= 7) return 'text-orange-600 bg-orange-50';
-    return 'text-green-600 bg-green-50';
+
+  const handleLeadCapture = (data: Record<string, unknown>) => {
+    console.log('Lead captured from interactive mode:', data);
+    openPopup('interactive_lead_capture', 'homepage');
   };
-  
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0
-    }).format(price);
+
+  const toggleInteractiveMode = () => {
+    setShowInteractiveMode(!showInteractiveMode);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-emerald-900 via-teal-800 to-cyan-900 flex items-center justify-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          className="w-16 h-16 border-4 border-white border-t-transparent rounded-full"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative overflow-x-hidden">
+      {/* Adventure Points System - Always visible for gamification */}
+      <AdventurePointsSystem />
+      
+      {/* User Engagement Analytics - Bottom left to avoid overlap with header */}
+      <UserEngagementAnalytics className="fixed bottom-4 left-4 z-40" />
+
+      {/* Interactive Mode Toggle Button */}
+      <motion.button
+        onClick={toggleInteractiveMode}
+        className="fixed top-4 right-4 z-50 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-full font-bold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-3"
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1 }}
+      >
+        <Sparkles className="w-5 h-5" />
+        <span>{showInteractiveMode ? '🎬 Show Hero' : '🎮 Interactive Mode'}</span>
+        {!showInteractiveMode && (
+          <motion.div
+            animate={{ scale: [1, 1.3, 1] }}
+            transition={{ duration: 1, repeat: Infinity }}
+            className="w-3 h-3 bg-yellow-400 rounded-full"
+          />
+        )}
+      </motion.button>
+
       {/* Enhanced Header with Glassmorphism */}
       <motion.header 
         className="fixed top-0 left-0 right-0 z-50 bg-white/10 backdrop-blur-md border-b border-white/20"
@@ -322,14 +327,14 @@ const StunningHomepage = () => {
               whileHover={{ scale: 1.05 }}
               transition={{ type: "spring", stiffness: 300 }}
             >
-              <div className="relative">
+              <a href="/" className="relative">
                 <img 
                   src="/logo.png" 
                   alt="Trek and Stay Adventures" 
                   className="h-14 w-14 rounded-full object-cover ring-2 ring-emerald-400 ring-offset-2 ring-offset-white/50"
                 />
                 <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
-              </div>
+              </a>
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">Trek & Stay</h1>
                 <p className="text-sm text-gray-600 font-medium">Adventures Await</p>
@@ -356,7 +361,7 @@ const StunningHomepage = () => {
                 <div className="absolute inset-0 bg-gradient-to-r from-emerald-700 to-teal-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 <span className="relative flex items-center space-x-2">
                   <Sparkles className="w-4 h-4" />
-                  <span>Get Started</span>
+                  <span>Start Adventure</span>
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
                 </span>
               </motion.button>
@@ -373,12 +378,16 @@ const StunningHomepage = () => {
             ref={videoRef}
             autoPlay
             muted={isMuted}
-            loop
+            loop={false}
             playsInline
             className="w-full h-full object-cover"
             poster="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&h=1080&fit=crop"
+            onEnded={() => {
+              // Move to next video when current one ends
+              setCurrentVideoIndex((prevIndex) => (prevIndex + 1) % videoSources.length);
+            }}
           >
-            <source src="/videos/t&s.mp4" type="video/mp4" />
+            <source src={videoSources[currentVideoIndex].src} type={videoSources[currentVideoIndex].type} />
           </video>
           
           {/* Gradient Overlay */}
@@ -457,19 +466,43 @@ const StunningHomepage = () => {
             </h1>
             
             <motion.p 
-              className="text-xl md:text-2xl text-gray-200 mb-12 max-w-4xl mx-auto leading-relaxed"
+              className="text-xl md:text-2xl text-gray-200 mb-8 max-w-4xl mx-auto leading-relaxed"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.8 }}
             >
               Discover breathtaking landscapes, conquer majestic peaks, and create memories that last a lifetime with India's most trusted adventure travel company.
             </motion.p>
+
+            {/* Interactive Mode Promotion */}
+            {!showInteractiveMode && (
+              <motion.div
+                className="bg-gradient-to-r from-purple-500/80 to-pink-500/80 backdrop-blur-md rounded-2xl p-6 mb-8 border border-white/20 max-w-2xl mx-auto"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.8, delay: 1.2 }}
+              >
+                <div className="flex items-center justify-center space-x-3 mb-3">
+                  <Sparkles className="w-6 h-6 text-yellow-300" />
+                  <h3 className="text-xl font-bold text-white">🎮 Try Interactive Mode!</h3>
+                  <Sparkles className="w-6 h-6 text-yellow-300" />
+                </div>
+                <p className="text-white/90 text-lg mb-4">
+                  ✨ Explore trips, earn points, unlock achievements & compete with fellow adventurers!
+                </p>
+                <div className="flex items-center justify-center space-x-6 text-sm text-white/80">
+                  <span>❤️ Like trips: +15 pts</span>
+                  <span>📤 Share trips: +25 pts</span>
+                  <span>🏆 Achievements: Bonus rewards</span>
+                </div>
+              </motion.div>
+            )}
             
             <motion.div 
               className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 1.0 }}
+              transition={{ duration: 0.8, delay: 1.4 }}
             >
               <motion.button
                 onClick={handleGetStarted}
@@ -486,12 +519,15 @@ const StunningHomepage = () => {
               </motion.button>
               
               <motion.button
-                className="group flex items-center space-x-3 text-white px-8 py-4 rounded-full bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 transition-all duration-300"
+                onClick={toggleInteractiveMode}
+                className="group flex items-center space-x-3 text-white px-8 py-4 rounded-full bg-gradient-to-r from-purple-500/80 to-pink-500/80 backdrop-blur-md border border-white/20 hover:from-purple-600/90 hover:to-pink-600/90 transition-all duration-300"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <Play className="w-6 h-6" />
-                <span className="text-lg font-medium">Watch Stories</span>
+                <Sparkles className="w-6 h-6" />
+                <span className="text-lg font-medium">
+                  {showInteractiveMode ? 'Show Hero' : 'Interactive Mode'}
+                </span>
               </motion.button>
             </motion.div>
           </motion.div>
@@ -526,6 +562,226 @@ const StunningHomepage = () => {
           </div>
         </motion.div>
       </section>
+
+      {/* Interactive Widgets Section - Phase 1 */}
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+          >
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+              Plan Your Perfect Adventure
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Get real-time weather updates, pricing calculations, and interactive trip planning tools
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
+            {/* Weather Widget */}
+            <motion.div
+              initial={{ opacity: 0, x: -50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+            >
+              <WeatherWidget className="h-full" />
+            </motion.div>
+
+            {/* Interactive Calendar */}
+            <motion.div
+              initial={{ opacity: 0, x: 50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+            >
+              <InteractiveCalendar className="h-full" />
+            </motion.div>
+          </div>
+
+          {/* Pricing Calculator */}
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+          >
+            <PricingCalculator className="mb-16" />
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Enhanced Payment & Reviews Section - Phase 2 */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+          >
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+              Seamless Booking Experience
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Secure payments, real-time notifications, and authentic reviews from fellow adventurers
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
+            {/* Payment Selector */}
+            <motion.div
+              initial={{ opacity: 0, x: -50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+            >
+              <PaymentSelector 
+                amount={8999} 
+                onPaymentSelect={(method) => console.log('Payment method selected:', method)}
+                className="h-full"
+              />
+            </motion.div>
+
+            {/* Review Carousel */}
+            <motion.div
+              initial={{ opacity: 0, x: 50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+            >
+              <ReviewCarousel className="h-full" />
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Section with Enhanced Animations */}
+      <section className="py-20 bg-gradient-to-r from-emerald-600 to-teal-600">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div 
+            className="grid grid-cols-2 md:grid-cols-4 gap-8"
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+          >
+            {stats.map((stat, index) => {
+              const Icon = stat.icon;
+              return (
+                <motion.div
+                  key={stat.label}
+                  className="text-center"
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6, delay: index * 0.1 }}
+                  whileHover={{ scale: 1.05 }}
+                >
+                  <motion.div
+                    className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4"
+                    whileHover={{ rotate: 360 }}
+                    transition={{ duration: 0.8 }}
+                  >
+                    <Icon className="w-8 h-8 text-white" />
+                  </motion.div>
+                  <motion.div
+                    className="text-4xl md:text-5xl font-bold text-white mb-2"
+                    initial={{ scale: 0 }}
+                    whileInView={{ scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6, delay: index * 0.1 + 0.3, type: "spring", stiffness: 200 }}
+                  >
+                    {stat.value}
+                  </motion.div>
+                  <p className="text-emerald-100 font-medium">{stat.label}</p>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Interactive Trip Cards Section - Always visible with interactive elements */}
+      <section className="py-20 bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+              🎮 Test Your Adventure Knowledge
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Interact with trips, earn points, unlock achievements and discover your perfect adventure!
+            </p>
+            <div className="mt-8 p-6 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl text-white inline-block">
+              <h3 className="text-2xl font-bold mb-4">🏆 Interactive Challenges Active!</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="bg-white/20 rounded-lg p-3">
+                  <div className="font-bold">❤️ Like Trips</div>
+                  <div>Earn 15 points each</div>
+                </div>
+                <div className="bg-white/20 rounded-lg p-3">
+                  <div className="font-bold">📤 Share Trips</div>
+                  <div>Earn 25 points each</div>
+                </div>
+                <div className="bg-white/20 rounded-lg p-3">
+                  <div className="font-bold">📖 View Details</div>
+                  <div>Earn 20 points each</div>
+                </div>
+                <div className="bg-white/20 rounded-lg p-3">
+                  <div className="font-bold">🎯 High Engagement</div>
+                  <div>Bonus rewards!</div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Trip Priority Legend */}
+            <div className="mt-6 p-4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl text-white">
+              <h4 className="text-lg font-bold mb-3">📅 Trip Priority Order</h4>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
+                <div className="bg-red-500/30 rounded p-2 border border-red-400">
+                  <div className="font-bold">🔥 URGENT</div>
+                  <div>Closing soon!</div>
+                </div>
+                <div className="bg-orange-500/30 rounded p-2 border border-orange-400">
+                  <div className="font-bold">⏰ STARTING SOON</div>
+                  <div>Within 7 days</div>
+                </div>
+                <div className="bg-green-500/30 rounded p-2 border border-green-400">
+                  <div className="font-bold">📅 UPCOMING</div>
+                  <div>Within 30 days</div>
+                </div>
+                <div className="bg-blue-500/30 rounded p-2 border border-blue-400">
+                  <div className="font-bold">🗓️ FUTURE</div>
+                  <div>Plan ahead</div>
+                </div>
+                <div className="bg-gray-500/30 rounded p-2 border border-gray-400">
+                  <div className="font-bold">✅ COMPLETED</div>
+                  <div>Past trips</div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+          
+          <InteractiveHomepage 
+            trips={allTrips}
+            onTripInterest={handleTripInteraction}
+            onLeadCapture={handleLeadCapture}
+          />
+        </div>
+      </section>
+
+      {/* Live Notifications Component */}
+      <LiveNotifications onNotificationAction={(id, action) => console.log('Notification action:', id, action)} />
 
       {/* Lead Capture Modal */}
       <LeadCaptureModal />

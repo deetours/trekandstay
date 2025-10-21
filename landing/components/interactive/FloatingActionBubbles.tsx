@@ -101,17 +101,18 @@ export const FloatingActionBubbles: React.FC<FloatingActionBubblesProps> = ({
 
     // Execute the action
     switch (bubble.action) {
-      case 'whatsapp':
+      case 'whatsapp': {
         const message = `Hi! I'm interested in ${tripData?.name || 'your adventure trips'}. Can you share more details?`;
         window.open(`https://wa.me/919902937730?text=${encodeURIComponent(message)}`, '_blank');
         break;
+      }
       case 'call':
         window.open('tel:+919902937730', '_self');
         break;
       case 'wishlist':
         // Add to wishlist logic
         break;
-      case 'share':
+      case 'share': {
         if (navigator.share) {
           navigator.share({
             title: tripData?.name || 'Amazing Adventure',
@@ -123,6 +124,7 @@ export const FloatingActionBubbles: React.FC<FloatingActionBubblesProps> = ({
           // Show copied feedback
         }
         break;
+      }
       case 'gallery':
         // Open photo gallery
         break;
@@ -142,7 +144,7 @@ export const FloatingActionBubbles: React.FC<FloatingActionBubblesProps> = ({
   }, []);
 
   return (
-    <div className={`fixed bottom-6 right-6 z-40 ${className}`}>
+    <div className={`relative ${className}`}>
       {/* Reward Burst Animation */}
       <AnimatePresence>
         {showRewardBurst && (
