@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'core',
     'rag',
+    'whatsapp_api',
 ]
 
 REST_FRAMEWORK = {
@@ -194,3 +195,55 @@ WHATSAPP_SESSIONS = {
         'auto_respond': False
     }
 }
+
+# ============================================================
+# SMART WHATSAPP AGENT CONFIGURATION
+# ============================================================
+WHATSAPP_PROVIDER = "mock"
+WHATSAPP_MODE = "testing"
+WHATSAPP_WEBHOOK_TOKEN = "your_secret_token"
+
+# ============================================================
+# CUSTOM WHATSAPP PROVIDER CONFIGURATION
+# ============================================================
+# Use your own API to send WhatsApp messages
+# Configure these environment variables in your .env file:
+#   CUSTOM_WHATSAPP_API_ENDPOINT=https://your-api.com/whatsapp
+#   CUSTOM_WHATSAPP_API_KEY=your-32-char-secret-key
+#   CUSTOM_WHATSAPP_WEBHOOK_SECRET=webhook-verification-secret
+
+CUSTOM_WHATSAPP_API_ENDPOINT = os.getenv(
+    'CUSTOM_WHATSAPP_API_ENDPOINT',
+    'http://localhost:8001/api/whatsapp'  # Default: local development
+)
+
+CUSTOM_WHATSAPP_API_KEY = os.getenv(
+    'CUSTOM_WHATSAPP_API_KEY',
+    'dev-api-key-change-in-production'  # Change in production!
+)
+
+CUSTOM_WHATSAPP_WEBHOOK_SECRET = os.getenv(
+    'CUSTOM_WHATSAPP_WEBHOOK_SECRET',
+    'webhook-secret-change-in-production'  # Change in production!
+)
+
+# Request timeout in seconds
+CUSTOM_WHATSAPP_TIMEOUT = 30
+
+# Number of retries for failed requests
+CUSTOM_WHATSAPP_RETRY_COUNT = 3
+
+# Maximum retries for bulk operations
+CUSTOM_WHATSAPP_MAX_RETRIES = 5
+
+# ============================================================
+# WHATSAPP PROVIDER SELECTION
+# ============================================================
+# Set WHATSAPP_PROVIDER_TYPE to choose how to send messages:
+#   "mock"          - Testing mode (logs to console, no actual sending)
+#   "custom"        - Your own API (recommended for production)
+#   "twilio"        - Twilio WhatsApp Business API
+#   "wasender"      - WASender.ai service
+#   "meta"          - Meta Business WhatsApp API
+
+WHATSAPP_PROVIDER_TYPE = os.getenv('WHATSAPP_PROVIDER_TYPE', 'custom')

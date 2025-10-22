@@ -21,4 +21,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('core.urls')),
     path('api/rag/', include('rag.urls')),
+    path('api/whatsapp/', include('core.whatsapp_urls')),
+    path('api/whatsapp-api/', include('whatsapp_api.urls')),
 ]
