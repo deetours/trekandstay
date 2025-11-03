@@ -20,7 +20,8 @@
     --ring: #0ea5e9;
     --focus: 0 0 0 3px rgba(14,165,233,0.45);
   }
-  .dark {
+
+  html.dark {
     --bg: #0B0F10;
     --text: #f1f5f9; /* slate-100 */
     --card: #111827; /* slate-900 */
@@ -36,12 +37,18 @@
     --info: #60a5fa;
     --ring: #38bdf8;
   }
+
   body {
     background-color: var(--bg);
     color: var(--text);
-    transition: background-color 0.35s ease, color 0.35s ease;
+    transition: background-color 0.3s ease, color 0.3s ease !important;
     color-scheme: light dark;
   }
+
+  html {
+    transition: background-color 0.3s ease !important;
+  }
+
   ::selection { background: var(--accent); color: var(--accent-foreground); }
   .dark ::selection { background: var(--accent); color: var(--accent-foreground); }
 
@@ -58,10 +65,12 @@
   select {
     @apply bg-white text-gray-900 placeholder:text-gray-400 border border-[var(--border)] rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-colors;
   }
+
   /* Remove inner spin / calendar dark artifacts (WebKit) */
   input[type="number"]::-webkit-outer-spin-button,
   input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   input[type="number"] { -moz-appearance: textfield; }
+
   /* Date input icon coloring (WebKit) */
   input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0); opacity: 0.7; cursor: pointer; }
   input[type="date"]:hover::-webkit-calendar-picker-indicator { opacity: 1; }
@@ -79,6 +88,7 @@
   .dark select {
     @apply bg-[var(--surface)] text-[var(--text)] placeholder:text-slate-400 border-[var(--border)] focus:ring-emerald-400/40 focus:border-emerald-400;
   }
+
   .dark input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) hue-rotate(180deg); }
 }
 

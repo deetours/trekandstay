@@ -30,9 +30,8 @@ import {
   Trophy,
   Lock
 } from 'lucide-react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { getDbOrThrow } from '../firebase';
 import { adminAPI } from '../services/adminAPI';
+import { fetchTripBySlug } from '../services/api';
 import { analytics, trackBookingStep, trackLeadStep, trackConversion } from '../services/analyticsTracker';
 
 // Import Interactive Components
@@ -178,43 +177,35 @@ const TripLandingPage: React.FC = () => {
   useEffect(() => {
     const fetchTrip = async () => {
       try {
-        const db = getDbOrThrow();
-        const tripsRef = collection(db, 'trips');
-        const q = query(tripsRef, where('slug', '==', slug));
-        const querySnapshot = await getDocs(q);
+        // Fetch from Django backend
+        const data = await fetchTripBySlug(slug || '');
         
-        if (!querySnapshot.empty) {
-          const doc = querySnapshot.docs[0];
-          const data = doc.data();
-          
-          // Normalize the itinerary data
-          const normalizedItinerary = normalizeItinerary(data.itinerary);
-          
-          setTrip({
-            id: doc.id,
-            ...data,
-            itinerary: normalizedItinerary
-          } as Trip);
-          
-          // Initialize seat availability
-          const totalSeats = data.spotsAvailable || 20;
-          const availability: Record<string, boolean> = {};
-          for (let i = 1; i <= totalSeats; i++) {
-            // Randomly make some seats unavailable for demo
-            availability[i] = Math.random() > 0.2; // 80% availability
-          }
-          setSeatAvailability(availability);
-          
-          // Track gamification event: trip_view
-          analytics.trackGamificationEvent('trip_view', {
-            trip_id: doc.id,
-            trip_name: data.name,
-            trip_slug: slug
-          }).catch(err => console.error('Failed to track trip view:', err));
-          
-          // Award points for page load
-          setTimeout(() => awardPoints('page_load'), 1000);
+        // Normalize the itinerary data
+        const normalizedItinerary = normalizeItinerary(data.itinerary);
+        
+        setTrip({
+          ...data,
+          itinerary: normalizedItinerary
+        } as Trip);
+        
+        // Initialize seat availability
+        const totalSeats = data.spotsAvailable || data.available_seats || 20;
+        const availability: Record<string, boolean> = {};
+        for (let i = 1; i <= totalSeats; i++) {
+          // Randomly make some seats unavailable for demo
+          availability[i] = Math.random() > 0.2; // 80% availability
         }
+        setSeatAvailability(availability);
+        
+        // Track gamification event: trip_view
+        analytics.trackGamificationEvent('trip_view', {
+          trip_id: data.id,
+          trip_name: data.name,
+          trip_slug: slug
+        }).catch(err => console.error('Failed to track trip view:', err));
+        
+        // Award points for page load
+        setTimeout(() => awardPoints('page_load'), 1000);
       } catch (error) {
         console.error('Error fetching trip:', error);
       } finally {

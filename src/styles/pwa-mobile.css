@@ -1,0 +1,351 @@
+/* ============================================
+   PWA MOBILE OPTIMIZATION STYLES
+   ============================================ */
+
+:root {
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+}
+
+/* ============ BASE STYLES ============ */
+
+html {
+  font-size: 16px; /* Prevent auto-zoom on input focus */
+}
+
+body {
+  padding-top: var(--safe-area-inset-top);
+  padding-bottom: var(--safe-area-inset-bottom);
+  padding-left: var(--safe-area-inset-left);
+  padding-right: var(--safe-area-inset-right);
+
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Prevent scrolling bounce */
+  overscroll-behavior: none;
+}
+
+/* ============ FULL HEIGHT LAYOUT ============ */
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+@supports (height: 100svh) {
+  #root {
+    height: 100svh; /* Small viewport height (excludes mobile UI) */
+  }
+}
+
+/* ============ VIEWPORT UNITS ============ */
+
+.viewport-height {
+  height: 100vh;
+}
+
+@supports (height: 100dvh) {
+  .viewport-height {
+    height: 100dvh; /* Dynamic viewport height */
+  }
+}
+
+/* ============ BOTTOM NAVIGATION ============ */
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: space-around;
+  z-index: 100;
+  padding-bottom: var(--safe-area-inset-bottom);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.bottom-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 8px;
+  min-height: 56px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 12px;
+  text-align: center;
+  text-decoration: none;
+  color: #666;
+  transition: all 0.2s;
+}
+
+.bottom-nav-item:active {
+  background: rgba(0, 122, 255, 0.05);
+  transform: scale(0.95);
+}
+
+.bottom-nav-item.active {
+  color: #007AFF;
+}
+
+.bottom-nav-item icon {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+/* ============ MAIN CONTENT PADDING ============ */
+
+.app-content {
+  padding-bottom: 80px; /* Space for bottom nav */
+}
+
+.app-header {
+  padding-top: var(--safe-area-inset-top);
+  min-height: 56px;
+}
+
+/* ============ TOUCH TARGETS ============ */
+
+button,
+a,
+input[type='checkbox'],
+input[type='radio'],
+select {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* ============ INPUT OPTIMIZATION ============ */
+
+input,
+textarea,
+select {
+  font-size: 16px; /* Prevent auto-zoom on iOS */
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  font-family: inherit;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: #007AFF;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+/* Remove focus outline for mouse users */
+:focus-visible {
+  outline: 2px solid #007AFF;
+  outline-offset: 2px;
+}
+
+/* ============ MODAL/DIALOG ============ */
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+}
+
+.modal-content {
+  width: 100%;
+  background: white;
+  border-radius: 16px 16px 0 0;
+  padding: 24px;
+  padding-bottom: calc(24px + var(--safe-area-inset-bottom));
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* ============ RESPONSIVE TEXT ============ */
+
+h1 {
+  font-size: clamp(24px, 6vw, 48px);
+}
+
+h2 {
+  font-size: clamp(20px, 5vw, 32px);
+}
+
+h3 {
+  font-size: clamp(18px, 4vw, 28px);
+}
+
+p {
+  font-size: clamp(14px, 3vw, 16px);
+}
+
+/* ============ SCROLL SMOOTHING ============ */
+
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent; /* Remove tap highlight */
+}
+
+/* ============ LANDSCAPE MODE ============ */
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .header {
+    min-height: 48px;
+  }
+
+  .bottom-nav {
+    display: none;
+  }
+
+  .app-content {
+    padding-bottom: 0;
+  }
+
+  .app-header {
+    padding: 8px 0;
+  }
+
+  .sidebar {
+    display: none;
+  }
+}
+
+/* ============ TABLET & DESKTOP ============ */
+
+@media (min-width: 768px) {
+  .bottom-nav {
+    display: none;
+  }
+
+  .app-content {
+    padding-bottom: 0;
+  }
+
+  .app-header {
+    padding-top: 16px;
+  }
+
+  .sidebar {
+    display: block;
+  }
+
+  button,
+  a {
+    min-height: 40px;
+    min-width: 40px;
+  }
+}
+
+/* ============ OFFLINE MODE ============ */
+
+body.offline::before {
+  content: '📡 You are offline';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #ff9500;
+  color: white;
+  padding: 12px;
+  text-align: center;
+  z-index: 1001;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+body.offline {
+  padding-top: calc(var(--safe-area-inset-top) + 44px);
+}
+
+/* ============ TYPOGRAPHY ============ */
+
+body {
+  line-height: 1.6;
+  color: #333;
+}
+
+a {
+  color: #007AFF;
+  text-decoration: none;
+}
+
+a:active {
+  opacity: 0.7;
+}
+
+/* ============ FORM ELEMENTS ============ */
+
+input[type='text'],
+input[type='email'],
+input[type='phone'],
+input[type='date'],
+textarea {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* ============ IMAGES ============ */
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ============ PERFORMANCE ============ */
+
+* {
+  box-sizing: border-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============ PRINT STYLES ============ */
+
+@media print {
+  body {
+    padding: 0;
+  }
+
+  .bottom-nav,
+  .offline-indicator,
+  .install-banner {
+    display: none;
+  }
+}

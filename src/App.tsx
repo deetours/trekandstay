@@ -10,16 +10,13 @@ import { Dashboard } from './components/dashboard/Dashboard';
 import { ChatWidget } from './components/chat';
 import { LeadCaptureModal } from './components/modals/LeadCaptureModal';
 import { usePopupTriggers } from './hooks/usePopupTriggers';
-import { useAdventureStore } from './store/adventureStore';
 import { CartProvider } from './components/shop/CartContext';
 import { ProductsProvider } from './components/shop/ProductsContext';
 import { initializeAnalytics } from './utils/analyticsInit';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { DebugPage } from './components/DebugPage';
 import { useAuthInitializer } from './hooks/useAuthInitializer';
-// import './utils/firebaseConnectionTest'; // Import Firebase connection test for debugging
-// import './utils/firebaseMinimalTest'; // Import minimal Firebase test
-import ShopPage from './pages/ShopPage';
+import { ThemeProvider } from './context/ThemeContext';
 import CartPage from './components/shop/CartPage';
 import RequestProductPage from './pages/RequestProductPage';
 // import WishlistPage from './components/shop/WishlistPage';
@@ -47,14 +44,13 @@ const SignInPage = lazy(() => import('./pages/SignInPage'));
 const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'));
 const SafetyPage = lazy(() => import('./pages/SafetyPage'));
 const TermsPage = lazy(() => import('./pages/TermsPage'));
+const ShopPage = lazy(() => import('./pages/ShopPage'));
 // Admin pages (lazy)
 // Individual admin pages are now accessed through AdminPortal tabs; keep itinerary page if needed standalone
 const AdminItineraryPage = lazy(() => import('./pages/admin/AdminItineraryPage'));
 const TripLandingPage = lazy(() => import('./pages/TripLandingPage'));
 
 function App() {
-  const { theme } = useAdventureStore();
-  
   // Initialize authentication state listener
   useAuthInitializer();
   
@@ -65,22 +61,24 @@ function App() {
   
   return (
     <ErrorBoundary>
-      <Router>
-        <AppContent theme={theme} />
-      </Router>
+      <ThemeProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }
 
 // Separate component inside Router context
-function AppContent({ theme }: { theme: string }) {
+function AppContent() {
   // Initialize popup triggers (must be inside Router context)
   usePopupTriggers();
-  
+
   return (
         <CartProvider>
         <ProductsProvider>
-    <div className={`min-h-screen transition-colors ${theme === 'dark' ? 'dark' : ''}`} style={{ background:'var(--bg)', color:'var(--text)'}}>
+    <div className="min-h-screen transition-colors duration-300 bg-[var(--bg)] text-[var(--text)]">
             <Header />
             {/* <ThreeRoot /> */}
             <main>

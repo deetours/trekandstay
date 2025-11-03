@@ -13,6 +13,10 @@ export interface ApiTrip {
   spotsAvailable?: number;
   safety_record?: string;
   safetyRecord?: string;
+  available_slots?: number;
+  is_available?: boolean;
+  status?: string;
+  max_capacity?: number;
   [key: string]: unknown;
 }
 
@@ -125,6 +129,8 @@ function mapTripResponse(apiTrip: ApiTrip): ApiTrip {
     nextDeparture: apiTrip.next_departure ?? apiTrip.nextDeparture,
     spotsAvailable: apiTrip.spots_available ?? apiTrip.spotsAvailable,
     safetyRecord: apiTrip.safety_record ?? apiTrip.safetyRecord,
+    availableSlots: apiTrip.available_slots,
+    isAvailable: apiTrip.is_available,
     // Normalize price to number when possible
     price: typeof apiTrip.price === 'string' ? Number(apiTrip.price) : apiTrip.price,
   };

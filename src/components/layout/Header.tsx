@@ -1,8 +1,7 @@
 import { useCart } from '../shop/useCart';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, MapPin, Calendar, Phone, Compass, Sun, Mountain, ShoppingCart } from 'lucide-react';
-import { ThemeSwitcher } from '../ui/ThemeSwitcher';
+import { Menu, X, Home, MapPinned, Hotel, ShoppingBag, Info, Mail, ShoppingCart } from 'lucide-react';
 import { products } from '../../data/shopProducts';
 import { Button } from '../ui/Button';
 import { useAdventureStore } from '../../store/adventureStore';
@@ -13,7 +12,7 @@ export const Header: React.FC = () => {
   const [cartOpen, setCartOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user, isAuthenticated, theme } = useAdventureStore();
+  const { user, isAuthenticated } = useAdventureStore();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -25,36 +24,29 @@ export const Header: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  useEffect(() => {
-    // ensure document class reflects store theme on mount
-    if (typeof document !== 'undefined') {
-      document.documentElement.classList.toggle('dark', theme === 'dark');
-    }
-  }, [theme]);
-
   // Always show logo and all menu items
   const navigationItems = [
-    { label: 'Home', href: '/', icon: Compass },
-    { label: 'Destinations', href: '/destinations', icon: MapPin },
-    { label: 'Stays', href: '/stays', icon: Calendar },
-    { label: 'Shop', href: '/shop', icon: Sun },
-    { label: 'About', href: '/about', icon: Mountain },
-    { label: 'Contact', href: '/contact', icon: Phone },
+    { label: 'Home', href: '/', icon: Home },
+    { label: 'Destinations', href: '/destinations', icon: MapPinned },
+    { label: 'Stays', href: '/stays', icon: Hotel },
+    { label: 'Shop', href: '/shop', icon: ShoppingBag },
+    { label: 'About', href: '/about', icon: Info },
+    { label: 'Contact', href: '/contact', icon: Mail },
   ];
 
   // Do not show "Home" link while already on the home page
   const visibleNavigationItems = location.pathname === '/' ? navigationItems.filter(i => i.label !== 'Home') : navigationItems;
 
   // Color / style map per nav item
-  const navStyles: Record<string, { ring: string; icon: string; gradient: string; hover: string; darkGradient: string }> = {
-    Home: { ring: 'ring-teal-300/40', icon: 'text-teal-600 dark:text-teal-300', gradient: 'from-teal-50 to-cyan-50', hover:'hover:from-teal-100 hover:to-cyan-100', darkGradient:'dark:from-teal-900/40 dark:to-cyan-900/30' },
-    Destinations: { ring: 'ring-rose-300/40', icon: 'text-rose-600 dark:text-rose-300', gradient: 'from-rose-50 to-pink-50', hover:'hover:from-rose-100 hover:to-pink-100', darkGradient:'dark:from-rose-900/40 dark:to-pink-900/30' },
-    Stays: { ring: 'ring-amber-300/40', icon: 'text-amber-600 dark:text-amber-300', gradient: 'from-amber-50 to-orange-50', hover:'hover:from-amber-100 hover:to-orange-100', darkGradient:'dark:from-amber-900/40 dark:to-orange-900/30' },
-    Shop: { ring: 'ring-yellow-300/40', icon: 'text-yellow-600 dark:text-yellow-300', gradient: 'from-yellow-50 to-orange-50', hover:'hover:from-yellow-100 hover:to-orange-100', darkGradient:'dark:from-yellow-900/40 dark:to-orange-900/30' },
-    Cart: { ring: 'ring-blue-300/40', icon: 'text-blue-600 dark:text-blue-300', gradient: 'from-blue-50 to-cyan-50', hover:'hover:from-blue-100 hover:to-cyan-100', darkGradient:'dark:from-blue-900/40 dark:to-cyan-900/30' },
-    Wishlist: { ring: 'ring-pink-300/40', icon: 'text-pink-600 dark:text-pink-300', gradient: 'from-pink-50 to-rose-50', hover:'hover:from-pink-100 hover:to-rose-100', darkGradient:'dark:from-pink-900/40 dark:to-rose-900/30' },
-    About: { ring: 'ring-violet-300/40', icon: 'text-violet-600 dark:text-violet-300', gradient: 'from-violet-50 to-fuchsia-50', hover:'hover:from-violet-100 hover:to-fuchsia-100', darkGradient:'dark:from-violet-900/40 dark:to-fuchsia-900/30' },
-    Contact: { ring: 'ring-emerald-300/40', icon: 'text-emerald-600 dark:text-emerald-300', gradient: 'from-emerald-50 to-green-50', hover:'hover:from-emerald-100 hover:to-green-100', darkGradient:'dark:from-emerald-900/40 dark:to-green-900/30' },
+  const navStyles: Record<string, { ring: string; icon: string; gradient: string; hover: string }> = {
+    Home: { ring: 'ring-teal-300/40', icon: 'text-teal-600', gradient: 'from-teal-50 to-cyan-50', hover:'hover:from-teal-100 hover:to-cyan-100' },
+    Destinations: { ring: 'ring-rose-300/40', icon: 'text-rose-600', gradient: 'from-rose-50 to-pink-50', hover:'hover:from-rose-100 hover:to-pink-100' },
+    Stays: { ring: 'ring-amber-300/40', icon: 'text-amber-600', gradient: 'from-amber-50 to-orange-50', hover:'hover:from-amber-100 hover:to-orange-100' },
+    Shop: { ring: 'ring-yellow-300/40', icon: 'text-yellow-600', gradient: 'from-yellow-50 to-orange-50', hover:'hover:from-yellow-100 hover:to-orange-100' },
+    Cart: { ring: 'ring-blue-300/40', icon: 'text-blue-600', gradient: 'from-blue-50 to-cyan-50', hover:'hover:from-blue-100 hover:to-cyan-100' },
+    Wishlist: { ring: 'ring-pink-300/40', icon: 'text-pink-600', gradient: 'from-pink-50 to-rose-50', hover:'hover:from-pink-100 hover:to-rose-100' },
+    About: { ring: 'ring-violet-300/40', icon: 'text-violet-600', gradient: 'from-violet-50 to-fuchsia-50', hover:'hover:from-violet-100 hover:to-fuchsia-100' },
+    Contact: { ring: 'ring-emerald-300/40', icon: 'text-emerald-600', gradient: 'from-emerald-50 to-green-50', hover:'hover:from-emerald-100 hover:to-green-100' },
   };
 
   const headerVariants = {
@@ -184,7 +176,7 @@ export const Header: React.FC = () => {
               <button className="p-2 rounded-full hover:bg-gray-100" onClick={() => setCartOpen(false)}><X className="w-6 h-6" /></button>
             </div>
             {cart.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 font-medium text-lg">Your cart is empty.</div>
+              <div className="flex-1 flex flex-col items-center justify-center text-gray-500 font-medium text-lg">Your cart is empty.</div>
             ) : (
               <>
                 <ul className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
@@ -228,7 +220,6 @@ export const Header: React.FC = () => {
           </div>
         </div>
       )}
-            <ThemeSwitcher />
             {isAuthenticated && user ? (
               <motion.div
                 className="flex items-center space-x-3"
@@ -360,10 +351,6 @@ export const Header: React.FC = () => {
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.5 }}
                 >
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-stone-gray">Theme</span>
-                    <ThemeSwitcher />
-                  </div>
                   {isAuthenticated && user ? (
                     <div className="flex items-center space-x-3 text-stone-gray">
                       <div className="w-10 h-10 rounded-full bg-stone-gray flex items-center justify-center border border-forest-green">

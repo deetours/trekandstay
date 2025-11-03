@@ -20,7 +20,7 @@ from django.urls import path, include
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('core.urls')),
-    path('api/rag/', include('rag.urls')),
-    path('api/whatsapp/', include('core.whatsapp_urls')),
-    path('api/whatsapp-api/', include('whatsapp_api.urls')),
+    # path('api/rag/', include('rag.urls')),  # Temporarily disabled - heavy ML imports
+    # path('api/whatsapp/', include('core.whatsapp_urls')),  # Temporarily disabled
+    # path('api/whatsapp-api/', include('whatsapp_api.urls')),  # Temporarily disabled
 ]

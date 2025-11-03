@@ -1,14 +1,14 @@
 import React from 'react';
 import { Sun, Moon } from 'lucide-react';
-import { useAdventureStore } from '../../store/adventureStore';
+import { useTheme } from '../../hooks/useTheme';
 
 /* Accessible theme switcher with three states: light, dark, system */
 export const ThemeSwitcher: React.FC<{ className?: string }>=({ className })=>{
-  const { theme, setTheme } = useAdventureStore();
+  const { theme, toggleTheme } = useTheme();
   // system detection (not stored directly) - if stored theme absent we could extend store but keep simple here
   const cycle = () => {
     // Only light/dark stored; treat extra middle state as system (null) - for now cycle light->dark->light
-    setTheme(theme === 'light' ? 'dark' : 'light');
+    toggleTheme();
   };
   const icon = theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />;
   const label = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';

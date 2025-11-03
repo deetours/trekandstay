@@ -22,9 +22,13 @@ export default api;
 
 let authToken: string | null = null;
 
-export function setAuthToken(token: string) {
+export function setAuthToken(token: string | null) {
   authToken = token;
-  api.defaults.headers.common['Authorization'] = `Token ${token}`;
+  if (token) {
+    api.defaults.headers.common['Authorization'] = `Token ${token}`;
+  } else {
+    delete api.defaults.headers.common['Authorization'];
+  }
 }
 
 function getAuthHeaders(): Record<string, string> {
@@ -55,6 +59,11 @@ export async function getDashboardSummary() {
 // Trip-related APIs
 export async function fetchTrips() {
   const res = await api.get('/trips/');
+  return res.data;
+}
+
+export async function fetchTripBySlug(slug: string) {
+  const res = await api.get(`/trips/${slug}/`);
   return res.data;
 }
 
@@ -185,3 +194,219 @@ export interface WishlistItem {
   notes?: string;
   created_at: string;
 }
+
+// ============= ADMIN API ENDPOINTS =============
+
+export const adminAPI = {
+  // Trip Management (Admin Only)
+  createTrip: async (tripData: {
+    name: string;
+    location: string;
+    price: number;
+    duration_days: number;
+    difficulty_level: string;
+    description: string;
+    highlights?: string[];
+    included?: string[];
+    images?: string[];
+    guide_id?: number;
+    total_spots: number;
+    spots_available: number;
+    start_date?: string;
+    end_date?: string;
+  }) => {
+    const response = await api.post('/admin/trips/', tripData);
+    return response.data;
+  },
+
+  updateTrip: async (tripId: number, tripData: Partial<{
+    name: string;
+    location: string;
+    price: number;
+    duration_days: number;
+    difficulty_level: string;
+    description: string;
+    highlights: string[];
+    included: string[];
+    images: string[];
+    guide_id: number;
+    total_spots: number;
+    spots_available: number;
+    start_date: string;
+    end_date: string;
+    is_active: boolean;
+  }>) => {
+    const response = await api.patch(`/admin/trips/${tripId}/`, tripData);
+    return response.data;
+  },
+
+  deleteTrip: async (tripId: number) => {
+    const response = await api.delete(`/admin/trips/${tripId}/`);
+    return response.data;
+  },
+
+  // Booking Management (Admin Only)
+  getAllBookings: async (filters?: {
+    status?: string;
+    trip_id?: number;
+    user_id?: number;
+    date_from?: string;
+    date_to?: string;
+  }) => {
+    const response = await api.get('/admin/bookings/', { params: filters });
+    return response.data;
+  },
+
+  updateBookingStatus: async (bookingId: number, status: string, notes?: string) => {
+    const response = await api.patch(`/admin/bookings/${bookingId}/`, { status, notes });
+    return response.data;
+  },
+
+  deleteBooking: async (bookingId: number) => {
+    const response = await api.delete(`/admin/bookings/${bookingId}/`);
+    return response.data;
+  },
+
+  // Lead Management (Admin Only)
+  getAllLeads: async (filters?: {
+    status?: string;
+    lead_score_min?: number;
+    source?: string;
+    trip_id?: number;
+    date_from?: string;
+    date_to?: string;
+  }) => {
+    const response = await api.get('/admin/leads/', { params: filters });
+    return response.data;
+  },
+
+  updateLead: async (leadId: number, leadData: Partial<{
+    status: string;
+    lead_score: number;
+    notes: string;
+    assigned_to: number;
+  }>) => {
+    const response = await api.patch(`/admin/leads/${leadId}/`, leadData);
+    return response.data;
+  },
+
+  deleteLead: async (leadId: number) => {
+    const response = await api.delete(`/admin/leads/${leadId}/`);
+    return response.data;
+  },
+
+  sendWhatsAppToLead: async (leadId: number, message: string) => {
+    const response = await api.post(`/admin/leads/${leadId}/send-whatsapp/`, { message });
+    return response.data;
+  },
+
+  // User Management (Admin Only)
+  getAllUsers: async (filters?: {
+    is_active?: boolean;
+    is_staff?: boolean;
+    search?: string;
+  }) => {
+    const response = await api.get('/admin/users/', { params: filters });
+    return response.data;
+  },
+
+  updateUser: async (userId: number, userData: Partial<{
+    is_active: boolean;
+    is_staff: boolean;
+    email: string;
+    username: string;
+  }>) => {
+    const response = await api.patch(`/admin/users/${userId}/`, userData);
+    return response.data;
+  },
+
+  deleteUser: async (userId: number) => {
+    const response = await api.delete(`/admin/users/${userId}/`);
+    return response.data;
+  },
+
+  // Guide Management (Admin Only)
+  createGuide: async (guideData: {
+    name: string;
+    bio: string;
+    specialty: string;
+    experience: string;
+    image?: string;
+    phone_number?: string;
+    email?: string;
+  }) => {
+    const response = await api.post('/admin/guides/', guideData);
+    return response.data;
+  },
+
+  updateGuide: async (guideId: number, guideData: Partial<{
+    name: string;
+    bio: string;
+    specialty: string;
+    experience: string;
+    image: string;
+    phone_number: string;
+    email: string;
+  }>) => {
+    const response = await api.patch(`/admin/guides/${guideId}/`, guideData);
+    return response.data;
+  },
+
+  deleteGuide: async (guideId: number) => {
+    const response = await api.delete(`/admin/guides/${guideId}/`);
+    return response.data;
+  },
+
+  getAllGuides: async () => {
+    const response = await api.get('/admin/guides/');
+    return response.data;
+  },
+
+  // Analytics (Admin Only)
+  getAnalytics: async (period?: string) => {
+    const response = await api.get('/admin/analytics/', { params: { period } });
+    return response.data;
+  },
+
+  getDashboardStats: async () => {
+    const response = await api.get('/admin/dashboard/stats/');
+    return response.data;
+  },
+
+  getRevenueReport: async (startDate: string, endDate: string) => {
+    const response = await api.get('/admin/reports/revenue/', {
+      params: { start_date: startDate, end_date: endDate }
+    });
+    return response.data;
+  },
+
+  getConversionReport: async () => {
+    const response = await api.get('/admin/reports/conversion/');
+    return response.data;
+  },
+
+  // Review Management (Admin Only)
+  getAllReviews: async (filters?: {
+    trip_id?: number;
+    rating_min?: number;
+    is_approved?: boolean;
+  }) => {
+    const response = await api.get('/admin/reviews/', { params: filters });
+    return response.data;
+  },
+
+  approveReview: async (reviewId: number) => {
+    const response = await api.post(`/admin/reviews/${reviewId}/approve/`);
+    return response.data;
+  },
+
+  rejectReview: async (reviewId: number, reason: string) => {
+    const response = await api.post(`/admin/reviews/${reviewId}/reject/`, { reason });
+    return response.data;
+  },
+
+  deleteReview: async (reviewId: number) => {
+    const response = await api.delete(`/admin/reviews/${reviewId}/`);
+    return response.data;
+  },
+};

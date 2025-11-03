@@ -80,7 +80,7 @@ class Migration(migrations.Migration):
                 ('trip', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='reviews', to='core.trip')),
             ],
             options={
-                'constraints': [models.CheckConstraint(condition=models.Q(('rating__gte', 1), ('rating__lte', 5)), name='review_rating_between_1_and_5')],
+                'constraints': [models.CheckConstraint(check=models.Q(('rating__gte', 1), ('rating__lte', 5)), name='review_rating_between_1_and_5')],
             },
         ),
     ]

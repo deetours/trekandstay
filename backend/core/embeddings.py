@@ -1,7 +1,7 @@
 import os
 import threading
 from typing import List, Tuple, Dict, Any
-from sentence_transformers import SentenceTransformer
+# from sentence_transformers import SentenceTransformer  # Temporarily disabled
 import numpy as np
 from .models import Embedding, Trip, Story, ChatFAQ
 
@@ -21,13 +21,16 @@ def load_model():
     if _MODEL is None:
         with _MODEL_LOCK:
             if _MODEL is None:
-                _MODEL = SentenceTransformer(DEFAULT_MODEL)
+                # _MODEL = SentenceTransformer(DEFAULT_MODEL)  # Temporarily disabled
+                _MODEL = "dummy_model"  # Placeholder
     return _MODEL
 
 
 def embed_texts(texts: List[str]):
-    model = load_model()
-    return model.encode(texts, show_progress_bar=False, normalize_embeddings=True).tolist()
+    # model = load_model()
+    # return model.encode(texts, show_progress_bar=False, normalize_embeddings=True).tolist()
+    # Temporary dummy implementation
+    return [[0.1] * 384 for _ in texts]  # Return dummy 384-dimensional vectors
 
 
 def rebuild_cache():

@@ -158,6 +158,92 @@ def send_lead_response_email(sender, instance, created, **kwargs):
         logger.error(f"Error sending lead response email: {str(e)}", exc_info=True)
 
 
+# ==============================
+# BOOKING AUTO-PROMOTION SIGNALS
+# ==============================
+
+@receiver(post_save, sender=Booking)
+def update_trip_status_on_booking_change(sender, instance, **kwargs):
+    """
+    Update trip status when booking status changes
+    Auto-promotes trips at 4 bookings, removes promotion at 5 bookings
+    """
+    if instance.trip:
+        instance.trip.update_status()
+        logger.info(f"Trip {instance.trip.name} status updated due to booking change")
+
+
+# ==============================
+# LEAD SCORING SIGNALS
+# ==============================
+
+@receiver(post_save, sender=Lead)
+def auto_score_lead(sender, instance, created, **kwargs):
+    """
+    Automatically score a lead when it's created or significantly updated
+    """
+    try:
+        # Only score if this is a new lead or if key fields have changed
+        should_score = created
+
+        if not created:
+            # Check if any important fields changed (you might want to track this)
+            # For now, we'll re-score periodically or on demand
+            pass
+
+        if should_score:
+            # Initialize ML model
+            import sys
+            import os
+            sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+            from ml_models.lead_scoring_model import LeadScoringModel
+            model = LeadScoringModel()
+            model_loaded = model.load_model()
+
+            if model_loaded:
+                # Score the lead
+                score = model.predict_probability(instance)
+
+                # Save qualification score
+                from core.models import LeadQualificationScore
+                qual_score, created_score = LeadQualificationScore.objects.get_or_create(
+                    lead=instance,
+                    defaults={
+                        'engagement_score': 0,
+                        'intent_score': 0,
+                        'fit_score': 0,
+                        'urgency_score': 0,
+                        'total_score': score,
+                        'qualification_status': _get_status_from_score(score),
+                        'scoring_reason': 'Auto-scoring on lead creation'
+                    }
+                )
+
+                if not created_score:
+                    # Update existing score
+                    qual_score.total_score = score
+                    qual_score.qualification_status = _get_status_from_score(score)
+                    qual_score.scoring_reason = 'Auto-re-scoring'
+                    qual_score.save()
+
+                logger.info(f"Auto-scored lead {instance.id}: {score} ({qual_score.qualification_status})")
+            else:
+                logger.warning("ML model not available for auto-scoring")
+
+    except Exception as e:
+        logger.error(f"Error auto-scoring lead {instance.id}: {str(e)}")
+
+
+def _get_status_from_score(score):
+    """Convert numeric score to qualification status"""
+    if score >= 75:
+        return 'hot'
+    elif score >= 40:
+        return 'warm'
+    else:
+        return 'cold'
+
+
 # Signal configuration
 def ready():
     """

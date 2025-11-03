@@ -1,0 +1,277 @@
+/* Offline Page Styles */
+
+.offline-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+  padding-top: max(20px, env(safe-area-inset-top));
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
+}
+
+.offline-content {
+  background: white;
+  border-radius: 16px;
+  padding: 40px 24px;
+  max-width: 500px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.offline-icon-large {
+  font-size: 64px;
+  margin-bottom: 24px;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.offline-content h1 {
+  font-size: 28px;
+  margin: 16px 0 8px 0;
+  color: #333;
+  font-weight: 700;
+}
+
+.offline-subtitle {
+  color: #666;
+  margin-bottom: 32px;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.offline-features {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 32px;
+  text-align: left;
+}
+
+.feature {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  background: #f5f5f5;
+  border-radius: 12px;
+  transition: all 0.3s;
+}
+
+.feature:hover {
+  background: #efefef;
+  transform: translateY(-2px);
+}
+
+.check {
+  font-size: 24px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.feature h3 {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  color: #333;
+  font-weight: 600;
+}
+
+.feature p {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.offline-actions {
+  display: flex;
+  gap: 12px;
+  flex-direction: column;
+  margin-bottom: 24px;
+}
+
+.retry-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  min-height: 44px;
+}
+
+.retry-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
+
+.retry-btn:active {
+  transform: translateY(0);
+}
+
+.back-btn {
+  background: #f0f0f0;
+  color: #333;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.back-btn:hover {
+  background: #e0e0e0;
+  transform: translateY(-2px);
+}
+
+.back-btn:active {
+  transform: translateY(0);
+}
+
+.offline-tips {
+  background: #e8f5e9;
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 4px solid #4caf50;
+  text-align: left;
+}
+
+.offline-tips h4 {
+  margin: 0 0 12px 0;
+  color: #2e7d32;
+  font-size: 14px;
+}
+
+.offline-tips ul {
+  margin: 0;
+  padding-left: 20px;
+  list-style: none;
+}
+
+.offline-tips li {
+  color: #558b2f;
+  font-size: 14px;
+  margin-bottom: 6px;
+  position: relative;
+  padding-left: 20px;
+}
+
+.offline-tips li:before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #4caf50;
+  font-weight: bold;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 480px) {
+  .offline-content {
+    padding: 32px 16px;
+    border-radius: 12px;
+  }
+
+  .offline-icon-large {
+    font-size: 48px;
+  }
+
+  .offline-content h1 {
+    font-size: 24px;
+  }
+
+  .offline-subtitle {
+    font-size: 14px;
+  }
+
+  .feature {
+    padding: 12px;
+  }
+
+  .feature h3 {
+    font-size: 15px;
+  }
+
+  .feature p {
+    font-size: 13px;
+  }
+
+  .retry-btn,
+  .back-btn {
+    padding: 10px 16px;
+    font-size: 15px;
+  }
+}
+
+/* Landscape mode */
+@media (orientation: landscape) and (max-height: 500px) {
+  .offline-page {
+    padding: 10px;
+  }
+
+  .offline-content {
+    padding: 20px 16px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .offline-icon-large {
+    font-size: 40px;
+    margin-bottom: 12px;
+  }
+
+  .offline-features {
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .feature {
+    padding: 8px;
+  }
+
+  .feature h3,
+  .offline-subtitle {
+    display: none;
+  }
+}
+
+/* Tablet and above */
+@media (min-width: 768px) {
+  .offline-content {
+    padding: 48px 32px;
+  }
+
+  .offline-features {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+}

@@ -45,8 +45,8 @@ function detectInitialTheme(): 'light' | 'dark' {
   if (typeof window === 'undefined') return 'light';
   const stored = localStorage.getItem(THEME_KEY) as 'light' | 'dark' | null;
   if (stored) return stored;
-  const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)');
-  return prefersDark ? 'dark' : 'light';
+  // Default to LIGHT mode instead of system preference
+  return 'light';
 }
 
 export const useAdventureStore = create<AdventureStore>((set) => ({

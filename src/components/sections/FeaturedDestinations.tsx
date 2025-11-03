@@ -4,8 +4,7 @@ import { MapPin, Star as StarIcon, Clock, Users, ArrowRight, X } from 'lucide-re
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Link } from 'react-router-dom';
-import { collection, getDocs, query, limit } from 'firebase/firestore';
-import { db, getDbOrThrow, waitForFirestore } from '../../firebase';
+import { fetchTrips } from '../../services/api';
 
 interface TripDoc {
 	id: string;
@@ -18,10 +17,14 @@ interface TripDoc {
 	images?: string[];
 	rating?: number;
 	reviewCount?: number;
-	category?: string; // derived if absent
+	category?: string;
 	tags?: string[];
 	spotsAvailable?: number;
-	nextDeparture?: string; // ISO or YYYY-MM-DD
+	nextDeparture?: string;
+	availableSlots?: number;
+	isAvailable?: boolean;
+	status?: string;
+	maxCapacity?: number;
 }
 
 // Derive category from tags / name if not present
@@ -60,70 +63,38 @@ export const FeaturedDestinations: React.FC = () => {
 		let active = true;
 		(async () => {
 			try {
-				let activeDb = db;
-				if (!activeDb) {
-					try {
-						activeDb = await waitForFirestore(3000);
-					} catch {
-						try { activeDb = getDbOrThrow(); } catch (err) {
-							console.warn('Firestore still unavailable after wait. Falling back.', err);
-							setError('Firestore unavailable');
-							return;
-						}
-					}
-				}
-				const snap = await getDocs(query(collection(activeDb, 'trips'), limit(8)));
+				// Fetch from Django backend
+				const data = await fetchTrips();
 				if (!active) return;
-				const docs: TripDoc[] = snap.docs.map(d => {
-					const data = d.data();
-					return {
-						id: d.id,
-						name: data.name,
-						location: data.location,
-						difficulty: data.difficulty,
-						duration: data.duration,
-						price: data.price,
-						highlights: data.highlights,
-						images: data.images,
-						rating: data.rating,
-						reviewCount: data.reviewCount,
-						category: data.category,
-						tags: data.tags,
-						spotsAvailable: data.spotsAvailable,
-						nextDeparture: data.nextDeparture
-					};
-				});
-				// Filter to show only "near" trips (nextDeparture within 45 days) if date present
-				const NEAR_DAYS = 45;
-				const now = new Date();
-				const near = docs
-					.map(t => ({
-						...t,
-						__departureTs: (() => {
-							if (!t.nextDeparture) return Number.MAX_SAFE_INTEGER; // put undated trips at end
-							// Accept YYYY-MM-DD or full ISO
-							const parsed = new Date(t.nextDeparture);
-							return isNaN(parsed.getTime()) ? Number.MAX_SAFE_INTEGER : parsed.getTime();
-						})()
-					}))
-					.sort((a,b) => a.__departureTs - b.__departureTs)
-					.filter(t => {
-						if (!t.nextDeparture) return true; // keep if no date
-						const dt = new Date(t.nextDeparture);
-						if (isNaN(dt.getTime())) return true;
-						const diffDays = (dt.getTime() - now.getTime()) / 86400000;
-						return diffDays >= 0 && diffDays <= NEAR_DAYS;
-					})
-					.slice(0,8)
-					.map(obj => {
-						interface WithTs extends TripDoc { __departureTs?: number }
-						// eslint-disable-next-line @typescript-eslint/no-unused-vars
-						const { __departureTs, ...rest } = obj as WithTs;
-						return rest;
-					});
-				setTrips(near.length ? near : docs.slice(0,8));
-			} catch (e) {
-				setError(e instanceof Error ? e.message : 'Failed to load');
+				
+				// Take first 8 trips for featured section
+				const featuredTrips = data.slice(0, 8).map((trip: Record<string, unknown>) => ({
+					id: trip.id?.toString() || trip.slug,
+					name: trip.name || trip.title,
+					location: trip.location,
+					difficulty: trip.difficulty,
+					duration: trip.duration || `${trip.duration_days || 3} Days`,
+					price: trip.price,
+					highlights: trip.highlights || [],
+					images: trip.images || [trip.image],
+					rating: trip.rating || 4.5,
+					reviewCount: trip.review_count || trip.reviewCount || 0,
+					category: trip.category,
+					tags: trip.tags || [],
+					spotsAvailable: trip.available_seats || trip.spotsLeft,
+					nextDeparture: trip.next_departure,
+					availableSlots: trip.available_slots,
+					isAvailable: trip.is_available,
+					status: trip.status,
+					maxCapacity: trip.max_capacity,
+				}));
+				
+				setTrips(featuredTrips);
+			} catch (err) {
+				console.error('Error fetching trips:', err);
+				if (active) {
+					setError('Failed to load trips. Please try again later.');
+				}
 			} finally {
 				if (active) setLoading(false);
 			}
@@ -142,7 +113,11 @@ export const FeaturedDestinations: React.FC = () => {
 		rating: t.rating || 4.7,
 		reviewCount: t.reviewCount || 12,
 		image: (t.images && t.images[0]) || 'https://via.placeholder.com/400x300?text=Adventure',
-		highlights: t.highlights && t.highlights.length ? t.highlights : ['Scenic views','Great experience','Guided trek']
+		highlights: t.highlights && t.highlights.length ? t.highlights : ['Scenic views','Great experience','Guided trek'],
+		availableSlots: t.availableSlots,
+		isAvailable: t.isAvailable,
+		status: t.status,
+		maxCapacity: t.maxCapacity,
 	})), [trips]);
 
 	const containerVariants = {
@@ -208,7 +183,7 @@ export const FeaturedDestinations: React.FC = () => {
 					{destinations.map((destination, index) => (
 						<motion.div key={destination.id} variants={itemVariants}>
 							<Card
-								className="h-full group cursor-pointer overflow-hidden"
+								className={`h-full group cursor-pointer overflow-hidden ${destination.status === 'promoted' ? 'ring-2 ring-orange-400 shadow-lg shadow-orange-400/30' : ''}`}
 								hover
 								tilt
 								glow={index % 2 === 0}
@@ -242,6 +217,25 @@ export const FeaturedDestinations: React.FC = () => {
 										   >
 											   {destination.difficulty}
 										   </span>
+									   </div>
+
+									   {/* Capacity/Status Badges */}
+									   <div className="absolute top-4 left-20 flex gap-2">
+										   {destination.status === 'promoted' && (
+											   <span className="px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg">
+												   🔥 Hot Deal
+											   </span>
+										   )}
+										   {destination.availableSlots !== undefined && destination.availableSlots <= 2 && destination.availableSlots > 0 && (
+											   <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-500 text-white">
+												   Only {destination.availableSlots} left!
+											   </span>
+										   )}
+										   {destination.availableSlots !== undefined && destination.availableSlots === 0 && (
+											   <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-500 text-white">
+												   Fully Booked
+											   </span>
+										   )}
 									   </div>
 
 									   {/* Rating */}
@@ -281,7 +275,7 @@ export const FeaturedDestinations: React.FC = () => {
 										</div>
 										<div className="flex items-center">
 											<Users className="w-4 h-4 mr-1" />
-											<span>Max 12</span>
+											<span>{destination.availableSlots !== undefined ? `${destination.availableSlots} available` : 'Check availability'}</span>
 										</div>
 									</div>
 
@@ -358,9 +352,9 @@ export const FeaturedDestinations: React.FC = () => {
 					className="fixed inset-0 z-50 flex items-center justify-center"
 				>
 					<div className="absolute inset-0 bg-black/50" onClick={() => setQuickView(null)} />
-					<div className="relative bg-white dark:bg-[#111827] rounded-2xl shadow-2xl max-w-3xl w-[92vw] overflow-hidden">
+					<div className="relative bg-white rounded-2xl shadow-2xl max-w-3xl w-[92vw] overflow-hidden">
 						<button
-							className="absolute top-3 right-3 p-2 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20"
+							className="absolute top-3 right-3 p-2 rounded-full bg-black/10 hover:bg-black/20"
 							aria-label="Close"
 							onClick={() => setQuickView(null)}
 						>
@@ -381,12 +375,12 @@ export const FeaturedDestinations: React.FC = () => {
 								</div>
 							</div>
 							<div className="p-5 md:p-6">
-								<h3 className="text-xl font-oswald font-bold text-forest-green dark:text-white">{quickView.name}</h3>
-								<div className="flex items-center text-mountain-blue dark:text-gray-300 mt-1">
+								<h3 className="text-xl font-oswald font-bold text-forest-green">{quickView.name}</h3>
+								<div className="flex items-center text-mountain-blue mt-1">
 									<MapPin className="w-4 h-4 mr-1" />
 									<span className="text-sm">{quickView.location}</span>
 								</div>
-								<ul className="mt-4 space-y-2 text-sm text-gray-700 dark:text-gray-300">
+								<ul className="mt-4 space-y-2 text-sm text-gray-700">
 									{quickView.highlights.slice(0, 3).map((h, i) => (
 										<li key={i} className="flex items-center">
 											<div className="w-1.5 h-1.5 bg-adventure-orange rounded-full mr-2" />
@@ -394,13 +388,13 @@ export const FeaturedDestinations: React.FC = () => {
 										</li>
 									))}
 								</ul>
-								<div className="mt-4 flex items-center gap-4 text-sm text-mountain-blue dark:text-gray-300">
+								<div className="mt-4 flex items-center gap-4 text-sm text-mountain-blue">
 									<div className="flex items-center"><Clock className="w-4 h-4 mr-1" />{quickView.duration}</div>
 									<div className="flex items-center"><Users className="w-4 h-4 mr-1" />Max 12</div>
 								</div>
 								<div className="mt-6 flex items-center justify-between">
 									<div>
-										<span className="text-2xl font-oswald font-bold text-forest-green dark:text-white">₹{quickView.price.toLocaleString()}</span>
+										<span className="text-2xl font-oswald font-bold text-forest-green">₹{quickView.price.toLocaleString()}</span>
 										<span className="text-sm text-gray-500 ml-1">per person</span>
 									</div>
 									<div className="flex gap-2">

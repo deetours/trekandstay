@@ -60,7 +60,7 @@ class Migration(migrations.Migration):
                 ('story', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='ratings', to='core.story')),
             ],
             options={
-                'constraints': [models.CheckConstraint(condition=models.Q(('value__gte', 1), ('value__lte', 5)), name='rating_between_1_and_5')],
+                'constraints': [models.CheckConstraint(check=models.Q(('value__gte', 1), ('value__lte', 5)), name='rating_between_1_and_5')],
             },
         ),
     ]

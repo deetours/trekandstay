@@ -70,6 +70,33 @@ class Booking(models.Model):
     balance_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def confirm_booking(self):
+        """Confirm a booking and update trip status"""
+        if self.status != 'confirmed':
+            self.status = 'confirmed'
+            self.save(update_fields=['status'])
+            # Update trip status if this booking is linked to a trip
+            if self.trip:
+                self.trip.update_status()
+            # Update user's booking limit
+            booking_limit, created = BookingLimit.objects.get_or_create(user=self.user)
+            booking_limit.increment_booking_count()
+
+    def cancel_booking(self):
+        """Cancel a booking and update trip status"""
+        if self.status == 'confirmed':
+            self.status = 'cancelled'
+            self.save(update_fields=['status'])
+            # Update trip status if this booking is linked to a trip
+            if self.trip:
+                self.trip.update_status()
+            # Update user's booking limit
+            try:
+                booking_limit = self.user.booking_limit
+                booking_limit.decrement_booking_count()
+            except BookingLimit.DoesNotExist:
+                pass
+
 class TripHistory(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     destination = models.CharField(max_length=255)
@@ -140,7 +167,7 @@ class Payment(models.Model):
     confirmation_whatsapp_sent = models.BooleanField(default=False)
     
     # Additional verification data
-    reference_number = models.CharField(max_length=50, unique=True, db_index=True)  # TAS{timestamp}
+    reference_number = models.CharField(max_length=50, unique=True, db_index=True, null=True, blank=True)  # TAS{timestamp}
     notes = models.TextField(blank=True)
 
     class Meta:
@@ -261,12 +288,19 @@ class Guide(models.Model):
         return self.name
 
 class Trip(models.Model):
+    STATUS_CHOICES = [
+        ('available', 'Available'),
+        ('promoted', 'Promoted'),
+        ('full', 'Full'),
+    ]
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     images = models.JSONField(default=list, blank=True)
     location = models.CharField(max_length=200)
     duration = models.CharField(max_length=120, blank=True)
     spots_available = models.PositiveIntegerField(default=0)
+    max_capacity = models.PositiveIntegerField(default=5)  # 5-booking cap
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='available', db_index=True)
     next_departure = models.DateField(null=True, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     safety_record = models.CharField(max_length=200, blank=True)
@@ -279,7 +313,54 @@ class Trip(models.Model):
     def __str__(self) -> str:
         return self.name
 
-# New SeatLock model for server-side seat reservation
+    def update_status(self):
+        """Update trip status based on current bookings"""
+        confirmed_bookings = self.bookings.filter(status='confirmed').count()
+        if confirmed_bookings >= self.max_capacity:
+            self.status = 'full'
+        elif confirmed_bookings >= self.max_capacity - 1:  # 4 or more bookings
+            self.status = 'promoted'
+        else:
+            self.status = 'available'
+        self.save(update_fields=['status'])
+
+    def get_available_slots(self):
+        """Get remaining available slots"""
+        confirmed_bookings = self.bookings.filter(status='confirmed').count()
+        return max(0, self.max_capacity - confirmed_bookings)
+
+    def is_available_for_booking(self):
+        """Check if trip can accept new bookings"""
+        return self.get_available_slots() > 0
+class BookingLimit(models.Model):
+    """Track per-user booking limits to prevent overbooking"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='booking_limit')
+    total_bookings = models.PositiveIntegerField(default=0)
+    max_allowed = models.PositiveIntegerField(default=3)  # Default limit of 3 bookings per user
+    last_booking_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def can_book_more(self):
+        """Check if user can make more bookings"""
+        return self.total_bookings < self.max_allowed
+
+    def increment_booking_count(self):
+        """Increment booking count and update last booking date"""
+        from django.utils import timezone
+        self.total_bookings += 1
+        self.last_booking_date = timezone.now().date()
+        self.save(update_fields=['total_bookings', 'last_booking_date'])
+
+    def decrement_booking_count(self):
+        """Decrement booking count (for cancellations)"""
+        if self.total_bookings > 0:
+            self.total_bookings -= 1
+            self.save(update_fields=['total_bookings'])
+
+    def __str__(self):
+        return f"{self.user.username} - {self.total_bookings}/{self.max_allowed} bookings"
+
 class SeatLock(models.Model):
     STATUS_CHOICES = [
         ('active', 'Active'),
@@ -915,3 +996,193 @@ class LeadPrioritizationQueue(models.Model):
     
     def __str__(self):
         return f"{self.lead.name} - Priority {self.priority_level} (Queue: {self.queue_position})"
+
+# ==================== WHATSAPP OTP AUTHENTICATION ====================
+
+class OTPVerification(models.Model):
+    """Store OTP codes for WhatsApp authentication"""
+    phone_number = models.CharField(max_length=15, db_index=True)  # +91XXXXXXXXXX format
+    otp_code = models.CharField(max_length=6)
+    hashed_otp = models.CharField(max_length=128)  # Store hashed OTP for security
+    attempts = models.PositiveIntegerField(default=0)
+    max_attempts = models.PositiveIntegerField(default=3)
+    is_verified = models.BooleanField(default=False)
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    verified_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['phone_number', '-created_at']),
+            models.Index(fields=['expires_at']),
+        ]
+
+    def is_expired(self):
+        return timezone.now() > self.expires_at
+
+    def can_attempt(self):
+        return self.attempts < self.max_attempts and not self.is_expired()
+
+    def increment_attempts(self):
+        self.attempts += 1
+        self.save(update_fields=['attempts'])
+
+    def mark_verified(self):
+        self.is_verified = True
+        self.verified_at = timezone.now()
+        self.save(update_fields=['is_verified', 'verified_at'])
+
+    def __str__(self):
+        return f"OTP for {self.phone_number} - {'Verified' if self.is_verified else 'Pending'}"
+
+# ==================== CAMPAIGN ANALYTICS ====================
+
+class CampaignAnalytics(models.Model):
+    """Track automated campaign performance and ROI"""
+    CAMPAIGN_TYPES = [
+        ('occupancy_monitoring', 'Occupancy Monitoring'),
+        ('lead_nurturing', 'Lead Nurturing'),
+        ('promotional', 'Promotional'),
+        ('reengagement', 'Re-engagement'),
+    ]
+    
+    URGENCY_LEVELS = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+        ('critical', 'Critical'),
+    ]
+    
+    # Campaign details
+    campaign_type = models.CharField(max_length=30, choices=CAMPAIGN_TYPES, default='occupancy_monitoring')
+    urgency_level = models.CharField(max_length=20, choices=URGENCY_LEVELS, default='medium')
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name='campaigns')
+    
+    # Message details
+    template_used = models.ForeignKey(MessageTemplate, on_delete=models.SET_NULL, null=True, blank=True)
+    message_body = models.TextField()
+    
+    # Targeting
+    target_leads_count = models.PositiveIntegerField(default=0)
+    qualified_leads_count = models.PositiveIntegerField(default=0)
+    
+    # Performance metrics
+    messages_sent = models.PositiveIntegerField(default=0)
+    messages_delivered = models.PositiveIntegerField(default=0)
+    messages_read = models.PositiveIntegerField(default=0)
+    responses_received = models.PositiveIntegerField(default=0)
+    
+    # Conversion metrics
+    bookings_generated = models.PositiveIntegerField(default=0)
+    revenue_generated = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    
+    # Cost tracking
+    message_cost = models.DecimalField(max_digits=8, decimal_places=2, default=0)  # Cost per message
+    
+    # Timing
+    started_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
+    # ROI calculation
+    @property
+    def roi_percentage(self):
+        """Calculate ROI as (revenue - cost) / cost * 100"""
+        total_cost = self.message_cost * self.messages_sent
+        if total_cost == 0:
+            return 0
+        return ((self.revenue_generated - total_cost) / total_cost) * 100
+    
+    @property
+    def conversion_rate(self):
+        """Calculate conversion rate as bookings / messages_sent"""
+        if self.messages_sent == 0:
+            return 0
+        return (self.bookings_generated / self.messages_sent) * 100
+    
+    def record_message_sent(self, lead):
+        """Record a message being sent"""
+        self.messages_sent += 1
+        self.save(update_fields=['messages_sent'])
+        
+        # Create campaign lead tracking
+        CampaignLeadTracking.objects.create(
+            campaign=self,
+            lead=lead,
+            status='sent'
+        )
+    
+    def record_response(self, lead):
+        """Record a response from a lead"""
+        self.responses_received += 1
+        self.save(update_fields=['responses_received'])
+        
+        # Update lead tracking
+        tracking = CampaignLeadTracking.objects.filter(campaign=self, lead=lead).first()
+        if tracking:
+            tracking.status = 'responded'
+            tracking.responded_at = timezone.now()
+            tracking.save()
+    
+    def record_booking(self, lead, booking_amount):
+        """Record a booking generated from campaign"""
+        self.bookings_generated += 1
+        self.revenue_generated += booking_amount
+        self.save(update_fields=['bookings_generated', 'revenue_generated'])
+        
+        # Update lead tracking
+        tracking = CampaignLeadTracking.objects.filter(campaign=self, lead=lead).first()
+        if tracking:
+            tracking.status = 'converted'
+            tracking.converted_at = timezone.now()
+            tracking.booking_amount = booking_amount
+            tracking.save()
+    
+    def complete_campaign(self):
+        """Mark campaign as completed"""
+        self.completed_at = timezone.now()
+        self.save(update_fields=['completed_at'])
+    
+    class Meta:
+        ordering = ['-started_at']
+        verbose_name_plural = 'Campaign Analytics'
+    
+    def __str__(self):
+        return f"{self.campaign_type} - {self.trip.name} ({self.urgency_level})"
+
+
+class CampaignLeadTracking(models.Model):
+    """Track individual lead interactions within a campaign"""
+    STATUS_CHOICES = [
+        ('sent', 'Message Sent'),
+        ('delivered', 'Message Delivered'),
+        ('read', 'Message Read'),
+        ('responded', 'Responded'),
+        ('converted', 'Converted'),
+        ('failed', 'Failed'),
+    ]
+    
+    campaign = models.ForeignKey(CampaignAnalytics, on_delete=models.CASCADE, related_name='lead_tracking')
+    lead = models.ForeignKey(Lead, on_delete=models.CASCADE, related_name='campaign_tracking')
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='sent')
+    
+    # Timing
+    sent_at = models.DateTimeField(auto_now_add=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+    responded_at = models.DateTimeField(null=True, blank=True)
+    converted_at = models.DateTimeField(null=True, blank=True)
+    
+    # Conversion data
+    booking_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    
+    # Response tracking
+    response_message = models.TextField(blank=True)
+    
+    class Meta:
+        unique_together = ('campaign', 'lead')
+        ordering = ['-sent_at']
+    
+    def __str__(self):
+        return f"{self.campaign.trip.name} -> {self.lead.name} ({self.status})"

@@ -11,6 +11,7 @@ import FAQ from '../components/sections/FAQ';
 import { NewsletterCTA } from '../components/sections/NewsletterCTA';
 import { PartnerLogos } from '../components/sections/PartnerLogos';
 import { LocalScene } from '../components/3d/LocalScene';
+import { FeaturedTreks } from '../components/sections/FeaturedTreks';
 
 export function HomePage() {
   return (
@@ -23,6 +24,7 @@ export function HomePage() {
         <TrustStrip />
       </div>
       <ValueProps />
+      <FeaturedTreks />
       <PartnerLogos />
       <FeaturedDestinations />
       <FeaturedStays />

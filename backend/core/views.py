@@ -3,7 +3,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.db import transaction, models
-from django.db.models import Avg
+from django.db.models import Avg, Count
 from django.utils import timezone
 import cloudinary.uploader as cloud_uploader
 from .models import UserProfile, Booking, TripHistory, TripRecommendation, Lead, Author, Story, StoryImage, StoryAudio, StoryRating, Trip, Guide, Review, Wishlist, Payment, ChatFAQ, SeatLock, MessageTemplate, LeadEvent, OutboundMessage, Task, PaymentVerificationLog, TransactionAudit, UserProgress, PointTransaction, Badge, BadgeUnlock, GamificationEvent, Challenge, UserChallengeProgress, LeadQualificationScore, LeadQualificationRule, LeadPrioritizationQueue
@@ -78,6 +78,15 @@ class BookingViewSet(viewsets.ModelViewSet):
             trip = None
             if trip_id:
                 trip = Trip.objects.select_for_update().filter(id=trip_id).first()
+                if trip:
+                    # Check trip capacity
+                    if not trip.is_available_for_booking():
+                        raise ValueError('Trip is fully booked')
+                    
+                    # Check user booking limit
+                    booking_limit, created = BookingLimit.objects.get_or_create(user=user)
+                    if not booking_limit.can_book_more():
+                        raise ValueError(f'You have reached your booking limit of {booking_limit.max_allowed} bookings')
             seat_lock = None
             if seat_lock_id:
                 try:
@@ -910,7 +919,6 @@ def _cancel_booking(user, args):
     return {'status': 'ok', 'message': f'Cancelled booking {booking_id}'}
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
 def chat_complete(request):
     data = request.data
     messages_in = data.get('messages') or []
@@ -1568,7 +1576,7 @@ Reply anytime if you have questions! 🏔️
             )
             
         except Exception as e:
-            logger.warning(f"Failed to send welcome WhatsApp message: {str(e)}")
+            logger.warning(f"Failed to send confirmation email: {str(e)}")
         
         # Send follow-up template message if available
         try:
@@ -2114,676 +2122,614 @@ def get_payment_status(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# Helper functions for email and WhatsApp
-def send_booking_confirmation_email(booking, payment):
-    """Send booking confirmation email"""
-    # This would integrate with SendGrid or similar
-    pass
+# ==================== WHATSAPP OTP AUTHENTICATION ====================
 
-def send_booking_confirmation_whatsapp(booking, payment):
-    """Send booking confirmation via WhatsApp"""
-    # This would integrate with WhatsApp Business API
-    pass
-
-
-# ============================================
-# GAMIFICATION API ENDPOINTS
-# ============================================
-
-@api_view(['GET', 'POST'])
-@permission_classes([IsAuthenticated])
-def user_progress(request):
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@csrf_exempt
+def send_whatsapp_otp(request):
     """
-    Get or update user progress/gamification data.
-    
-    GET /api/user/progress/
-    Returns: {
-        points, level, badges, totalBookings, streak, challenges
-    }
-    
-    POST /api/user/progress/update-event/
-    Accepts: {
-        event_type: 'trip_view' | 'booking_completed' | etc,
-        trip_id: 123 (optional),
-        booking_id: 456 (optional),
-        metadata: {} (optional)
+    Send OTP to phone number via WhatsApp for authentication
+    POST /api/auth/send-otp/
+    {
+        "phone_number": "+91XXXXXXXXXX"
     }
     """
     try:
-        # Get or create user progress
-        progress, created = UserProgress.objects.get_or_create(
-            user=request.user,
-            defaults={
-                'points': 0,
-                'level': 1,
-                'badges': [],
-                'completed_challenges': []
-            }
+        phone_number = request.data.get('phone_number', '').strip()
+
+        if not phone_number:
+            return Response({
+                'error': 'Phone number is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate phone number format (Indian numbers)
+        import re
+        clean_phone = re.sub(r'\D', '', phone_number)
+        if len(clean_phone) != 12 or not clean_phone.startswith('91'):
+            return Response({
+                'error': 'Please provide a valid Indian phone number (+91XXXXXXXXXX)'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check rate limiting (max 3 OTP requests per hour per phone)
+        one_hour_ago = timezone.now() - timedelta(hours=1)
+        recent_otps = OTPVerification.objects.filter(
+            phone_number=phone_number,
+            created_at__gte=one_hour_ago
+        ).count()
+
+        if recent_otps >= 3:
+            return Response({
+                'error': 'Too many OTP requests. Please try again after 1 hour.'
+            }, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+        # Generate 6-digit OTP
+        import random
+        otp_code = str(random.randint(100000, 999999))
+
+        # Hash the OTP for storage
+        import hashlib
+        hashed_otp = hashlib.sha256(otp_code.encode()).hexdigest()
+
+        # Create OTP verification record
+        otp_record = OTPVerification.objects.create(
+            phone_number=phone_number,
+            otp_code=otp_code,  # Store plain for WhatsApp sending
+            hashed_otp=hashed_otp,
+            expires_at=timezone.now() + timedelta(minutes=5)
         )
-        
-        if request.method == 'GET':
-            # Get user progress with full details
-            from .serializers import UserProgressSerializer
-            
-            # Get active challenges
-            active_challenges = UserChallengeProgress.objects.filter(
-                user=request.user,
-                completed=False,
-                challenge__is_active=True
-            ).select_related('challenge')
-            
-            challenge_data = [
-                {
-                    'id': cp.challenge.id,
-                    'name': cp.challenge.name,
-                    'current_progress': cp.current_progress,
-                    'target': cp.challenge.target_count,
-                    'reward': cp.challenge.reward_points,
-                    'completed': cp.completed
-                }
-                for cp in active_challenges
-            ]
-            
-            # Get recent badges
-            recent_badges = BadgeUnlock.objects.filter(
-                user=request.user
-            ).order_by('-unlocked_at')[:5]
-            
+
+        # Send OTP via WhatsApp
+        otp_message = f"""🔐 Your Trek & Stay verification code is: {otp_code}
+
+This code expires in 5 minutes.
+Do not share this code with anyone.
+
+- Team Trek & Stay"""
+
+        try:
+            send_whatsapp_message(
+                phone=phone_number,
+                message=otp_message,
+                session_id='otp_auth',
+                message_type='text'
+            )
+
+            logger.info(f"OTP sent to {phone_number}")
+
             return Response({
                 'success': True,
-                'progress': {
-                    'points': progress.points,
-                    'level': progress.level,
-                    'totalEarnedPoints': progress.total_earned_points,
-                    'badges': progress.badges,
-                    'completedChallenges': progress.completed_challenges,
-                    'dailyStreak': progress.daily_streak,
-                    'totalBookings': progress.total_bookings,
-                    'totalTripViews': progress.total_trip_views,
-                    'totalShares': progress.total_shares,
-                    'totalReviews': progress.total_reviews,
-                },
-                'activeChallenges': challenge_data,
-                'recentBadges': [
-                    {
-                        'id': b.badge_id,
-                        'unlockedAt': b.unlocked_at.isoformat()
-                    }
-                    for b in recent_badges
-                ],
-                'pointsToNextLevel': progress.calculate_level() - progress.level
+                'message': 'OTP sent successfully to your WhatsApp',
+                'expires_in': 300,  # 5 minutes in seconds
+                'otp_id': otp_record.id
             }, status=status.HTTP_200_OK)
-        
+
+        except Exception as e:
+            logger.error(f"Failed to send WhatsApp OTP: {str(e)}")
+            # Delete the OTP record if sending failed
+            otp_record.delete()
+            return Response({
+                'error': 'Failed to send OTP. Please try again.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     except Exception as e:
-        logger.error(f"User progress error: {str(e)}")
+        logger.error(f"OTP send error: {str(e)}")
         return Response({
-            'error': 'Failed to retrieve user progress'
+            'error': 'Failed to send OTP'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @csrf_exempt
-def track_gamification_event(request):
+def verify_whatsapp_otp(request):
     """
-    Track a gamification event and award points.
-    
-    POST /api/gamification/track-event/
+    Verify OTP and authenticate user
+    POST /api/auth/verify-otp/
     {
-        "event_type": "trip_view",
-        "user_id": 123 (optional - for auth users),
-        "guest_id": "guest_123" (for anonymous users),
-        "trip_id": 456 (optional),
-        "booking_id": 789 (optional),
-        "metadata": { "custom": "data" }
+        "phone_number": "+91XXXXXXXXXX",
+        "otp_code": "123456"
     }
     """
     try:
-        event_type = request.data.get('event_type')
-        user_id = request.data.get('user_id')
-        guest_id = request.data.get('guest_id')
-        trip_id = request.data.get('trip_id')
-        booking_id = request.data.get('booking_id')
-        metadata = request.data.get('metadata', {})
-        
-        if not event_type:
+        phone_number = request.data.get('phone_number', '').strip()
+        otp_code = request.data.get('otp_code', '').strip()
+
+        if not phone_number or not otp_code:
             return Response({
-                'error': 'event_type is required'
+                'error': 'Phone number and OTP code are required'
             }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Get user if authenticated
-        user = None
-        if request.user.is_authenticated:
-            user = request.user
-        elif user_id:
-            try:
-                user = User.objects.get(id=user_id)
-            except User.DoesNotExist:
-                pass
-        
-        # Get related objects
-        trip = None
-        booking = None
-        if trip_id:
-            try:
-                trip = Trip.objects.get(id=trip_id)
-            except Trip.DoesNotExist:
-                pass
-        if booking_id:
-            try:
-                booking = Booking.objects.get(id=booking_id)
-            except Booking.DoesNotExist:
-                pass
-        
-        # Point allocation based on event type
-        points_map = {
-            'trip_view': 5,
-            'trip_bookmark': 10,
-            'booking_started': 15,
-            'booking_completed': 200,
-            'review_written': 50,
-            'trip_shared': 20,
-            'referral_sent': 100,
-            'daily_login': 10,
-            'lead_submitted': 25,
-            'challenge_completed': 150,
-        }
-        
-        points_awarded = points_map.get(event_type, 0)
-        badges_unlocked = []
-        
-        # Create gamification event record
-        gam_event = GamificationEvent.objects.create(
-            user=user,
-            guest_id=guest_id or '',
-            event_type=event_type,
-            trip=trip,
-            booking=booking,
-            points_awarded=points_awarded,
-            metadata=metadata
-        )
-        
-        # Award points if user exists
-        if user:
-            progress, _ = UserProgress.objects.get_or_create(user=user)
-            
-            # Update event counters
-            if event_type == 'trip_view':
-                progress.total_trip_views += 1
-            elif event_type == 'booking_completed':
-                progress.total_bookings += 1
-            elif event_type == 'review_written':
-                progress.total_reviews += 1
-            elif event_type == 'trip_shared':
-                progress.total_shares += 1
-            
-            # Update daily streak
-            today = timezone.now().date()
-            if progress.last_activity_date != today:
-                if progress.last_activity_date == (today - timezone.timedelta(days=1)):
-                    progress.daily_streak += 1
-                else:
-                    progress.daily_streak = 1
-                progress.last_activity_date = today
-            
-            # Award points and check for level up
-            leveled_up = progress.add_points(points_awarded, event_type)
-            
-            # Check badge unlocks
-            badges_unlocked = check_badge_unlocks(user, progress)
-            
-            if badges_unlocked:
-                gam_event.badges_unlocked = [b.id for b in badges_unlocked]
-                gam_event.save(update_fields=['badges_unlocked'])
-            
-            # Update challenge progress
-            update_user_challenges(user, event_type)
-            
-            logger.info(f"Gamification event: {user.username} - {event_type} +{points_awarded}pts (L{progress.level})")
-        
-        return Response({
-            'success': True,
-            'pointsAwarded': points_awarded,
-            'badgesUnlocked': [b.id for b in badges_unlocked],
-            'eventId': gam_event.id
-        }, status=status.HTTP_201_CREATED)
-        
-    except Exception as e:
-        logger.error(f"Gamification tracking error: {str(e)}")
-        return Response({
-            'error': 'Failed to track event'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+        # Find the latest unverified OTP for this phone number
+        otp_record = OTPVerification.objects.filter(
+            phone_number=phone_number,
+            is_verified=False
+        ).order_by('-created_at').first()
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_leaderboard(request):
-    """
-    Get global leaderboard.
-    
-    GET /api/gamification/leaderboard/?limit=100&timeframe=alltime
-    Timeframe: 'week' | 'month' | 'alltime'
-    """
-    try:
-        limit = min(int(request.query_params.get('limit', 100)), 1000)
-        timeframe = request.query_params.get('timeframe', 'alltime')
-        
-        query = UserProgress.objects.select_related('user').order_by('-points')
-        
-        # Filter by timeframe
-        if timeframe == 'week':
-            week_ago = timezone.now() - timezone.timedelta(days=7)
-            query = query.filter(updated_at__gte=week_ago)
-        elif timeframe == 'month':
-            month_ago = timezone.now() - timezone.timedelta(days=30)
-            query = query.filter(updated_at__gte=month_ago)
-        
-        leaderboard = query[:limit]
-        
-        # Add ranking
-        data = []
-        for idx, entry in enumerate(leaderboard, 1):
-            data.append({
-                'rank': idx,
-                'userId': entry.user.id,
-                'username': entry.user.username,
-                'points': entry.points,
-                'level': entry.level,
-                'badgeCount': len(entry.badges),
-                'totalBookings': entry.total_bookings,
-            })
-        
-        # Get user's ranking
-        user_rank = UserProgress.objects.filter(
-            points__gt=request.user.progress.points
-        ).count() + 1
-        
-        return Response({
-            'success': True,
-            'leaderboard': data,
-            'userRank': user_rank,
-            'timeframe': timeframe
-        }, status=status.HTTP_200_OK)
-        
-    except Exception as e:
-        logger.error(f"Leaderboard error: {str(e)}")
-        return Response({
-            'error': 'Failed to retrieve leaderboard'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        if not otp_record:
+            return Response({
+                'error': 'No OTP found. Please request a new OTP.'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
+        # Check if OTP is expired
+        if otp_record.is_expired():
+            return Response({
+                'error': 'OTP has expired. Please request a new OTP.'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_badges(request):
-    """
-    Get all available badges and user's badge progress.
-    
-    GET /api/gamification/badges/
-    """
-    try:
-        all_badges = Badge.objects.all()
-        user_badges = BadgeUnlock.objects.filter(user=request.user).values_list('badge_id', flat=True)
-        
-        badges_data = []
-        for badge in all_badges:
-            badges_data.append({
-                'id': badge.id,
-                'name': badge.name,
-                'description': badge.description,
-                'icon': badge.icon_name,
-                'points': badge.points_reward,
-                'rarity': badge.rarity,
-                'unlocked': badge.id in user_badges,
-                'category': badge.category,
-            })
-        
-        return Response({
-            'success': True,
-            'badges': badges_data,
-            'unlockedCount': len(user_badges)
-        }, status=status.HTTP_200_OK)
-        
-    except Exception as e:
-        logger.error(f"Get badges error: {str(e)}")
-        return Response({
-            'error': 'Failed to retrieve badges'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        # Check attempts
+        if not otp_record.can_attempt():
+            return Response({
+                'error': 'Too many failed attempts. Please request a new OTP.'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
+        # Verify OTP
+        if otp_record.otp_code != otp_code:
+            otp_record.increment_attempts()
+            remaining_attempts = otp_record.max_attempts - otp_record.attempts
+            return Response({
+                'error': f'Invalid OTP. {remaining_attempts} attempts remaining.'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def claim_challenge_reward(request):
-    """
-    Claim reward for completed challenge.
-    
-    POST /api/gamification/challenges/{challenge_id}/claim/
-    """
-    try:
-        challenge_id = request.data.get('challenge_id')
-        
-        try:
-            progress = UserChallengeProgress.objects.get(
-                user=request.user,
-                challenge_id=challenge_id
+        # OTP is valid - mark as verified
+        otp_record.mark_verified()
+
+        # Find or create user
+        from django.contrib.auth.models import User
+        clean_phone = phone_number.replace('+91', '')
+
+        # Try to find existing user by phone
+        user = User.objects.filter(
+            Q(username=clean_phone) |
+            Q(email=f"{clean_phone}@whatsapp.local")
+        ).first()
+
+        if not user:
+            # Create new user
+            user = User.objects.create_user(
+                username=clean_phone,
+                email=f"{clean_phone}@whatsapp.local",
+                first_name=f"User {clean_phone}",
+                is_active=True
             )
-        except UserChallengeProgress.DoesNotExist:
-            return Response({
-                'error': 'Challenge progress not found'
-            }, status=status.HTTP_404_NOT_FOUND)
-        
-        if not progress.completed:
-            return Response({
-                'error': 'Challenge not completed'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        if progress.reward_claimed:
-            return Response({
-                'error': 'Reward already claimed'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Award points
-        user_progress = UserProgress.objects.get(user=request.user)
-        user_progress.add_points(progress.challenge.reward_points, 'challenge_completed')
-        
-        # Mark reward as claimed
-        progress.reward_claimed = True
-        progress.claimed_at = timezone.now()
-        progress.save()
-        
+
+            # Create user profile
+            UserProfile.objects.create(
+                user=user,
+                phone=clean_phone
+            )
+
+        # Generate or get auth token
+        from rest_framework.authtoken.models import Token
+        token, created = Token.objects.get_or_create(user=user)
+
+        logger.info(f"User {user.username} authenticated via WhatsApp OTP")
+
         return Response({
             'success': True,
-            'pointsAwarded': progress.challenge.reward_points,
-            'message': 'Challenge reward claimed!'
+            'message': 'OTP verified successfully',
+            'token': token.key,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'name': user.first_name or user.username,
+                'phone': clean_phone,
+                'is_staff': user.is_staff
+            }
         }, status=status.HTTP_200_OK)
-        
+
     except Exception as e:
-        logger.error(f"Claim challenge reward error: {str(e)}")
+        logger.error(f"OTP verification error: {str(e)}")
         return Response({
-            'error': 'Failed to claim reward'
+            'error': 'Failed to verify OTP'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@csrf_exempt
+def resend_whatsapp_otp(request):
+    """
+    Resend OTP to phone number
+    POST /api/auth/resend-otp/
+    {
+        "phone_number": "+91XXXXXXXXXX"
+    }
+    """
+    try:
+        phone_number = request.data.get('phone_number', '').strip()
+
+        if not phone_number:
+            return Response({
+                'error': 'Phone number is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if there's a recent OTP (within last 30 seconds)
+        thirty_seconds_ago = timezone.now() - timedelta(seconds=30)
+        recent_otp = OTPVerification.objects.filter(
+            phone_number=phone_number,
+            created_at__gte=thirty_seconds_ago
+        ).first()
+
+        if recent_otp:
+            return Response({
+                'error': 'Please wait 30 seconds before requesting another OTP'
+            }, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+        # Use the existing send_whatsapp_otp function
+        request.data['phone_number'] = phone_number
+        return send_whatsapp_otp(request)
+
+    except Exception as e:
+        logger.error(f"OTP resend error: {str(e)}")
+        return Response({
+            'error': 'Failed to resend OTP'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # ============================================
-# GAMIFICATION HELPER FUNCTIONS
+# MACHINE LEARNING API ENDPOINTS
 # ============================================
 
-def check_badge_unlocks(user, progress):
-    """Check if user has unlocked any new badges"""
-    unlocked_badges = []
-    already_unlocked = set(BadgeUnlock.objects.filter(user=user).values_list('badge_id', flat=True))
-    
-    # Define unlock conditions
-    conditions = {
-        'explorer': lambda p: p.total_trip_views >= 5,
-        'early-bird': lambda p: p.total_bookings >= 1,  # Would need booking date check in real scenario
-        'social-butterfly': lambda p: p.total_shares >= 3,
-        'photographer': lambda p: p.total_reviews >= 10,  # Placeholder
-        'summit-master': lambda p: p.total_bookings >= 5,
-        'loyal-adventurer': lambda p: p.total_bookings >= 10,
-        'level-5': lambda p: p.level >= 5,
-        'points-500': lambda p: p.points >= 500,
-        'points-1000': lambda p: p.points >= 1000,
-    }
-    
-    for badge_id, condition in conditions.items():
-        if badge_id not in already_unlocked and condition(progress):
-            try:
-                badge = Badge.objects.get(id=badge_id)
-                BadgeUnlock.objects.create(user=user, badge_id=badge_id)
-                progress.badges.append(badge_id)
-                unlocked_badges.append(badge)
-            except Badge.DoesNotExist:
-                pass
-    
-    if unlocked_badges:
-        progress.save(update_fields=['badges'])
-    
-    return unlocked_badges
-
-
-def update_user_challenges(user, event_type):
-    """Update user's challenge progress based on event"""
-    active_challenges = UserChallengeProgress.objects.filter(
-        user=user,
-        completed=False,
-        challenge__event_type=event_type,
-        challenge__is_active=True
-    )
-    
-    for progress in active_challenges:
-        progress.current_progress += 1
-        
-        if progress.current_progress >= progress.challenge.target_count:
-            progress.completed = True
-            progress.completed_at = timezone.now()
-        
-        progress.save()
-        
-        logger.info(f"Challenge progress: {user.username} - {progress.challenge.id}: {progress.current_progress}/{progress.challenge.target_count}")
-
-
-# ============================================
-# LEAD QUALIFICATION SYSTEM
-# ============================================
-
-@api_view(['GET', 'POST'])
+@api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def lead_qualification_score(request, lead_id):
-    """Get or recalculate lead qualification score"""
+def score_lead(request, lead_id):
+    """
+    Score a lead's conversion probability using ML model
+    Returns score from 0-100
+    """
     try:
+        import sys
+        import os
+        sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+        from ml_models.lead_scoring_model import LeadScoringModel
+
+        # Get lead
         lead = Lead.objects.get(id=lead_id)
-        
-        if request.method == 'GET':
-            score_obj, created = LeadQualificationScore.objects.get_or_create(lead=lead)
+
+        # Initialize model
+        model = LeadScoringModel()
+        model_loaded = model.load_model()
+
+        if not model_loaded:
+            # If no saved model, return default score
             return Response({
-                'lead_id': lead.id,
-                'lead_name': lead.name,
-                'total_score': score_obj.total_score,
-                'qualification_status': score_obj.qualification_status,
-                'engagement_score': score_obj.engagement_score,
-                'intent_score': score_obj.intent_score,
-                'fit_score': score_obj.fit_score,
-                'urgency_score': score_obj.urgency_score,
-                'scoring_reason': score_obj.scoring_reason,
-                'last_scored_at': score_obj.last_scored_at
-            }, status=status.HTTP_200_OK)
-        
-        elif request.method == 'POST':
-            # Recalculate score
-            score_obj, created = LeadQualificationScore.objects.get_or_create(lead=lead)
-            new_score = score_obj.calculate_score()
-            
-            # Log the scoring
-            logger.info(f"Lead {lead.name} rescored: {new_score} ({score_obj.qualification_status})")
-            
-            return Response({
-                'success': True,
-                'total_score': new_score,
-                'qualification_status': score_obj.qualification_status,
-                'message': f"Lead scored: {new_score} - {score_obj.qualification_status.upper()}"
-            }, status=status.HTTP_200_OK)
-    
+                'lead_id': lead_id,
+                'conversion_score': 50,
+                'confidence': 'low',
+                'model_status': 'not_trained',
+                'message': 'Model not yet trained. Using default score of 50.'
+            })
+
+        # Score the lead
+        score = model.predict_probability(lead)
+
+        # Determine confidence level
+        if score >= 75:
+            confidence = 'high'
+            recommendation = 'High priority - pursue aggressively'
+        elif score >= 50:
+            confidence = 'medium'
+            recommendation = 'Medium priority - follow up regularly'
+        elif score >= 25:
+            confidence = 'low'
+            recommendation = 'Low priority - monitor passively'
+        else:
+            confidence = 'very_low'
+            recommendation = 'Very low priority - consider deprioritizing'
+
+        return Response({
+            'lead_id': lead_id,
+            'conversion_score': score,
+            'confidence': confidence,
+            'recommendation': recommendation,
+            'model_status': 'active',
+            'scored_at': timezone.now().isoformat()
+        })
+
     except Lead.DoesNotExist:
-        return Response({'error': 'Lead not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({
+            'error': f'Lead with ID {lead_id} not found'
+        }, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
-        logger.error(f"Lead qualification error: {str(e)}")
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.error(f"Lead scoring error: {str(e)}")
+        return Response({
+            'error': 'Failed to score lead',
+            'details': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def retrain_lead_scoring_model(request):
+    """
+    Retrain the lead scoring model with latest data
+    """
+    try:
+        import sys
+        import os
+        sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+        from ml_models.lead_scoring_model import LeadScoringModel
+
+        model = LeadScoringModel()
+        model.retrain_model()
+
+        return Response({
+            'message': 'Lead scoring model retrained successfully',
+            'retrained_at': timezone.now().isoformat()
+        })
+
+    except Exception as e:
+        logger.error(f"Model retraining error: {str(e)}")
+        return Response({
+            'error': 'Failed to retrain model',
+            'details': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def lead_priority_queue(request):
-    """Get prioritized lead queue for sales team"""
+def get_lead_scoring_stats(request):
+    """
+    Get statistics about the lead scoring model performance
+    """
     try:
-        from .models import LeadPrioritizationQueue
-        
-        # Get all active leads in priority queue
-        queue_items = LeadPrioritizationQueue.objects.filter(
-            is_active=True,
-            resolution_status='pending'
-        ).select_related('lead', 'assigned_to')[:50]
-        
-        lead_queue = []
-        for item in queue_items:
-            score_obj = LeadQualificationScore.objects.filter(lead=item.lead).first()
-            lead_queue.append({
-                'queue_id': item.id,
-                'lead_id': item.lead.id,
-                'lead_name': item.lead.name,
-                'lead_phone': item.lead.phone,
-                'lead_email': item.lead.email,
-                'priority_level': item.priority_level,
-                'qualification_status': score_obj.qualification_status if score_obj else 'unknown',
-                'qualification_score': score_obj.total_score if score_obj else 0,
-                'assigned_to': item.assigned_to.username if item.assigned_to else 'Unassigned',
-                'follow_up_date': item.follow_up_date,
-                'last_follow_up': item.last_follow_up,
-                'follow_up_count': item.follow_up_count,
-                'queue_position': item.queue_position
+        import sys
+        import os
+        sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+        from ml_models.lead_scoring_model import LeadScoringModel
+
+        model = LeadScoringModel()
+        model_loaded = model.load_model()
+
+        if not model_loaded:
+            return Response({
+                'model_status': 'not_trained',
+                'message': 'Model not yet trained'
             })
-        
+
+        # Get recent scoring data
+        recent_scores = LeadQualificationScore.objects.filter(
+            created_at__gte=timezone.now() - timedelta(days=30)
+        ).aggregate(
+            avg_score=Avg('total_score'),
+            count=models.Count('id')
+        )
+
+        # Score distribution
+        score_ranges = {
+            'hot': LeadQualificationScore.objects.filter(qualification_status='hot').count(),
+            'warm': LeadQualificationScore.objects.filter(qualification_status='warm').count(),
+            'cold': LeadQualificationScore.objects.filter(qualification_status='cold').count(),
+            'disqualified': LeadQualificationScore.objects.filter(qualification_status='disqualified').count(),
+        }
+
         return Response({
-            'total_leads': len(lead_queue),
-            'leads': lead_queue
-        }, status=status.HTTP_200_OK)
-    
+            'model_status': 'active',
+            'recent_scoring_stats': recent_scores,
+            'score_distribution': score_ranges,
+            'last_updated': timezone.now().isoformat()
+        })
+
     except Exception as e:
-        logger.error(f"Priority queue error: {str(e)}")
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.error(f"Scoring stats error: {str(e)}")
+        return Response({
+            'error': 'Failed to get scoring statistics',
+            'details': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ============================================
+# TRIP RECOMMENDATION API ENDPOINTS
+# ============================================
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_trip_recommendations(request, user_id=None):
+    """
+    Get personalized trip recommendations for a user
+    """
+    try:
+        import sys
+        import os
+        sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+        from ml_models.trip_recommendation_engine import TripRecommendationEngine
+
+        # Use request user if no user_id provided
+        target_user_id = user_id or request.user.id
+
+        # Initialize recommendation engine
+        engine = TripRecommendationEngine()
+        engine_loaded = engine.load_model()
+
+        if not engine_loaded:
+            # If no saved model, return popular trips
+            popular_trips = Trip.objects.annotate(
+                booking_count=Count('bookings')
+            ).order_by('-booking_count')[:5]
+
+            recommendations = []
+            for trip in popular_trips:
+                recommendations.append({
+                    'id': trip.id,
+                    'name': trip.name,
+                    'location': trip.location,
+                    'price': float(trip.price),
+                    'duration': trip.duration,
+                    'image': trip.images[0] if trip.images else None,
+                    'reason': 'Popular trip',
+                    'confidence': 'low'
+                })
+
+            return Response({
+                'user_id': target_user_id,
+                'recommendations': recommendations,
+                'model_status': 'not_trained',
+                'message': 'Using popular trips as fallback'
+            })
+
+        # Get user preferences from request (optional)
+        user_preferences = request.GET.get('preferences', None)
+        if user_preferences:
+            try:
+                user_preferences = json.loads(user_preferences)
+            except:
+                user_preferences = None
+
+        # Get recommendations
+        recommended_trip_ids = engine.get_personalized_recommendations(
+            target_user_id,
+            user_preferences=user_preferences,
+            n_recommendations=5
+        )
+
+        # Fetch trip details
+        recommended_trips = Trip.objects.filter(id__in=recommended_trip_ids)
+        trip_details = {trip.id: trip for trip in recommended_trips}
+
+        recommendations = []
+        for trip_id in recommended_trip_ids:
+            if trip_id in trip_details:
+                trip = trip_details[trip_id]
+                recommendations.append({
+                    'id': trip.id,
+                    'name': trip.name,
+                    'location': trip.location,
+                    'price': float(trip.price),
+                    'duration': trip.duration,
+                    'spots_available': trip.spots_available,
+                    'max_capacity': trip.max_capacity,
+                    'image': trip.images[0] if trip.images else None,
+                    'highlights': trip.highlights[:3] if trip.highlights else [],  # Top 3 highlights
+                    'reason': 'Based on your preferences and similar users',
+                    'confidence': 'high'
+                })
+
+        return Response({
+            'user_id': target_user_id,
+            'recommendations': recommendations,
+            'model_status': 'active',
+            'total_recommendations': len(recommendations),
+            'generated_at': timezone.now().isoformat()
+        })
+
+    except Exception as e:
+        logger.error(f"Trip recommendation error: {str(e)}")
+        return Response({
+            'error': 'Failed to get trip recommendations',
+            'details': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def assign_lead_to_sales_rep(request):
-    """Assign lead to sales representative"""
+def retrain_recommendation_engine(request):
+    """
+    Retrain the trip recommendation engine with latest data
+    """
     try:
-        from .models import LeadPrioritizationQueue
-        
-        lead_id = request.data.get('lead_id')
-        sales_rep_id = request.data.get('sales_rep_id')
-        follow_up_date = request.data.get('follow_up_date')
-        
-        if not lead_id or not sales_rep_id:
-            return Response({'error': 'lead_id and sales_rep_id required'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        lead = Lead.objects.get(id=lead_id)
-        sales_rep = User.objects.get(id=sales_rep_id)
-        
-        # Update or create priority queue entry
-        queue_item, created = LeadPrioritizationQueue.objects.get_or_create(lead=lead)
-        queue_item.assigned_to = sales_rep
-        queue_item.assigned_at = timezone.now()
-        if follow_up_date:
-            queue_item.follow_up_date = follow_up_date
-        queue_item.save()
-        
-        # Update lead assignment
-        lead.assigned_to = sales_rep
-        lead.save(update_fields=['assigned_to'])
-        
-        logger.info(f"Lead {lead.name} assigned to {sales_rep.username}")
-        
+        import sys
+        import os
+        sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+        from ml_models.trip_recommendation_engine import TripRecommendationEngine
+
+        engine = TripRecommendationEngine()
+        engine.retrain_model()
+
         return Response({
-            'success': True,
-            'message': f"Lead assigned to {sales_rep.first_name or sales_rep.username}"
-        }, status=status.HTTP_200_OK)
-    
-    except Lead.DoesNotExist:
-        return Response({'error': 'Lead not found'}, status=status.HTTP_404_NOT_FOUND)
-    except User.DoesNotExist:
-        return Response({'error': 'Sales representative not found'}, status=status.HTTP_404_NOT_FOUND)
+            'message': 'Trip recommendation engine retrained successfully',
+            'retrained_at': timezone.now().isoformat()
+        })
+
     except Exception as e:
-        logger.error(f"Lead assignment error: {str(e)}")
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.error(f"Recommendation engine retraining error: {str(e)}")
+        return Response({
+            'error': 'Failed to retrain recommendation engine',
+            'details': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_recommendation_stats(request):
+    """
+    Get statistics about the recommendation engine performance
+    """
+    try:
+        import sys
+        import os
+        sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+        from ml_models.trip_recommendation_engine import TripRecommendationEngine
+
+        engine = TripRecommendationEngine()
+        engine_loaded = engine.load_model()
+
+        if not engine_loaded:
+            return Response({
+                'model_status': 'not_trained',
+                'message': 'Recommendation engine not yet trained'
+            })
+
+        # Get basic stats
+        stats = {
+            'model_status': 'active',
+            'users_in_matrix': engine.user_item_matrix.shape[0] if engine.user_item_matrix is not None else 0,
+            'trips_in_matrix': engine.trip_features_matrix.shape[0] if engine.trip_features_matrix is not None else 0,
+            'total_interactions': engine.user_item_matrix.sum().sum() if engine.user_item_matrix is not None else 0,
+            'features_used': len(engine.feature_columns) if engine.feature_columns else 0,
+            'last_updated': timezone.now().isoformat()
+        }
+
+        return Response(stats)
+
+    except Exception as e:
+        logger.error(f"Recommendation stats error: {str(e)}")
+        return Response({
+            'error': 'Failed to get recommendation statistics',
+            'details': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def update_lead_follow_up(request):
-    """Log follow-up with lead"""
+def record_user_interaction(request):
+    """
+    Record user interaction with a trip (for improving recommendations)
+    """
     try:
-        from .models import LeadPrioritizationQueue
-        
-        lead_id = request.data.get('lead_id')
-        follow_up_notes = request.data.get('notes', '')
-        next_follow_up = request.data.get('next_follow_up_date')
-        
-        if not lead_id:
-            return Response({'error': 'lead_id required'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        lead = Lead.objects.get(id=lead_id)
-        queue_item = LeadPrioritizationQueue.objects.get(lead=lead)
-        
-        # Update follow-up tracking
-        queue_item.last_follow_up = timezone.now()
-        queue_item.follow_up_count += 1
-        if next_follow_up:
-            queue_item.follow_up_date = next_follow_up
-        queue_item.save()
-        
-        # Update lead contact timestamp
-        lead.touch_contact()
-        if follow_up_notes:
-            lead.notes = (lead.notes or '') + f"\n[{timezone.now().strftime('%Y-%m-%d %H:%M')}] {follow_up_notes}"
-            lead.save(update_fields=['notes'])
-        
-        logger.info(f"Follow-up logged for lead {lead.name} (Count: {queue_item.follow_up_count})")
-        
-        return Response({
-            'success': True,
-            'follow_up_count': queue_item.follow_up_count,
-            'last_follow_up': queue_item.last_follow_up,
-            'message': f"Follow-up logged (Total: {queue_item.follow_up_count})"
-        }, status=status.HTTP_200_OK)
-    
-    except Lead.DoesNotExist:
-        return Response({'error': 'Lead not found'}, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        logger.error(f"Follow-up update error: {str(e)}")
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        user_id = request.data.get('user_id', request.user.id)
+        trip_id = request.data.get('trip_id')
+        interaction_type = request.data.get('interaction_type', 'view')  # view, wishlist, booking, review
+        rating = request.data.get('rating', 1.0)  # Optional rating
 
+        if not trip_id:
+            return Response({
+                'error': 'trip_id is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def resolve_lead_qualification(request):
-    """Mark lead as converted or lost"""
-    try:
-        from .models import LeadPrioritizationQueue
-        
-        lead_id = request.data.get('lead_id')
-        resolution_status = request.data.get('resolution_status')  # 'converted' or 'lost'
-        resolution_notes = request.data.get('notes', '')
-        
-        if not lead_id or resolution_status not in ['converted', 'lost']:
-            return Response({'error': 'lead_id and valid resolution_status required'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        lead = Lead.objects.get(id=lead_id)
-        queue_item = LeadPrioritizationQueue.objects.get(lead=lead)
-        
-        # Mark as resolved
-        queue_item.resolution_status = resolution_status
-        queue_item.resolved_at = timezone.now()
-        queue_item.is_active = False
-        queue_item.save()
-        
-        # Update lead status
-        lead.status = 'converted' if resolution_status == 'converted' else 'lost'
-        if resolution_notes:
-            lead.notes = (lead.notes or '') + f"\n[{timezone.now().strftime('%Y-%m-%d %H:%M')}] RESOLUTION: {resolution_notes}"
-        lead.save()
-        
-        logger.info(f"Lead {lead.name} marked as {resolution_status}")
-        
+        # Validate interaction type
+        valid_types = ['view', 'wishlist', 'booking', 'review']
+        if interaction_type not in valid_types:
+            return Response({
+                'error': f'interaction_type must be one of: {valid_types}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Here you could store the interaction in a database table
+        # For now, we'll just acknowledge it
+        # In production, you'd want to store this for model retraining
+
         return Response({
-            'success': True,
-            'lead_status': lead.status,
-            'resolution_status': resolution_status,
-            'message': f"Lead marked as {resolution_status.upper()}"
-        }, status=status.HTTP_200_OK)
-    
-    except Lead.DoesNotExist:
-        return Response({'error': 'Lead not found'}, status=status.HTTP_404_NOT_FOUND)
+            'message': f'User interaction recorded: {interaction_type} on trip {trip_id}',
+            'user_id': user_id,
+            'trip_id': trip_id,
+            'interaction_type': interaction_type,
+            'recorded_at': timezone.now().isoformat()
+        })
+
     except Exception as e:
-        logger.error(f"Lead resolution error: {str(e)}")
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.error(f"Interaction recording error: {str(e)}")
+        return Response({
+            'error': 'Failed to record user interaction',
+            'details': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

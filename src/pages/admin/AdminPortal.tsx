@@ -13,6 +13,11 @@ const Stories = React.lazy(() => import('./AdminStoriesPage'));
 const Leads = React.lazy(() => import('./AdminLeadsPage'));
 const Tasks = React.lazy(() => import('./AdminTasksPage'));
 
+// Direct import TIER 2 admin components (named exports)
+import { BookingManagement } from '../../components/admin/BookingManagement';
+import { UserManagement } from '../../components/admin/UserManagement';
+import { AnalyticsDashboard } from '../../components/admin/AnalyticsDashboard';
+
 // Lazy import AI-powered admin components
 import AIInsights from '../../components/admin/AIInsightsPanel';
 import WhatsAppManager from '../../components/admin/WhatsAppManagementPanel';
@@ -27,15 +32,18 @@ interface TabDef { id: string; label: string; description: string; }
 
 const tabs: TabDef[] = [
   { id: 'overview', label: 'Overview', description: 'Quick access dashboard' },
+  { id: 'analytics', label: 'Analytics', description: 'KPIs and business metrics' },
   { id: 'ai-insights', label: 'AI Insights', description: 'Business intelligence and analytics' },
   { id: 'whatsapp', label: 'WhatsApp', description: 'Customer conversations and messaging' },
   { id: 'automation', label: 'Automation', description: 'Workflow builder and triggers' },
   { id: 'voice-ai', label: 'Voice AI', description: 'Voice commands and AI assistant' },
   { id: 'trips', label: 'Trips', description: 'Manage trips' },
+  { id: 'bookings', label: 'Bookings', description: 'Manage all bookings' },
   { id: 'itinerary', label: 'Itinerary', description: 'Edit trip day-by-day steps' },
   { id: 'products', label: 'Products', description: 'Shop product catalog' },
   { id: 'stories', label: 'Stories', description: 'Moderate user stories' },
   { id: 'leads', label: 'Leads', description: 'Inbound inquiries & leads' },
+  { id: 'users', label: 'Users', description: 'Manage user accounts' },
   { id: 'tasks', label: 'Tasks', description: 'Follow-ups & actions' },
 ];
 
@@ -258,14 +266,43 @@ export const AdminPortal: React.FC = () => {
 
   const ActiveComponent = useMemo(() => {
     if (active === 'overview') return (
-      <div className="p-8 space-y-8">
+      <div className="p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8">
+        {/* TIER 2 Admin Dashboard Section */}
+        <div>
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
+            <span className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center text-white text-sm font-bold mr-3">⚙️</span>
+            <span className="truncate">TIER 2: Admin Dashboard</span>
+          </h3>
+          <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            {['analytics', 'bookings', 'users'].map(tabId => {
+              const tab = tabs.find(t => t.id === tabId);
+              return (
+                <button
+                  key={tabId}
+                  onClick={() => setActive(tabId)}
+                  className="group border rounded-xl bg-gradient-to-br from-white to-emerald-50 shadow-sm hover:shadow-lg transition-all p-6 text-left relative overflow-hidden"
+                >
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-10 bg-gradient-to-br from-emerald-500 to-teal-500 transition-opacity" />
+                  <div className="relative z-10">
+                    <div className="font-semibold text-base sm:text-lg mb-2 flex items-center gap-2 text-emerald-700">
+                      {tab?.label}
+                      <span className="text-[10px] font-normal px-2 py-1 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200 whitespace-nowrap">TIER 2</span>
+                    </div>
+                    <div className="text-xs text-emerald-600 leading-snug line-clamp-2">{tab?.description}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* AI-Powered Features Section */}
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
             <span className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center text-white text-sm font-bold mr-3">AI</span>
-            AI-Powered Admin Tools
+            <span className="truncate">AI-Powered Admin Tools</span>
           </h3>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {['ai-insights', 'whatsapp', 'automation', 'voice-ai'].map(tabId => {
               const tab = tabs.find(t => t.id === tabId);
               return (
@@ -276,9 +313,9 @@ export const AdminPortal: React.FC = () => {
                 >
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-10 bg-gradient-to-br from-purple-500 to-blue-500 transition-opacity" />
                   <div className="relative z-10">
-                    <div className="font-semibold text-lg mb-2 flex items-center gap-2 text-purple-700">
+                    <div className="font-semibold text-base sm:text-lg mb-2 flex items-center gap-2 text-purple-700">
                       {tab?.label}
-                      <span className="text-[10px] font-normal px-2 py-1 rounded-full bg-purple-100 text-purple-600 border border-purple-200">NEW</span>
+                      <span className="text-[10px] font-normal px-2 py-1 rounded-full bg-purple-100 text-purple-600 border border-purple-200 whitespace-nowrap">NEW</span>
                     </div>
                     <div className="text-xs text-purple-600 leading-snug line-clamp-2">{tab?.description}</div>
                   </div>
@@ -290,12 +327,12 @@ export const AdminPortal: React.FC = () => {
 
         {/* Traditional Management Section */}
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <span className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-green-500 rounded-lg flex items-center justify-center text-white text-sm font-bold mr-3">📊</span>
-            Content Management
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
+            <span className="w-8 h-8 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center text-white text-sm font-bold mr-3">📊</span>
+            <span className="truncate">Content Management</span>
           </h3>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {tabs.filter(t => !['overview', 'ai-insights', 'whatsapp', 'automation', 'voice-ai'].includes(t.id)).map(t => (
+          <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {tabs.filter(t => !['overview', 'ai-insights', 'whatsapp', 'automation', 'voice-ai', 'analytics', 'bookings', 'users'].includes(t.id)).map(t => (
               <button
                 key={t.id}
                 onClick={() => setActive(t.id)}
@@ -316,11 +353,11 @@ export const AdminPortal: React.FC = () => {
 
         {/* Quick Metrics */}
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
             <span className="w-8 h-8 bg-gradient-to-r from-blue-500 to-green-500 rounded-lg flex items-center justify-center text-white text-sm font-bold mr-3">📈</span>
-            Quick Metrics
+            <span className="truncate">Quick Metrics</span>
           </h3>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <MetricCard label="Trips" value={metrics.totalTrips ?? 0} sub={`${metrics.activeTrips ?? 0} active`} />
             <MetricCard label="Products" value={metrics.totalProducts ?? 0} sub={`${metrics.activeProducts ?? 0} active`} />
             <MetricCard label="Stories" value={counts.stories ?? 0} sub="All statuses" />
@@ -330,65 +367,65 @@ export const AdminPortal: React.FC = () => {
       </div>
     );
     if (active === 'itinerary') return (
-      <div key={`itinerary-${reloadKey}`} className="p-6">
-        <div className="grid md:grid-cols-5 gap-6">
-          <div className="md:col-span-2 space-y-4">
+      <div key={`itinerary-${reloadKey}`} className="p-4 sm:p-6">
+        <div className="grid md:grid-cols-5 gap-4 sm:gap-6">
+          <div className="md:col-span-2 space-y-3 sm:space-y-4">
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Trips</h2>
-                {selectedTrip && <Button size="sm" variant="secondary" onClick={()=>setSelectedTrip(null)}>Clear</Button>}
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-base sm:text-lg font-semibold truncate">Trips</h2>
+                {selectedTrip && <Button size="sm" variant="secondary" onClick={()=>setSelectedTrip(null)} className="text-xs">Clear</Button>}
               </div>
-              <input value={tripSearch} onChange={e=>setTripSearch(e.target.value)} placeholder="Search trips..." className="w-full border rounded px-3 py-2 text-xs" />
+              <input value={tripSearch} onChange={e=>setTripSearch(e.target.value)} placeholder="Search trips..." className="w-full border rounded px-2 sm:px-3 py-2 text-xs" />
             </div>
-            <div className="border rounded-lg divide-y bg-white overflow-hidden">
+            <div className="border rounded-lg divide-y bg-white overflow-hidden max-h-[400px] sm:max-h-none overflow-y-auto">
               {filteredTrips.map(t => (
-                <button key={t.id} onClick={()=>setSelectedTrip(t)} className={`w-full text-left px-4 py-2 text-sm hover:bg-emerald-50 flex items-center justify-between ${selectedTrip?.id===t.id? 'bg-emerald-100/70':''}`}> 
+                <button key={t.id} onClick={()=>setSelectedTrip(t)} className={`w-full text-left px-3 sm:px-4 py-2 text-xs sm:text-sm hover:bg-emerald-50 flex items-center justify-between gap-2 ${selectedTrip?.id===t.id? 'bg-emerald-100/70':''}`}> 
                   <span className="truncate">{t.title || t.name || 'Trip'}</span>
-                  <span className="text-xs text-gray-400 ml-2">{t.days || ''}</span>
+                  <span className="text-xs text-gray-400 flex-shrink-0">{t.days || ''}</span>
                 </button>
               ))}
-              {filteredTrips.length===0 && <div className="px-4 py-6 text-xs text-gray-500 text-center">No matching trips.</div>}
+              {filteredTrips.length===0 && <div className="px-3 sm:px-4 py-4 sm:py-6 text-xs text-gray-500 text-center">No matching trips.</div>}
             </div>
           </div>
           <div className="md:col-span-3">
-            {!selectedTrip && <div className="text-sm text-gray-500 p-4 border rounded-lg bg-gray-50">Select a trip to manage its itinerary.</div>}
+            {!selectedTrip && <div className="text-xs sm:text-sm text-gray-500 p-3 sm:p-4 border rounded-lg bg-gray-50">Select a trip to manage its itinerary.</div>}
             {selectedTrip && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">Itinerary: {selectedTrip.title || selectedTrip.name}</h2>
-                  <span className="text-xs text-gray-400">{items.length} steps</span>
+              <div className="space-y-4 sm:space-y-6">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-base sm:text-lg font-semibold truncate">Itinerary: {selectedTrip.title || selectedTrip.name}</h2>
+                  <span className="text-xs text-gray-400 flex-shrink-0">{items.length} steps</span>
                 </div>
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-3">
-                    <div className="text-sm font-medium flex items-center gap-2">{itForm.id? 'Edit Step':'Add Step'} {itForm.id && <button onClick={cancelEdit} className="text-xs text-rose-600 hover:underline flex items-center gap-1"><X className="w-3 h-3" />Cancel</button>}</div>
-                    <div className="flex gap-3">
-                      <input type="number" min={1} value={itForm.day} onChange={e=>setItForm(f=>({...f, day:Number(e.target.value)}))} placeholder="Day" className="w-24 border rounded px-3 py-2 text-sm" />
-                      <input value={itForm.title} onChange={e=>setItForm(f=>({...f,title:e.target.value}))} placeholder="Title" className="flex-1 border rounded px-3 py-2 text-sm" />
+                <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
+                  <div className="space-y-2 sm:space-y-3">
+                    <div className="text-xs sm:text-sm font-medium flex items-center gap-2">{itForm.id? 'Edit Step':'Add Step'} {itForm.id && <button onClick={cancelEdit} className="text-xs text-rose-600 hover:underline flex items-center gap-1"><X className="w-3 h-3" />Cancel</button>}</div>
+                    <div className="flex gap-2 flex-col sm:flex-row">
+                      <input type="number" min={1} value={itForm.day} onChange={e=>setItForm(f=>({...f, day:Number(e.target.value)}))} placeholder="Day" className="w-full sm:w-24 border rounded px-2 sm:px-3 py-2 text-xs" />
+                      <input value={itForm.title} onChange={e=>setItForm(f=>({...f,title:e.target.value}))} placeholder="Title" className="flex-1 border rounded px-2 sm:px-3 py-2 text-xs" />
                     </div>
-                    <textarea value={itForm.description} onChange={e=>setItForm(f=>({...f,description:e.target.value}))} placeholder="Description" className="w-full border rounded px-3 py-2 text-sm min-h-[110px]" />
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="adventure" onClick={saveStep} disabled={savingStep}>{savingStep? 'Saving...': itForm.id? 'Update':'Add'}</Button>
-                      {itForm.id && <Button size="sm" variant="secondary" onClick={cancelEdit}>Reset</Button>}
+                    <textarea value={itForm.description} onChange={e=>setItForm(f=>({...f,description:e.target.value}))} placeholder="Description" className="w-full border rounded px-2 sm:px-3 py-2 text-xs min-h-[90px] sm:min-h-[110px]" />
+                    <div className="flex gap-2 flex-col sm:flex-row">
+                      <Button size="sm" variant="adventure" onClick={saveStep} disabled={savingStep} className="text-xs">{savingStep? 'Saving...': itForm.id? 'Update':'Add'}</Button>
+                      {itForm.id && <Button size="sm" variant="secondary" onClick={cancelEdit} className="text-xs">Reset</Button>}
                     </div>
                   </div>
-                  <div className="space-y-3 max-h-[450px] overflow-auto pr-1">
+                  <div className="space-y-2 sm:space-y-3 max-h-[350px] sm:max-h-[450px] overflow-auto pr-1">
                     {items.map(it => (
                       <div
                         key={it.id}
-                        className="border rounded-lg p-3 text-sm bg-white flex flex-col gap-1 group cursor-move"
+                        className="border rounded-lg p-2 sm:p-3 text-xs sm:text-sm bg-white flex flex-col gap-1 group cursor-move"
                         draggable
                         onDragStart={onDragStart(it.id)}
                         onDragOver={onDragOver}
                         onDrop={onDrop(it.id)}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="font-medium">Day {it.day}: {it.title}</div>
-                          <div className="opacity-0 group-hover:opacity-100 transition flex gap-1">
-                            <Button size="sm" variant="secondary" onClick={()=>editStep(it)}>Edit</Button>
-                            <Button size="sm" variant="destructive" onClick={()=>deleteStep(it.id)}>Del</Button>
+                        <div className="flex items-center justify-between gap-1">
+                          <div className="font-medium truncate">Day {it.day}: {it.title}</div>
+                          <div className="opacity-0 group-hover:opacity-100 transition flex gap-1 flex-shrink-0">
+                            <Button size="sm" variant="secondary" onClick={()=>editStep(it)} className="text-xs px-2 py-1">Edit</Button>
+                            <Button size="sm" variant="destructive" onClick={()=>deleteStep(it.id)} className="text-xs px-2 py-1">Del</Button>
                           </div>
                         </div>
-                        <div className="text-gray-600 whitespace-pre-wrap leading-snug">{it.description}</div>
+                        <div className="text-gray-600 whitespace-pre-wrap leading-snug text-xs">{it.description}</div>
                       </div>
                     ))}
                     {items.length===0 && <div className="text-xs text-gray-500">No steps yet.</div>}
@@ -414,6 +451,21 @@ export const AdminPortal: React.FC = () => {
         <AIInsights key={`ai-insights-${reloadKey}`} />
       </ErrorBoundary>
     );
+    case 'analytics': return (
+      <Suspense fallback={<div className="p-8 text-center text-gray-500">Loading Analytics...</div>}>
+        <AnalyticsDashboard key={`analytics-${reloadKey}`} />
+      </Suspense>
+    );
+    case 'bookings': return (
+      <Suspense fallback={<div className="p-8 text-center text-gray-500">Loading Bookings...</div>}>
+        <BookingManagement key={`bookings-${reloadKey}`} />
+      </Suspense>
+    );
+    case 'users': return (
+      <Suspense fallback={<div className="p-8 text-center text-gray-500">Loading Users...</div>}>
+        <UserManagement key={`users-${reloadKey}`} />
+      </Suspense>
+    );
       case 'whatsapp': return <WhatsAppManager key={`whatsapp-${reloadKey}`} isVisible={true} />;
       case 'automation': return <WorkflowBuilder key={`automation-${reloadKey}`} />;
       case 'voice-ai': return <VoiceAssistant key={`voice-ai-${reloadKey}`} />;
@@ -428,37 +480,134 @@ export const AdminPortal: React.FC = () => {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <div className="border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Admin Portal</h1>
-            <p className="text-xs text-gray-500">All management tools unified</p>
+      <div className="border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 sticky top-0 z-40 md:relative">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4">
+          {/* Mobile Header */}
+          <div className="md:hidden">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h1 className="text-xl font-bold tracking-tight">Admin Portal</h1>
+                <p className="text-xs text-gray-500">Management tools</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <RealTimeNotificationCenter />
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  onClick={() => window.location.reload()} 
+                  icon={<RefreshCw className="w-4 h-4" />}
+                  title="Refresh real data"
+                >
+                  Sync
+                </Button>
+              </div>
+            </div>
+            {/* Mobile Tab Selector - Fixed alignment and scrolling */}
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4">
+              {tabs.slice(0, 6).map(t => ( // Show first 6 tabs on mobile
+                <button
+                  key={t.id}
+                  onClick={() => guardedSetActive(t.id)}
+                  className={`flex-shrink-0 px-3 py-2 rounded-lg text-sm font-medium border transition-all whitespace-nowrap ${
+                    active === t.id
+                      ? 'bg-emerald-600 text-white border-emerald-600'
+                      : 'bg-white hover:bg-emerald-50 border-emerald-200 text-emerald-700'
+                  }`}
+                >
+                  {t.label}
+                  {t.id !== 'overview' && !['ai-insights', 'whatsapp', 'automation', 'voice-ai'].includes(t.id) && counts[t.id] > 0 && (
+                    <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${
+                      active===t.id ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700'
+                    }`}>
+                      {counts[t.id]}
+                    </span>
+                  )}
+                </button>
+              ))}
+              {/* More tabs dropdown for mobile - properly positioned */}
+              <div className="relative flex-shrink-0">
+                <button
+                  onClick={() => {
+                    // Simple dropdown toggle for mobile
+                    const dropdown = document.getElementById('mobile-more-tabs');
+                    if (dropdown) {
+                      dropdown.classList.toggle('hidden');
+                    }
+                  }}
+                  className="px-3 py-2 rounded-lg text-sm font-medium border bg-white hover:bg-gray-50 border-gray-200 text-gray-700"
+                >
+                  More...
+                </button>
+                {/* Mobile dropdown menu */}
+                <div id="mobile-more-tabs" className="hidden absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[200px]">
+                  {tabs.slice(6).map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => {
+                        guardedSetActive(t.id);
+                        document.getElementById('mobile-more-tabs')?.classList.add('hidden');
+                      }}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors ${
+                        active === t.id ? 'bg-emerald-50 text-emerald-700 font-medium' : 'text-gray-700'
+                      }`}
+                    >
+                      {t.label}
+                      {t.id !== 'overview' && !['ai-insights', 'whatsapp', 'automation', 'voice-ai'].includes(t.id) && counts[t.id] > 0 && (
+                        <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                          {counts[t.id]}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <RealTimeNotificationCenter />
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              onClick={() => window.location.reload()} 
-              icon={<RefreshCw className="w-4 h-4" />}
-              title="Refresh real data"
-            >
-              Sync Data
-            </Button>
-            {tabs.map(t => (
-              <button
-                key={t.id}
-                onClick={() => guardedSetActive(t.id)}
-                className={`group px-4 py-2 rounded-full text-sm font-medium border transition-all shadow-sm flex items-center gap-2 relative overflow-hidden ${active === t.id ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white hover:bg-emerald-50 border-emerald-200 text-emerald-700'}`}
+
+          {/* Desktop Header */}
+          <div className="hidden md:flex md:items-center md:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">Admin Portal</h1>
+              <p className="text-xs text-gray-500">All management tools unified</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <RealTimeNotificationCenter />
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={() => window.location.reload()} 
+                icon={<RefreshCw className="w-4 h-4" />}
+                title="Refresh real data"
               >
-                <span className="relative z-10">{t.label}</span>
-                {t.id !== 'overview' && !['ai-insights', 'whatsapp', 'automation', 'voice-ai'].includes(t.id) && (
-                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${active===t.id? 'bg-white/20 text-white':'bg-emerald-100 text-emerald-700'} transition-colors`}>{(counts[t.id] ?? 0)}</span>
-                )}
-                <span className={`absolute inset-0 opacity-0 group-hover:opacity-10 ${active===t.id? 'bg-white/0':'bg-emerald-400'} transition-opacity`} />
-              </button>
-            ))}
-            <Button size="sm" variant="secondary" onClick={forceReload} icon={<RefreshCw className="w-4 h-4" />}>Refresh Tab</Button>
+                Sync Data
+              </Button>
+              {tabs.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => guardedSetActive(t.id)}
+                  className={`group px-4 py-2 rounded-full text-sm font-medium border transition-all shadow-sm flex items-center gap-2 relative overflow-hidden ${
+                    active === t.id 
+                      ? 'bg-emerald-600 text-white border-emerald-600' 
+                      : 'bg-white hover:bg-emerald-50 border-emerald-200 text-emerald-700'
+                  }`}
+                >
+                  <span className="relative z-10">{t.label}</span>
+                  {t.id !== 'overview' && !['ai-insights', 'whatsapp', 'automation', 'voice-ai'].includes(t.id) && (
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                      active===t.id ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700'
+                    } transition-colors`}>
+                      {counts[t.id] ?? 0}
+                    </span>
+                  )}
+                  <span className={`absolute inset-0 opacity-0 group-hover:opacity-10 ${
+                    active===t.id ? 'bg-white/0' : 'bg-emerald-400'
+                  } transition-opacity`} />
+                </button>
+              ))}
+              <Button size="sm" variant="secondary" onClick={forceReload} icon={<RefreshCw className="w-4 h-4" />}>
+                Refresh Tab
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -478,59 +627,59 @@ export const AdminPortal: React.FC = () => {
       </div>
       {/* Keyboard shortcuts hint */}
       <div className="hidden md:block fixed bottom-3 right-3 z-30 text-[10px] text-gray-400 bg-white/70 backdrop-blur px-3 py-1.5 rounded-full border shadow-sm">Alt + 1..9 to switch tabs</div>
-      <div className="max-w-7xl mx-auto px-4 md:px-6 pt-4 pb-24">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 pt-4 pb-24 md:pt-6 md:pb-24">
         {/* Dynamic tab utility bar */}
         {active !== 'overview' && !['ai-insights', 'whatsapp', 'automation', 'voice-ai'].includes(active) && (
-          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="mb-3 sm:mb-4 flex flex-col gap-2 sm:gap-3 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-1 items-center gap-2 overflow-x-auto scrollbar-thin">
               <input
                 value={searchTerm}
                 onChange={e=>setSearchTerm(e.target.value)}
                 placeholder={`Search ${active}...`}
-                className="flex-1 min-w-[160px] border rounded-lg px-3 py-2 text-sm bg-white/70 dark:bg-zinc-800/60 backdrop-blur focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                className="flex-1 min-w-[140px] sm:min-w-[160px] border rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm bg-white/70 backdrop-blur focus:outline-none focus:ring-2 focus:ring-emerald-400"
               />
               {active==='trips' && (
                 <>
-                  <select value={tripDifficulty} onChange={e=>setTripDifficulty(e.target.value)} className="border rounded-lg px-2 py-2 text-sm">
-                    <option value="">All Difficulties</option>
+                  <select value={tripDifficulty} onChange={e=>setTripDifficulty(e.target.value)} className="border rounded-lg px-2 py-2 text-xs sm:text-sm bg-white whitespace-nowrap">
+                    <option value="">All Diff</option>
                     <option value="Easy">Easy</option>
                     <option value="Moderate">Moderate</option>
                     <option value="Hard">Hard</option>
                   </select>
-                  <label className="text-xs flex items-center gap-1 px-2 py-2 border rounded-lg bg-white/60">
-                    <input type="checkbox" checked={showInactiveTrips} onChange={e=>setShowInactiveTrips(e.target.checked)} /> Show Inactive
+                  <label className="text-xs flex items-center gap-1 px-2 py-2 border rounded-lg bg-white/60 whitespace-nowrap">
+                    <input type="checkbox" checked={showInactiveTrips} onChange={e=>setShowInactiveTrips(e.target.checked)} className="w-3 h-3" /> Inactive
                   </label>
                 </>
               )}
               {active==='products' && (
                 <>
-                  <input value={productCategory} onChange={e=>setProductCategory(e.target.value)} placeholder="Category" className="border rounded-lg px-2 py-2 text-sm w-28" />
-                  <label className="text-xs flex items-center gap-1 px-2 py-2 border rounded-lg bg-white/60">
-                    <input type="checkbox" checked={showInactiveProducts} onChange={e=>setShowInactiveProducts(e.target.checked)} /> Show Inactive
+                  <input value={productCategory} onChange={e=>setProductCategory(e.target.value)} placeholder="Category" className="border rounded-lg px-2 py-2 text-xs sm:text-sm w-24 sm:w-28 bg-white" />
+                  <label className="text-xs flex items-center gap-1 px-2 py-2 border rounded-lg bg-white/60 whitespace-nowrap">
+                    <input type="checkbox" checked={showInactiveProducts} onChange={e=>setShowInactiveProducts(e.target.checked)} className="w-3 h-3" /> Inactive
                   </label>
                 </>
               )}
               {active==='stories' && (
-                <select value={storyStatus} onChange={e=>setStoryStatus(e.target.value as 'all'|'pending'|'approved'|'rejected')} className="border rounded-lg px-2 py-2 text-sm">
-                  <option value="all">All Statuses</option>
+                <select value={storyStatus} onChange={e=>setStoryStatus(e.target.value as 'all'|'pending'|'approved'|'rejected')} className="border rounded-lg px-2 py-2 text-xs sm:text-sm bg-white whitespace-nowrap">
+                  <option value="all">All</option>
                   <option value="pending">Pending</option>
                   <option value="approved">Approved</option>
                   <option value="rejected">Rejected</option>
                 </select>
               )}
               {active==='leads' && (
-                <label className="text-xs flex items-center gap-1 px-2 py-2 border rounded-lg bg-white/60">
-                  <input type="checkbox" checked={hideProcessedLeads} onChange={e=>setHideProcessedLeads(e.target.checked)} /> Hide processed
+                <label className="text-xs flex items-center gap-1 px-2 py-2 border rounded-lg bg-white/60 whitespace-nowrap">
+                  <input type="checkbox" checked={hideProcessedLeads} onChange={e=>setHideProcessedLeads(e.target.checked)} className="w-3 h-3" /> Hide
                 </label>
               )}
             </div>
-            {dirtyTabs[active] && <div className="text-xs text-rose-600 font-medium">Unsaved changes</div>}
+            {dirtyTabs[active] && <div className="text-xs text-rose-600 font-medium whitespace-nowrap">Unsaved changes</div>}
           </div>
         )}
-        <div className="mb-6">
+        <div className="mb-4 sm:mb-6">
           {tabs.filter(t=>t.id===active).map(t => (
-            <div key={t.id} className="text-sm text-gray-500 flex items-center gap-2">
-              <span className="font-semibold text-gray-800">{t.label}</span>·<span>{t.description}</span>
+            <div key={t.id} className="text-xs sm:text-sm text-gray-500 flex items-center gap-2">
+              <span className="font-semibold text-gray-800">{t.label}</span>·<span className="truncate">{t.description}</span>
             </div>
           ))}
         </div>
@@ -573,11 +722,11 @@ const Shortcuts: React.FC<{active:string; setActive:(t:string)=>void}> = ({ setA
 };
 
 const MetricCard: React.FC<{label:string; value:number|string; sub?:string}> = ({ label, value, sub }) => (
-  <div className="relative overflow-hidden rounded-xl border border-emerald-100 bg-gradient-to-br from-white to-emerald-50 dark:from-zinc-900 dark:to-emerald-900/10 p-5 shadow-sm">
+  <div className="relative overflow-hidden rounded-xl border border-emerald-100 bg-gradient-to-br from-white to-emerald-50 p-5 shadow-sm">
     <div className="text-xs font-medium text-emerald-600 mb-1 tracking-wide uppercase">{label}</div>
-    <div className="text-3xl font-bold text-emerald-800 dark:text-emerald-300">{value}</div>
-    {sub && <div className="text-[11px] text-emerald-700/70 dark:text-emerald-300/70 mt-1">{sub}</div>}
-    <div className="absolute -right-3 -bottom-3 w-16 h-16 rounded-full bg-emerald-200/30 dark:bg-emerald-400/10" />
+    <div className="text-3xl font-bold text-emerald-800">{value}</div>
+    {sub && <div className="text-[11px] text-emerald-700/70 mt-1">{sub}</div>}
+    <div className="absolute -right-3 -bottom-3 w-16 h-16 rounded-full bg-emerald-200/30" />
   </div>
 );
 

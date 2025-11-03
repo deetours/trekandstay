@@ -1,163 +1,134 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { motion } from 'framer-motion';
-import { FcGoogle } from 'react-icons/fc';
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth, db } from '../../firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { FaPhone, FaCheckCircle, FaArrowLeft } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useAdventureStore } from '../../store/adventureStore';
+import { AuthContext } from '../../context/AuthContext';
 
 export const LoginPage: React.FC = () => {
   const { setUser } = useAdventureStore();
+  const { loginWithOTP, sendOTP: contextSendOTP, error: authError, isAdmin } = useContext(AuthContext)!;
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [otpCode, setOtpCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [countdown, setCountdown] = useState(0);
 
-  // Support both the intended and the typo variant the user supplied
-  const ADMIN_EMAILS = ['trekandstay@gmail.com', 'trekandsaty@gmail.com'];
-  const SHOW_ADMIN_DEBUG = true;
+  // Format phone number as user types
+  const formatPhoneNumber = (value: string) => {
+    // Remove all non-digits
+    const digits = value.replace(/\D/g, '');
 
-  const normalizeEmail = (raw: string) => {
-    if (!raw) return '';
-    let e = raw.trim().toLowerCase();
-    // Gmail ignores dots in local part; strip them for matching purposes only
-    if (e.endsWith('@gmail.com')) {
-      const [local, domain] = e.split('@');
-      e = local.replace(/\./g,'') + '@' + domain;
+    // Format as +91 XXXXX XXXXX
+    if (digits.length <= 10) {
+      return digits;
+    } else if (digits.length <= 12 && digits.startsWith('91')) {
+      return digits.slice(2);
     }
-    return e;
-  };
-  const normalizedAdminSet = new Set(ADMIN_EMAILS.map(normalizeEmail));
-
-  const isAdminEmail = (raw:string) => {
-    const norm = normalizeEmail(raw);
-    return normalizedAdminSet.has(norm) || norm.includes('trekandstay') || norm.includes('trekandsaty');
+    return digits.slice(0, 10);
   };
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhoneNumber(e.target.value);
+    setPhoneNumber(formatted);
+  };
+
+  const sendOTP = async () => {
+    if (!phoneNumber || phoneNumber.length !== 10) {
+      setError('Please enter a valid 10-digit phone number');
+      return;
+    }
+
     setLoading(true);
     setError('');
+
     try {
-      if (!auth) {
-        setError('Authentication service unavailable. Please retry later.');
-        setLoading(false);
-        return;
-      }
-      let cred;
-      try {
-        cred = await signInWithEmailAndPassword(auth, email.trim(), password);
-  } catch (err) {
-        // If the user does not exist yet but the email is an approved admin email, create it on the fly
-  if (typeof err === 'object' && err !== null && 'code' in err && typeof (err as { code?: unknown }).code === 'string' && (err as { code: string }).code === 'auth/user-not-found') {
-          const candidate = normalizeEmail(email);
-            if (normalizedAdminSet.has(candidate) || candidate.startsWith('trekandsta')) {
-              try {
-                cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-              } catch (createErr) {
-                setError(createErr instanceof Error ? createErr.message : 'Failed to create admin user');
-                setLoading(false);
-                return;
-              }
-            } else {
-              setError('Account not found. Please use Sign Up or contact support.');
-              setLoading(false);
-              return;
-            }
-        } else {
-          setError(err instanceof Error ? err.message : 'Login failed');
-          setLoading(false);
-          return;
-        }
-      }
-      const candidateEmailRaw = (cred.user.email || email).trim();
-      const candidateEmailNorm = normalizeEmail(candidateEmailRaw);
-  const rawAdminList = (import.meta as ImportMeta).env?.VITE_ADMIN_EMAILS || '';
-      const adminEmailList = rawAdminList.split(',').map((s: string)=>s.trim()).filter(Boolean);
-      const autoAdmin = isAdminEmail(candidateEmailNorm) || adminEmailList.map(normalizeEmail).includes(candidateEmailNorm);
-      // Firestore doc creation attempt (non-blocking)
-      try {
-        if (db) {
-          const userDocRef = doc(db,'users', cred.user.uid);
-          await setDoc(userDocRef, { email: candidateEmailNorm, role: autoAdmin ? 'admin':'user', updatedAt: Date.now() }, { merge: true });
-        }
-  } catch (writeErr) {
-        if (SHOW_ADMIN_DEBUG) console.warn('[ADMIN DEBUG] Firestore write failed (non-fatal)', writeErr);
-      }
-      if (!autoAdmin) {
-        setError('Admin access denied for this account. Use regular Sign In.');
-        if (SHOW_ADMIN_DEBUG) console.debug('[ADMIN DEBUG]', { candidateEmailRaw, candidateEmailNorm, adminEmailList, normalizedAdminSet: Array.from(normalizedAdminSet), autoAdmin });
-        if (auth) await auth.signOut();
-        return;
-      }
-      setUser({
-        id: cred.user.uid,
-        name: cred.user.displayName || email.split('@')[0],
-        email: cred.user.email || email,
-        avatar: cred.user.photoURL || '',
-        adventurePoints: 0,
-        completedTrips: 0,
-        badges: [],
-        preferences: { favoriteCategories: [], difficulty: [], budget: [0,0], notifications: true },
-        isAdmin: true
-      });
-  navigate('/admin/portal', { replace: true });
-  } catch (err) {
-  setError(err instanceof Error ? err.message : String(err));
+      const fullPhoneNumber = `+91${phoneNumber}`;
+      await contextSendOTP(fullPhoneNumber);
+
+      setOtpSent(true);
+      setCountdown(300); // 5 minutes
+
+      // Start countdown timer
+      const timer = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (err: unknown) {
+      // Error is handled by context
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const verifyOTP = async () => {
+    if (!otpCode || otpCode.length !== 6) {
+      setError('Please enter a valid 6-digit OTP');
+      return;
+    }
+
     setLoading(true);
     setError('');
+
     try {
-      if (!auth) {
-        setError('Authentication service unavailable. Please retry later.');
-        setLoading(false);
-        return;
-      }
-      const provider = new GoogleAuthProvider();
-      const cred = await signInWithPopup(auth, provider);
-      const candidateEmailRaw = (cred.user.email || '').trim();
-      const candidateEmailNorm = normalizeEmail(candidateEmailRaw);
-  const rawAdminList = (import.meta as ImportMeta).env?.VITE_ADMIN_EMAILS || '';
-      const adminEmailList = rawAdminList.split(',').map((s: string)=>s.trim()).filter(Boolean);
-      const autoAdmin = isAdminEmail(candidateEmailNorm) || adminEmailList.map(normalizeEmail).includes(candidateEmailNorm);
-      try {
-        if (db) {
-          const userDocRef = doc(db,'users', cred.user.uid);
-          await setDoc(userDocRef, { email: candidateEmailNorm, role: autoAdmin ? 'admin':'user', updatedAt: Date.now() }, { merge: true });
-        }
-  } catch (writeErr) {
-        if (SHOW_ADMIN_DEBUG) console.warn('[ADMIN DEBUG] Firestore write failed (non-fatal)', writeErr);
-      }
-      if (!autoAdmin) {
-        setError('Admin access denied for this account. Use regular Sign In.');
-        if (SHOW_ADMIN_DEBUG) console.debug('[ADMIN DEBUG]', { candidateEmailRaw, candidateEmailNorm, adminEmailList, normalizedAdminSet: Array.from(normalizedAdminSet), autoAdmin });
-        if (auth) await auth.signOut();
-        return;
-      }
+      const fullPhoneNumber = `+91${phoneNumber}`;
+      await loginWithOTP(fullPhoneNumber, otpCode);
+
+      // Set user in adventure store for compatibility
+      // The AuthContext handles the actual authentication
       setUser({
-        id: cred.user.uid,
-        name: cred.user.displayName || (cred.user.email?.split('@')[0] || 'User'),
-        email: cred.user.email || '',
-        avatar: cred.user.photoURL || '',
+        id: 0, // Will be updated by context
+        name: `User ${phoneNumber}`,
+        email: `${phoneNumber}@whatsapp.local`,
+        avatar: '',
         adventurePoints: 0,
         completedTrips: 0,
         badges: [],
-        preferences: { favoriteCategories: [], difficulty: [], budget: [0,0], notifications: true },
-        isAdmin: true
+        preferences: {
+          favoriteCategories: [],
+          difficulty: [],
+          budget: [0, 0],
+          notifications: true
+        },
+        isAdmin: isAdmin
       });
-  navigate('/admin/portal', { replace: true });
-  } catch (err) {
-  setError(err instanceof Error ? err.message : String(err));
+
+      // Navigate to appropriate page
+      if (isAdmin) {
+        navigate('/admin/portal', { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
+    } catch (err: unknown) {
+      // Error is handled by context
     } finally {
       setLoading(false);
     }
+  };
+
+  const resendOTP = async () => {
+    setOtpCode('');
+    await sendOTP();
+  };
+
+  const resetForm = () => {
+    setOtpSent(false);
+    setOtpCode('');
+    setCountdown(0);
+    setError('');
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -173,50 +144,111 @@ export const LoginPage: React.FC = () => {
         animate={{ y: [0, -30, 0], x: [0, -40, 0] }}
         transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
       />
+
       <motion.div
         className="relative z-10 w-full max-w-md bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 flex flex-col items-center"
         initial={{ opacity: 0, y: 60 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: 'easeOut' }}
       >
-        <h2 className="text-3xl font-bold text-white mb-6 font-oswald tracking-wide">Sign In to Adventure</h2>
-        <form className="w-full flex flex-col gap-4" onSubmit={handleEmailLogin}>
-          <input
-            type="email"
-            className="rounded-lg px-4 py-2 bg-white/80 dark:bg-[var(--surface)]/70 text-[var(--text)] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 border border-transparent dark:border-[var(--border)]"
-            placeholder="Email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            required
-            autoFocus
-          />
-          <input
-            type="password"
-            className="rounded-lg px-4 py-2 bg-white/80 dark:bg-[var(--surface)]/70 text-[var(--text)] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 border border-transparent dark:border-[var(--border)]"
-            placeholder="Password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            required
-          />
-          <motion.button
-            type="submit"
-            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-2 rounded-lg shadow-lg hover:scale-105 transition-transform"
-            whileTap={{ scale: 0.95 }}
-            disabled={loading}
+        <h2 className="text-3xl font-bold text-white mb-6 font-oswald tracking-wide">
+          {otpSent ? 'Enter OTP' : 'Sign In with WhatsApp'}
+        </h2>
+
+        {!otpSent ? (
+          // Phone number input
+          <div className="w-full flex flex-col gap-4">
+            <div className="text-white/80 text-center mb-4">
+              Enter your phone number to receive a verification code via WhatsApp
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="bg-white/20 text-white px-3 py-2 rounded-lg font-semibold">
+                +91
+              </div>
+              <input
+                type="tel"
+                className="flex-1 rounded-lg px-4 py-2 bg-white/80 dark:bg-[var(--surface)]/70 text-[var(--text)] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 border border-transparent dark:border-[var(--border)]"
+                placeholder="Enter 10-digit phone number"
+                value={phoneNumber}
+                onChange={handlePhoneChange}
+                maxLength={10}
+                autoFocus
+              />
+            </div>
+
+            <motion.button
+              onClick={sendOTP}
+              className="bg-gradient-to-r from-green-600 to-green-700 text-white font-bold py-3 rounded-lg shadow-lg hover:scale-105 transition-transform flex items-center justify-center gap-2"
+              whileTap={{ scale: 0.95 }}
+              disabled={loading || phoneNumber.length !== 10}
+            >
+              <FaPhone size={18} />
+              {loading ? 'Sending...' : 'Send OTP via WhatsApp'}
+            </motion.button>
+          </div>
+        ) : (
+          // OTP input
+          <div className="w-full flex flex-col gap-4">
+            <div className="text-white/80 text-center mb-4">
+              We've sent a 6-digit code to <strong>+91{phoneNumber}</strong>
+            </div>
+
+            <input
+              type="text"
+              className="rounded-lg px-4 py-3 text-center text-2xl font-bold bg-white/80 dark:bg-[var(--surface)]/70 text-[var(--text)] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 border border-transparent dark:border-[var(--border)]"
+              placeholder="000000"
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              maxLength={6}
+              autoFocus
+            />
+
+            <motion.button
+              onClick={verifyOTP}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-3 rounded-lg shadow-lg hover:scale-105 transition-transform flex items-center justify-center gap-2"
+              whileTap={{ scale: 0.95 }}
+              disabled={loading || otpCode.length !== 6}
+            >
+              <FaCheckCircle size={18} />
+              {loading ? 'Verifying...' : 'Verify OTP'}
+            </motion.button>
+
+            <div className="text-center">
+              {countdown > 0 ? (
+                <div className="text-white/60">
+                  Resend OTP in {formatTime(countdown)}
+                </div>
+              ) : (
+                <button
+                  onClick={resendOTP}
+                  className="text-green-400 hover:text-green-300 font-semibold"
+                  disabled={loading}
+                >
+                  Resend OTP
+                </button>
+              )}
+            </div>
+
+            <button
+              onClick={resetForm}
+              className="text-white/60 hover:text-white flex items-center justify-center gap-2 mt-2"
+            >
+              <FaArrowLeft size={14} />
+              Change phone number
+            </button>
+          </div>
+        )}
+
+        {error || authError && (
+          <motion.div
+            className="mt-4 text-red-400 font-semibold text-center bg-red-500/20 p-3 rounded-lg"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
           >
-            {loading ? 'Signing in...' : 'Sign In'}
-          </motion.button>
-        </form>
-        <div className="my-4 text-white/80">or</div>
-        <motion.button
-          onClick={handleGoogleLogin}
-          className="flex items-center gap-2 bg-white dark:bg-[var(--surface)] text-[var(--text)] px-4 py-2 rounded-lg shadow hover:bg-gray-100 dark:hover:bg-[var(--surface-alt)] font-semibold border border-transparent dark:border-[var(--border)]"
-          whileTap={{ scale: 0.97 }}
-          disabled={loading}
-        >
-          <FcGoogle size={24} /> Sign in with Google
-        </motion.button>
-        {error && <div className="mt-4 text-red-400 font-semibold">{error}</div>}
+            {error || authError}
+          </motion.div>
+        )}
       </motion.div>
     </div>
   );

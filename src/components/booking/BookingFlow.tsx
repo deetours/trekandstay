@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CalendarDays, Users, Shield, User, Phone, Mail, AlertCircle, CheckCircle2, ArrowRight, ArrowLeft, Globe2, Lock } from 'lucide-react';
+import { CalendarDays, Users, Shield, User, Phone, Mail, AlertCircle, CheckCircle2, ArrowRight, ArrowLeft, Globe2, Lock, Flame, Clock as ClockIcon } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { useToast } from '../ui/useToast';
@@ -24,6 +24,8 @@ interface BookingFlowProps {
   basePrice: number;
   nextDeparture?: string;
   spotsAvailable?: number;
+  availableSlots?: number;
+  isAvailable?: boolean;
   routeOptions?: { label: string; price: number }[]; // optional route choices
   initialRoute?: string; // preselected route coming from outer page
   onComplete?: (booking: BookingFlowBooking) => void;
@@ -32,7 +34,7 @@ interface BookingFlowProps {
 
 interface SeatLockState { id?: number; lockedAt: number; expiresAt: number; seats: number; }
 
-export const BookingFlow: React.FC<BookingFlowProps> = ({ tripId, tripName, basePrice, nextDeparture, spotsAvailable = 0, routeOptions = [], initialRoute, onComplete, onCancel }) => {
+export const BookingFlow: React.FC<BookingFlowProps> = ({ tripId, tripName, basePrice, nextDeparture, spotsAvailable, availableSlots, isAvailable = true, routeOptions = [], initialRoute, onComplete, onCancel }) => {
   const openTrackedRef = useRef(false);
   useEffect(() => {
     if (!openTrackedRef.current) {
@@ -117,6 +119,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({ tripId, tripName, base
   const seconds = Math.floor((timeLeft % 60000) / 1000);
 
   const canContinueFromStep = () => {
+    if (!isAvailable) return false;
     if (step === 1) {
       if (!date || groupSize <= 0) return false;
       if (routeOptions.length && !route) return false;
@@ -141,6 +144,10 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({ tripId, tripName, base
   const total = effectiveBase * groupSize;
 
   const submit = async () => {
+    if (!isAvailable) {
+      error({ title: 'Trip Unavailable', description: 'This trip is no longer available for booking.' });
+      return;
+    }
     setLoading(true);
     try {
       if (!seatLock?.id || lockExpired) throw new Error('Seat lock expired. Go back to re-lock seats.');
@@ -219,6 +226,23 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({ tripId, tripName, base
         <p className="text-sm text-gray-600 mb-4">Secure your spot for <span className="font-semibold">{tripName}</span>. Complete the steps to proceed to payment.</p>
         <StepIndicator />
 
+        {/* Capacity Warning */}
+        {!isAvailable && (
+          <div className="mb-4 text-sm font-medium text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded-lg flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" /> This trip is fully booked. Please check back later or choose another trip.
+          </div>
+        )}
+        {isAvailable && availableSlots !== undefined && availableSlots <= 2 && availableSlots > 0 && (
+          <div className="mb-4 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 px-3 py-2 rounded-lg flex items-center gap-2">
+            <Flame className="w-4 h-4" /> Only {availableSlots} spot{availableSlots === 1 ? '' : 's'} left! Book now before it's too late.
+          </div>
+        )}
+        {isAvailable && availableSlots !== undefined && availableSlots > 2 && availableSlots <= 5 && (
+          <div className="mb-4 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 px-3 py-2 rounded-lg flex items-center gap-2">
+            <ClockIcon className="w-4 h-4" /> Limited availability: Only {availableSlots} spots remaining.
+          </div>
+        )}
+
         {seatLock && !lockExpired && (
           <div className="mb-4 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg flex items-center gap-2">
             <Shield className="w-4 h-4" /> Seats locked for {minutes}:{seconds.toString().padStart(2,'0')} minutes
@@ -244,7 +268,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({ tripId, tripName, base
                   <span className="w-12 text-center font-semibold">{groupSize}</span>
                   <Button variant="secondary" size="sm" onClick={()=>setGroupSize(g=>Math.min(20,g+1))}>+</Button>
                 </div>
-                <p className="text-[11px] text-gray-500 mt-1">{spotsAvailable} spots left. We tentatively lock your seats.</p>
+                <p className="text-[11px] text-gray-500 mt-1">{availableSlots ?? spotsAvailable ?? 0} spots left. We tentatively lock your seats.</p>
               </div>
               {routeOptions.length>0 && (
                 <div>

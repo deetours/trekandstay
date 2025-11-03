@@ -87,11 +87,19 @@ class GuideSerializer(serializers.ModelSerializer):
 class TripSerializer(serializers.ModelSerializer):
     guide = GuideSerializer(read_only=True)
     guide_id = serializers.PrimaryKeyRelatedField(queryset=Guide.objects.all(), source='guide', write_only=True, required=False, allow_null=True)
+    available_slots = serializers.SerializerMethodField()
+    is_available = serializers.SerializerMethodField()
 
     class Meta:
         model = Trip
-        fields = ['id', 'name', 'description', 'images', 'location', 'duration', 'spots_available', 'next_departure', 'price', 'safety_record', 'highlights', 'equipment', 'essentials', 'guide', 'guide_id', 'created_at']
-        read_only_fields = ['created_at', 'guide']
+        fields = ['id', 'name', 'description', 'images', 'location', 'duration', 'spots_available', 'max_capacity', 'status', 'next_departure', 'price', 'safety_record', 'highlights', 'equipment', 'essentials', 'guide', 'guide_id', 'created_at', 'available_slots', 'is_available']
+        read_only_fields = ['created_at', 'guide', 'available_slots', 'is_available']
+
+    def get_available_slots(self, obj):
+        return obj.get_available_slots()
+
+    def get_is_available(self, obj):
+        return obj.is_available_for_booking()
 
 class ReviewSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.username', read_only=True)
