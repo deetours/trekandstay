@@ -67,7 +67,7 @@ if (!self.define) {
     });
   };
 }
-define(['./workbox-a959eb95'], (function (workbox) { 'use strict';
+define(['./workbox-3ad5617a'], (function (workbox) { 'use strict';
 
   self.skipWaiting();
   workbox.clientsClaim();
@@ -82,33 +82,48 @@ define(['./workbox-a959eb95'], (function (workbox) { 'use strict';
     "revision": "d41d8cd98f00b204e9800998ecf8427e"
   }, {
     "url": "index.html",
-    "revision": "0.5svmaic5274"
+    "revision": "0.gulohfmetbc"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html"), {
     allowlist: [/^\/$/]
   }));
-  workbox.registerRoute(/^https:\/\/api\.example\.com\/.*/i, new workbox.NetworkFirst({
-    "cacheName": "api-cache",
+  workbox.registerRoute(/^https?:\/\/api\.example\.com\/.*/i, new workbox.NetworkFirst({
+    "cacheName": "api-cache-v1",
+    "networkTimeoutSeconds": 10,
     plugins: [new workbox.ExpirationPlugin({
-      maxEntries: 50,
+      maxEntries: 100,
       maxAgeSeconds: 3600
     }), new workbox.CacheableResponsePlugin({
       statuses: [0, 200]
     })]
   }), 'GET');
-  workbox.registerRoute(/^https:\/\/.*\.cloudinary\.com\/.*/i, new workbox.CacheFirst({
-    "cacheName": "image-cache",
+  workbox.registerRoute(/^https:\/\/.*\.(png|jpg|jpeg|gif|webp)$/i, new workbox.CacheFirst({
+    "cacheName": "image-cache-v1",
     plugins: [new workbox.ExpirationPlugin({
-      maxEntries: 100,
+      maxEntries: 200,
+      maxAgeSeconds: 604800
+    })]
+  }), 'GET');
+  workbox.registerRoute(/^https:\/\/.*\.cloudinary\.com\/.*/i, new workbox.CacheFirst({
+    "cacheName": "cloudinary-cache-v1",
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 150,
       maxAgeSeconds: 604800
     })]
   }), 'GET');
   workbox.registerRoute(/^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i, new workbox.CacheFirst({
-    "cacheName": "google-fonts",
+    "cacheName": "google-fonts-v1",
     plugins: [new workbox.ExpirationPlugin({
-      maxEntries: 20,
+      maxEntries: 30,
       maxAgeSeconds: 31536000
+    })]
+  }), 'GET');
+  workbox.registerRoute(/^https:\/\/cdn\..*/i, new workbox.StaleWhileRevalidate({
+    "cacheName": "cdn-cache-v1",
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 100,
+      maxAgeSeconds: 604800
     })]
   }), 'GET');
 

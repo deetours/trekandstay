@@ -665,7 +665,7 @@ const StunningHomepage = () => {
       <section className="py-20 bg-gradient-to-r from-emerald-600 to-teal-600">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div 
-            className="grid grid-cols-2 md:grid-cols-4 gap-8"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8"
             initial={{ opacity: 0, y: 50 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -724,7 +724,7 @@ const StunningHomepage = () => {
             </p>
             <div className="mt-8 p-6 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl text-white inline-block">
               <h3 className="text-2xl font-bold mb-4">🏆 Interactive Challenges Active!</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 text-sm">
                 <div className="bg-white/20 rounded-lg p-3">
                   <div className="font-bold">❤️ Like Trips</div>
                   <div>Earn 15 points each</div>

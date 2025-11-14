@@ -17,8 +17,12 @@ export default defineConfig({
         theme_color: '#007AFF',
         background_color: '#FFFFFF',
         display: 'standalone',
+        orientation: 'portrait-primary',
         start_url: '/',
         scope: '/',
+        launch_handler: {
+          client_mode: ['navigate-new', 'auto']
+        },
         
         icons: [
           {
@@ -56,6 +60,13 @@ export default defineConfig({
             label: 'Trek booking interface'
           },
           {
+            src: '/screenshots/narrow-2.png',
+            sizes: '540x720',
+            type: 'image/png',
+            form_factor: 'narrow',
+            label: 'Trek details'
+          },
+          {
             src: '/screenshots/wide-1.png',
             sizes: '1280x720',
             type: 'image/png',
@@ -65,27 +76,28 @@ export default defineConfig({
         ],
         
         categories: ['travel', 'lifestyle'],
+        prefer_related_applications: false,
         
         shortcuts: [
           {
             name: 'Book Trek',
             short_name: 'Book',
             description: 'Book your next trek',
-            url: '/book',
+            url: '/book?mode=pwa',
             icons: [{ src: '/shortcuts/book.png', sizes: '96x96' }]
           },
           {
             name: 'My Bookings',
             short_name: 'Bookings',
             description: 'View your trek bookings',
-            url: '/my-bookings',
+            url: '/my-bookings?mode=pwa',
             icons: [{ src: '/shortcuts/bookings.png', sizes: '96x96' }]
           },
           {
             name: 'Ask AI Bot',
             short_name: 'AI Bot',
             description: 'Chat with our AI',
-            url: '/chat',
+            url: '/chat?mode=pwa',
             icons: [{ src: '/shortcuts/chat.png', sizes: '96x96' }]
           }
         ]
@@ -94,39 +106,68 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,jpg,jpeg,gif,webp,woff,woff2}'],
         globIgnores: ['**/node_modules/**/*', '**/.git/**/*'],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
         
         runtimeCaching: [
+          // API endpoints - NetworkFirst for fresh data
           {
-            urlPattern: /^https:\/\/api\.example\.com\/.*/i,
+            urlPattern: /^https?:\/\/api\.example\.com\/.*/i,
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'api-cache',
+              cacheName: 'api-cache-v1',
+              networkTimeoutSeconds: 10,
               expiration: {
-                maxEntries: 50,
+                maxEntries: 100,
                 maxAgeSeconds: 3600
               },
               cacheableResponse: { statuses: [0, 200] }
             }
           },
+          // Images - CacheFirst with long expiration
+          {
+            urlPattern: /^https:\/\/.*\.(png|jpg|jpeg|gif|webp)$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'image-cache-v1',
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 604800 // 7 days
+              }
+            }
+          },
+          // Cloudinary - CacheFirst
           {
             urlPattern: /^https:\/\/.*\.cloudinary\.com\/.*/i,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'image-cache',
+              cacheName: 'cloudinary-cache-v1',
               expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 604800
+                maxEntries: 150,
+                maxAgeSeconds: 604800 // 7 days
               }
             }
           },
+          // Google Fonts - CacheFirst with very long expiration
           {
             urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'google-fonts',
+              cacheName: 'google-fonts-v1',
               expiration: {
-                maxEntries: 20,
-                maxAgeSeconds: 31536000
+                maxEntries: 30,
+                maxAgeSeconds: 31536000 // 1 year
+              }
+            }
+          },
+          // CDN resources - StaleWhileRevalidate for balance
+          {
+            urlPattern: /^https:\/\/cdn\..*/i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'cdn-cache-v1',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 604800 // 7 days
               }
             }
           }

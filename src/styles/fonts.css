@@ -1,0 +1,236 @@
+/* ═══════════════════════════════════════════════════════════════
+   CUSTOM FONTS STYLESHEET
+   ═══════════════════════════════════════════════════════════════
+   
+   Imports Google Fonts (free, fast, reliable)
+   and sets up custom font faces with proper fallbacks.
+*/
+
+/* Import Google Fonts - Free, Fast, Reliable */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Lato:wght@400;700&family=Open+Sans:wght@400;600;700&family=Playfair+Display:wght@700&family=Merriweather:wght@700&family=Poppins:wght@400;600;700&family=Roboto:wght@400;700&display=swap');
+
+/* 
+   CUSTOM FONT FACES
+   
+   Note: These fonts need to be placed in public/fonts/ folder
+   If you don't have custom fonts, these will fallback to Google Fonts above
+   
+   Supported formats: .woff2 (modern browsers, 10x smaller)
+                      .ttf (fallback for older browsers)
+   
+   To optimize performance:
+   - Use .woff2 format (primary)
+   - Use font-display: swap (show text immediately, update later)
+   - Only load weights you actually use (400, 700)
+*/
+
+/* OUTBRAVE - Main Headline Font (Bold, Adventurous) */
+/* Fallback: Playfair Display (elegant serif) */
+@font-face {
+  font-family: 'Outbrave';
+  src: url('/fonts/Outbrave-Regular.woff2') format('woff2'),
+       url('/fonts/Outbrave-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  fallback: 'Playfair Display', serif;
+}
+
+@font-face {
+  font-family: 'Outbrave';
+  src: url('/fonts/Outbrave-Bold.woff2') format('woff2'),
+       url('/fonts/Outbrave-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  fallback: 'Playfair Display', serif;
+}
+
+/* GREAT ADVENTURER - Section Headings (Medium Rugged) */
+/* Fallback: Merriweather (serif, adventure feel) */
+@font-face {
+  font-family: 'Great Adventurer';
+  src: url('/fonts/GreatAdventurer-Regular.woff2') format('woff2'),
+       url('/fonts/GreatAdventurer-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  fallback: 'Merriweather', serif;
+}
+
+/* EXPAT RUGGED - Card Titles (Semi-Rugged, Readable) */
+/* Fallback: Roboto (clean, modern) */
+@font-face {
+  font-family: 'Expat Rugged';
+  src: url('/fonts/ExpatRugged-Regular.woff2') format('woff2'),
+       url('/fonts/ExpatRugged-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  fallback: 'Roboto', sans-serif;
+}
+
+/* ADVENTURE TYPEFACE - Subheadings */
+/* Fallback: Poppins (modern, clean) */
+@font-face {
+  font-family: 'Adventure Typeface';
+  src: url('/fonts/AdventureTypeface-Regular.woff2') format('woff2'),
+       url('/fonts/AdventureTypeface-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  fallback: 'Poppins', sans-serif;
+}
+
+/* TALL RUGGED SANS - Labels, CTAs, Button Text */
+/* Fallback: Poppins (bold, modern) */
+@font-face {
+  font-family: 'Tall Rugged Sans';
+  src: url('/fonts/TallRuggedSans-Regular.woff2') format('woff2'),
+       url('/fonts/TallRuggedSans-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  fallback: 'Poppins', sans-serif;
+}
+
+@font-face {
+  font-family: 'Tall Rugged Sans';
+  src: url('/fonts/TallRuggedSans-Bold.woff2') format('woff2'),
+       url('/fonts/TallRuggedSans-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  fallback: 'Poppins', sans-serif;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CSS VARIABLES & ROOT STYLES
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Font Families */
+  --font-outbrave: 'Outbrave', 'Playfair Display', serif;
+  --font-great-adventurer: 'Great Adventurer', 'Merriweather', serif;
+  --font-expat-rugged: 'Expat Rugged', 'Roboto', sans-serif;
+  --font-adventure: 'Adventure Typeface', 'Poppins', sans-serif;
+  --font-tall-rugged: 'Tall Rugged Sans', 'Poppins', sans-serif;
+  --font-inter: 'Inter', 'Open Sans', sans-serif;
+  --font-lato: 'Lato', 'Open Sans', sans-serif;
+  --font-open-sans: 'Open Sans', 'Inter', sans-serif;
+
+  /* Typography Scales */
+  --text-h1: clamp(2rem, 5vw, 3.5rem);
+  --text-h2: clamp(1.75rem, 4vw, 2.5rem);
+  --text-h3: clamp(1.25rem, 3vw, 1.75rem);
+  --text-base: 1rem;
+  --text-sm: 0.875rem;
+  --text-xs: 0.75rem;
+
+  /* Line Heights */
+  --leading-tight: 1.1;
+  --leading-snug: 1.3;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+  --leading-loose: 1.9;
+
+  /* Letter Spacing */
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.05em;
+  --tracking-wider: 0.1em;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TYPOGRAPHY UTILITY CLASSES
+   ═══════════════════════════════════════════════════════════════ */
+
+/* H1 - Outbrave (Hero Headline) */
+.h1, h1 {
+  font-family: var(--font-outbrave);
+  font-size: var(--text-h1);
+  font-weight: 700;
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+}
+
+/* H2 - Great Adventurer (Section Heading) */
+.h2, h2 {
+  font-family: var(--font-great-adventurer);
+  font-size: var(--text-h2);
+  font-weight: 700;
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-tight);
+}
+
+/* H3 - Expat Rugged (Card/Subsection Heading) */
+.h3, h3 {
+  font-family: var(--font-expat-rugged);
+  font-size: var(--text-h3);
+  font-weight: 700;
+  line-height: var(--leading-snug);
+}
+
+/* Label - Tall Rugged Sans (Bold, Uppercase) */
+.label {
+  font-family: var(--font-tall-rugged);
+  font-size: clamp(0.875rem, 1.5vw, 1rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  line-height: var(--leading-normal);
+}
+
+/* Body Text - Inter (Default, Readable) */
+.body, p {
+  font-family: var(--font-inter);
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+  letter-spacing: -0.3px;
+}
+
+/* Small Body */
+.body-small {
+  font-family: var(--font-inter);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+}
+
+/* Stat/Number (Outbrave - Bold) */
+.stat {
+  font-family: var(--font-outbrave);
+  font-size: clamp(1.875rem, 4vw, 3rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: var(--tracking-tight);
+}
+
+/* Caption/Meta (Inter - Small) */
+.caption {
+  font-family: var(--font-inter);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+}
+
+/* Button Text */
+.button-text {
+  font-family: var(--font-tall-rugged);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+}
+
+/* Ensure smooth font loading */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-inter);
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+  color: #1a1a1a;
+}

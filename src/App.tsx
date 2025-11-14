@@ -3,8 +3,12 @@ import { AdminPortal } from './pages/admin/AdminPortal';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Suspense, lazy, useEffect } from 'react';
 import './index.css';
+import './styles/pwa-mobile-feel.css';
+import './styles/mobile-responsive.css';
+import './styles/mobile-pwa-fix.css';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/sections/Footer';
+import { ScrollToTop } from './components/layout/ScrollToTop';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { Dashboard } from './components/dashboard/Dashboard';
 import { ChatWidget } from './components/chat';
@@ -19,9 +23,11 @@ import { useAuthInitializer } from './hooks/useAuthInitializer';
 import { ThemeProvider } from './context/ThemeContext';
 import CartPage from './components/shop/CartPage';
 import RequestProductPage from './pages/RequestProductPage';
+import InstallBanner from './components/pwa/InstallBanner';
 // import WishlistPage from './components/shop/WishlistPage';
 
 const HomePage = lazy(() => import('./pages/HomePage'));
+const HomePage2 = lazy(() => import('./pages/HomePage2'));
 const DestinationsPage = lazy(() => import('./pages/DestinationsPage'));
 const TripDetailsPage = lazy(() => import('./pages/TripDetailsPage'));
 const CatalogPage = lazy(() => import('./pages/CatalogPage'));
@@ -49,6 +55,8 @@ const ShopPage = lazy(() => import('./pages/ShopPage'));
 // Individual admin pages are now accessed through AdminPortal tabs; keep itinerary page if needed standalone
 const AdminItineraryPage = lazy(() => import('./pages/admin/AdminItineraryPage'));
 const TripLandingPage = lazy(() => import('./pages/TripLandingPage'));
+const QRDistributionPage = lazy(() => import('./pages/QRDistributionPage'));
+const MarketingCampaignPage = lazy(() => import('./pages/MarketingCampaignPage'));
 
 function App() {
   // Initialize authentication state listener
@@ -79,6 +87,7 @@ function AppContent() {
         <CartProvider>
         <ProductsProvider>
     <div className="min-h-screen transition-colors duration-300 bg-[var(--bg)] text-[var(--text)]">
+            <ScrollToTop />
             <Header />
             {/* <ThreeRoot /> */}
             <main>
@@ -96,6 +105,7 @@ function AppContent() {
               }>
                 <Routes>
                 <Route path="/" element={<HomePage />} />
+                <Route path="/homepage2" element={<HomePage2 />} />
                 <Route path="/debug" element={<DebugPage />} />
                 {/* Landing pages for trip marketing */}
                 <Route path="/land/:slug" element={<TripLandingPage />} />
@@ -135,6 +145,8 @@ function AppContent() {
                 <Route path="/shop" element={<ShopPage />} />
                 <Route path="/request-product" element={<RequestProductPage />} />
                 <Route path="/cart" element={<CartPage />} />
+                {/* QR Distribution - for app marketing */}
+                <Route path="/admin/qr" element={<ProtectedRoute adminOnly><QRDistributionPage /></ProtectedRoute>} />
                 {/* Admin Portal (protected) */}
                 <Route path="/admin" element={<ProtectedRoute adminOnly><AdminPortal /></ProtectedRoute>} />
                 <Route path="/admin/portal" element={<ProtectedRoute adminOnly><AdminPortal /></ProtectedRoute>} />
@@ -144,6 +156,7 @@ function AppContent() {
                 <Route path="/admin/stories" element={<ProtectedRoute adminOnly><Navigate to="/admin?tab=stories" replace /></ProtectedRoute>} />
                 <Route path="/admin/leads" element={<ProtectedRoute adminOnly><Navigate to="/admin?tab=leads" replace /></ProtectedRoute>} />
                 <Route path="/admin/itinerary" element={<ProtectedRoute adminOnly><Navigate to="/admin?tab=itinerary" replace /></ProtectedRoute>} />
+                <Route path="/admin/campaigns" element={<ProtectedRoute adminOnly><Navigate to="/admin?tab=campaigns" replace /></ProtectedRoute>} />
                 <Route path="/admin/trips/:id/itinerary" element={<ProtectedRoute adminOnly><AdminItineraryPage /></ProtectedRoute>} />
                 {/* <Route path="/wishlist" element={<WishlistPage />} /> */}
               </Routes>
@@ -152,6 +165,7 @@ function AppContent() {
           <Footer />
           <ChatWidget />
           <LeadCaptureModal />
+          <InstallBanner />
         </div>
       </ProductsProvider>
       </CartProvider>

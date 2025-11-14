@@ -3,7 +3,9 @@ import { motion } from 'framer-motion';
 import { MapPin, Clock, Users, Star, ArrowRight, Calendar, Heart, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '../ui/Button';
-import { getDashboardSummary, fetchTrips, fetchBookings } from '../../services/api';
+import { getDashboardSummary } from '../../services/api';
+import { collection, getDocs } from 'firebase/firestore';
+import { db, waitForFirestore, getDbOrThrow } from '../../firebase';
 import { useAdventureStore } from '../../store/adventureStore';
 
 interface Trip {
@@ -30,15 +32,6 @@ interface UserBooking {
   trip_name?: string;
 }
 
-interface UserTrip {
-  id: number;
-  name: string;
-  location: string;
-  price: number;
-  images?: string[];
-  duration?: string;
-  difficulty?: string;
-}
 
 interface FirestoreTrip {
   id: string;
@@ -116,73 +109,66 @@ interface TripsListWidgetProps {
 export function TripsListWidget({ limit = 4, showHeader = true, className = "" }: TripsListWidgetProps) {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [userBookings, setUserBookings] = useState<UserBooking[]>([]);
-  const [allTrips, setAllTrips] = useState<FirestoreTrip[]>([]);
+  // Note: we keep Firestore trips local during fetch; no need to persist allTrips in state here.
   const [loading, setLoading] = useState(true);
   const [wishlistedTrips, setWishlistedTrips] = useState<Set<number>>(new Set());
   const [showUserTrips, setShowUserTrips] = useState(true);
   const { user } = useAdventureStore();
 
+  // We intentionally omit helper functions from the dependency array because
+  // they are stable for this render and we only want to react to `limit` and `user`.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    fetchUserData();
-  }, [limit, user]);
+    (async () => {
+      try {
+        setLoading(true);
 
-  const fetchUserData = async () => {
-    try {
-      setLoading(true);
-      
-      if (user?.name) {
-        // Fetch user's dashboard data including bookings
-        try {
-          const dashboardData = await getDashboardSummary();
-          const bookings = dashboardData?.recentActivity?.bookings || [];
-          setUserBookings(bookings);
-          
-          // Fetch all available trips from Firestore instead of Django API
-          const firestoreTrips = await fetchTripsFromFirestore();
-          setAllTrips(firestoreTrips);
-          
-          // If user has bookings, show their trips; otherwise show featured trips
-          if (bookings.length > 0) {
-            const userTripsData = await createUserTripsFromBookings(bookings, firestoreTrips);
-            setTrips(userTripsData.slice(0, limit));
-            setShowUserTrips(true);
-          } else {
-            // Show actual trips from Firestore for new users instead of fallback
+        if (user?.name) {
+          try {
+            const dashboardData = await getDashboardSummary();
+            const bookings = dashboardData?.recentActivity?.bookings || [];
+            setUserBookings(bookings);
+
+            const firestoreTrips = await fetchTripsFromFirestore();
+
+            if (bookings.length > 0) {
+              const userTripsData = await createUserTripsFromBookings(bookings, firestoreTrips);
+              setTrips(userTripsData.slice(0, limit));
+              setShowUserTrips(true);
+            } else {
+              const featuredTrips = convertFirestoreTripsToTripFormat(firestoreTrips.slice(0, limit));
+              setTrips(featuredTrips);
+              setShowUserTrips(false);
+            }
+          } catch (error) {
+            console.log('Dashboard API not available, showing Firestore trips:', error);
+            const firestoreTrips = await fetchTripsFromFirestore();
             const featuredTrips = convertFirestoreTripsToTripFormat(firestoreTrips.slice(0, limit));
             setTrips(featuredTrips);
             setShowUserTrips(false);
           }
-        } catch (error) {
-          console.log('Dashboard API not available, showing Firestore trips:', error);
-          // Fallback to showing Firestore trips directly
+        } else {
           const firestoreTrips = await fetchTripsFromFirestore();
           const featuredTrips = convertFirestoreTripsToTripFormat(firestoreTrips.slice(0, limit));
           setTrips(featuredTrips);
           setShowUserTrips(false);
         }
-      } else {
-        // User not logged in, show trips from Firestore
-        const firestoreTrips = await fetchTripsFromFirestore();
-        const featuredTrips = convertFirestoreTripsToTripFormat(firestoreTrips.slice(0, limit));
-        setTrips(featuredTrips);
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+        try {
+          const firestoreTrips = await fetchTripsFromFirestore();
+          const featuredTrips = convertFirestoreTripsToTripFormat(firestoreTrips.slice(0, limit));
+          setTrips(featuredTrips);
+        } catch (firestoreError) {
+          console.error('Error fetching from Firestore:', firestoreError);
+          setTrips(fallbackTrips.slice(0, limit));
+        }
         setShowUserTrips(false);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-      // Last resort: try to fetch from Firestore
-      try {
-        const firestoreTrips = await fetchTripsFromFirestore();
-        const featuredTrips = convertFirestoreTripsToTripFormat(firestoreTrips.slice(0, limit));
-        setTrips(featuredTrips);
-      } catch (firestoreError) {
-        console.error('Error fetching from Firestore:', firestoreError);
-        setTrips(fallbackTrips.slice(0, limit));
-      }
-      setShowUserTrips(false);
-    } finally {
-      setLoading(false);
-    }
-  };
+    })();
+  }, [limit, user]);
 
   const fetchTripsFromFirestore = async (): Promise<FirestoreTrip[]> => {
     try {
@@ -214,7 +200,7 @@ export function TripsListWidget({ limit = 4, showHeader = true, className = "" }
     }
   };
 
-  const convertFirestoreTripsToTripFormat = (firestoreTrips: FirestoreTrip[]): Trip[] => {
+  const convertFirestoreTripsToTripFormat = React.useCallback((firestoreTrips: FirestoreTrip[]): Trip[] => {
     return firestoreTrips.map((trip, index) => ({
       id: parseInt(trip.id) || index + 1,
       title: trip.name,
@@ -227,7 +213,7 @@ export function TripsListWidget({ limit = 4, showHeader = true, className = "" }
       groupSize: "2-8 people",
       difficulty: normalizeDifficulty(trip.difficulty)
     }));
-  };
+  }, []);
 
   const getCategory = (trip: FirestoreTrip): string => {
     if (trip.category) return trip.category;
@@ -248,26 +234,14 @@ export function TripsListWidget({ limit = 4, showHeader = true, className = "" }
     return 'Moderate';
   };
 
-  const createUserTripsFromBookings = async (bookings: UserBooking[], allTrips: FirestoreTrip[]): Promise<Trip[]> => {
-    return bookings.map((booking, index) => {
-      // Try to find the actual trip data from Firestore
-      const tripData = allTrips.find(trip => trip.id === booking.trip?.toString());
-      
-      return {
-        id: booking.trip || booking.id,
-        title: booking.trip_name || tripData?.name || booking.destination,
-        destination: tripData?.location || booking.destination,
-        duration: tripData?.duration || "3 Days 2 Nights",
-        price: booking.amount || tripData?.price || 0,
-        rating: tripData?.rating || (4.5 + (index * 0.1)), // Dynamic rating based on user data
-        image: (tripData?.images && tripData.images[0]) || "/api/placeholder/300/200",
-        category: getStatusBadge(booking.status),
-        groupSize: "2-8 people",
-        difficulty: normalizeDifficulty(tripData?.difficulty),
-        bookingStatus: booking.status,
-        bookingDate: booking.date
-      } as Trip & { bookingStatus?: string; bookingDate?: string };
-    });
+  // Add the missing helper functions before they are used
+  const getStatusColor = (status: string): string => {
+    switch (status?.toLowerCase()) {
+      case 'confirmed': return 'bg-green-100 text-green-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
   };
 
   const getStatusBadge = (status: string): string => {
@@ -276,15 +250,6 @@ export function TripsListWidget({ limit = 4, showHeader = true, className = "" }
       case 'pending': return 'Pending';
       case 'cancelled': return 'Cancelled';
       default: return 'Booked';
-    }
-  };
-
-  const getStatusColor = (status: string): string => {
-    switch (status?.toLowerCase()) {
-      case 'confirmed': return 'bg-green-100 text-green-700';
-      case 'pending': return 'bg-yellow-100 text-yellow-700';
-      case 'cancelled': return 'bg-red-100 text-red-700';
-      default: return 'bg-blue-100 text-blue-700';
     }
   };
 
@@ -300,30 +265,27 @@ export function TripsListWidget({ limit = 4, showHeader = true, className = "" }
     });
   };
 
-  if (loading) {
-    return (
-      <div className={`bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 shadow-xl p-6 ${className}`}>
-        {showHeader && (
-          <div className="mb-6">
-            <div className="h-6 bg-gray-200 rounded w-48 mb-2 animate-pulse"></div>
-            <div className="h-4 bg-gray-200 rounded w-64 animate-pulse"></div>
-          </div>
-        )}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {Array.from({ length: limit }).map((_, index) => (
-            <div key={index} className="animate-pulse">
-              <div className="bg-gray-200 rounded-xl h-48 mb-4"></div>
-              <div className="space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                <div className="h-8 bg-gray-200 rounded w-24"></div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  // Inline createUserTripsFromBookings function
+  const createUserTripsFromBookings = React.useCallback(async (bookings: UserBooking[], allTrips: FirestoreTrip[]): Promise<Trip[]> => {
+    return bookings.map((booking, index) => {
+      // Try to find the actual trip data from Firestore
+      const tripData = allTrips.find(trip => trip.id === booking.trip?.toString());
+      return {
+        id: booking.trip || booking.id,
+        title: booking.trip_name || tripData?.name || booking.destination,
+        destination: tripData?.location || booking.destination,
+        duration: tripData?.duration || "3 Days 2 Nights",
+        price: booking.amount || tripData?.price || 0,
+        rating: tripData?.rating || (4.5 + (index * 0.1)), // Dynamic rating based on user data
+        image: (tripData?.images && tripData.images[0]) || "/api/placeholder/300/200",
+        category: getStatusBadge(booking.status),
+        groupSize: "2-8 people",
+        difficulty: normalizeDifficulty(tripData?.difficulty),
+        bookingStatus: booking.status,
+        bookingDate: booking.date
+      } as Trip & { bookingStatus?: string; bookingDate?: string };
+    });
+  }, []);
 
   return (
     <div className={`bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 shadow-xl p-6 ${className}`}>
@@ -398,15 +360,7 @@ export function TripsListWidget({ limit = 4, showHeader = true, className = "" }
                   <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
-                    onClick={() => {
-                      const newWishlisted = new Set(wishlistedTrips);
-                      if (wishlistedTrips.has(trip.id)) {
-                        newWishlisted.delete(trip.id);
-                      } else {
-                        newWishlisted.add(trip.id);
-                      }
-                      setWishlistedTrips(newWishlisted);
-                    }}
+                    onClick={() => toggleWishlist(trip.id)}
                     className="p-2 bg-white/90 rounded-full shadow-md hover:bg-white transition-colors"
                   >
                     <Heart 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { QrCode, Plus, Trash2, Copy } from 'lucide-react';
-import QRCodeGenerator from '../../components/qr/QRCodeGenerator';
+import QRCodeGenerator from '../components/qr/QRCodeGenerator';
 
 interface QRCodeCampaign {
   id: string;

@@ -85,32 +85,16 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      {/* Mobile Cart Button in Header (top right, next to menu) */}
-      <div className="lg:hidden fixed top-4 right-20 z-[60] flex items-center">
-        <button
-          className="relative flex items-center justify-center bg-gradient-to-br from-yellow-400 to-orange-500 text-white shadow-xl rounded-full w-12 h-12 border-4 border-white/80 focus:outline-none"
-          style={{ boxShadow: '0 6px 32px 0 rgba(0,0,0,0.18)' }}
-          aria-label="View cart"
-          onClick={() => setCartOpen(true)}
-        >
-          <ShoppingCart className="w-7 h-7" />
-          {cart.length > 0 && (
-            <span className="absolute -top-1 -right-1 bg-adventure-orange text-white text-xs font-bold rounded-full px-1.5 py-0.5 shadow border-2 border-white">
-              {cart.reduce((sum: number, item: { quantity: number }) => sum + item.quantity, 0)}
-            </span>
-          )}
-        </button>
-      </div>
-  <motion.header
-        className="fixed top-0 left-0 right-0 z-50 px-4 py-4 transition-all duration-300"
+      <motion.header
+        className="fixed top-0 left-0 right-0 z-50 px-3 py-2 md:px-4 md:py-3 transition-all duration-300 w-full"
         animate={isScrolled ? 'scrolled' : 'top'}
         variants={headerVariants}
       >
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="w-full flex items-center justify-between gap-2">
           {/* Logo */}
           <motion.div whileHover={{ scale: 1.05 }} transition={{ type: 'spring', stiffness: 400 }}>
             <Link to="/">
-              <img src="/logo.png" alt="Logo" className="h-10 w-auto" />
+              <img src="/logo.png" alt="Logo" className="h-7 md:h-10 w-auto flex-shrink-0" />
             </Link>
           </motion.div>
 
@@ -172,7 +156,7 @@ export const Header: React.FC = () => {
           {/* Drawer */}
           <div className="relative w-full max-w-md h-[85vh] rounded-t-3xl lg:rounded-l-3xl shadow-2xl p-0 z-10 flex flex-col border-t-4 border-forest-green bg-[var(--card)] text-[var(--text)]">
             <div className="flex items-center justify-between px-6 pt-6 pb-3 border-b border-[var(--border)]">
-              <h2 className="text-2xl font-extrabold text-forest-green tracking-tight">Your Cart</h2>
+              <h2 className="text-2xl font-great-adventurer font-bold text-forest-green tracking-tight">Your Cart</h2>
               <button className="p-2 rounded-full hover:bg-gray-100" onClick={() => setCartOpen(false)}><X className="w-6 h-6" /></button>
             </div>
             {cart.length === 0 ? (
@@ -187,11 +171,11 @@ export const Header: React.FC = () => {
                       <li key={item.id} className="flex items-center gap-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl shadow p-3">
                         <img src={product.image} alt={product.name} className="w-16 h-16 object-cover rounded-lg border-2 border-white shadow" />
                         <div className="flex-1 min-w-0">
-                          <div className="font-bold text-mountain-blue truncate">{product.name}</div>
-                          <div className="text-gray-500 text-xs truncate">{product.description}</div>
-                          <div className="text-forest-green font-bold mt-1">₹{product.price} <span className="text-xs text-gray-400">x {item.quantity}</span></div>
+                          <div className="font-expat-rugged font-bold text-mountain-blue truncate">{product.name}</div>
+                          <div className="font-inter text-gray-500 text-xs truncate">{product.description}</div>
+                          <div className="font-outbrave font-bold text-forest-green mt-1">₹{product.price} <span className="text-xs text-gray-400">x {item.quantity}</span></div>
                         </div>
-                        <span className="text-lg font-bold text-mountain-blue">₹{product.price * item.quantity}</span>
+                        <span className="text-lg font-outbrave font-bold text-mountain-blue">₹{product.price * item.quantity}</span>
                       </li>
                     );
                   })}
@@ -199,8 +183,8 @@ export const Header: React.FC = () => {
                 {/* Cart total and checkout */}
                 <div className="px-6 pb-6 pt-2 border-t bg-gradient-to-r from-white to-yellow-50">
                   <div className="flex justify-between items-center mb-4 text-[var(--text)]">
-                    <span className="font-semibold text-lg text-forest-green">Total</span>
-                    <span className="text-xl font-extrabold text-mountain-blue">
+                    <span className="font-expat-rugged font-bold text-lg text-forest-green">Total</span>
+                    <span className="text-xl font-outbrave font-bold text-mountain-blue">
                       ₹{cart.reduce((sum, item) => {
                         const product = products.find(p => p.id === item.id);
                         return sum + (product ? product.price * item.quantity : 0);
@@ -208,7 +192,7 @@ export const Header: React.FC = () => {
                     </span>
                   </div>
                   <button
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-forest-green to-mountain-blue text-white font-bold text-lg shadow-lg hover:from-mountain-blue hover:to-forest-green transition-all duration-200 disabled:opacity-60"
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-forest-green to-mountain-blue text-white font-tall-rugged font-bold text-lg shadow-lg hover:from-mountain-blue hover:to-forest-green transition-all duration-200 disabled:opacity-60"
                     onClick={() => { setCartOpen(false); navigate('/cart'); }}
                     disabled={cart.length === 0}
                   >
@@ -250,39 +234,57 @@ export const Header: React.FC = () => {
             )}
           </div>
 
-          {/* Mobile Menu Button */}
-          <motion.button
-            className="lg:hidden relative text-white"
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          >
-            <span className="absolute -inset-2 rounded-xl bg-gradient-to-br from-emerald-500/30 via-primary/30 to-blue-500/30 blur-xl opacity-60" />
-            <span className="relative inline-flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-600 via-primary to-blue-600 ring-1 ring-white/20 shadow-lg shadow-primary/30">
-              <AnimatePresence mode="wait">
-                {isMobileMenuOpen ? (
-                  <motion.div
-                    key="close"
-                    initial={{ rotate: -90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: 90, opacity: 0 }}
-                    transition={{ duration: 0.25 }}
-                  >
-                    <X className="w-5 h-5" />
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="menu"
-                    initial={{ rotate: 90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: -90, opacity: 0 }}
-                    transition={{ duration: 0.25 }}
-                  >
-                    <Menu className="w-5 h-5" />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </span>
-          </motion.button>
+          {/* Mobile Buttons - Cart and Menu on same line */}
+          <div className="lg:hidden flex items-center gap-2">
+            {/* Mobile Cart Button */}
+            <button
+              className="relative flex items-center justify-center bg-gradient-to-br from-yellow-400 to-orange-500 text-white shadow-lg rounded-full w-9 h-9 md:w-10 md:h-10 border-2 border-white/80 focus:outline-none flex-shrink-0 hover:shadow-xl transition-shadow"
+              style={{ boxShadow: '0 3px 12px 0 rgba(0,0,0,0.12)' }}
+              aria-label="View cart"
+              onClick={() => setCartOpen(true)}
+            >
+              <ShoppingCart className="w-4 h-4 md:w-5 md:h-5" />
+              {cart.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow border-2 border-white">
+                  {cart.reduce((sum: number, item: { quantity: number }) => sum + item.quantity, 0)}
+                </span>
+              )}
+            </button>
+
+            {/* Mobile Menu Button */}
+            <motion.button
+              className="relative text-white flex-shrink-0"
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              <span className="absolute -inset-2 rounded-xl bg-gradient-to-br from-emerald-500/30 via-primary/30 to-blue-500/30 blur-xl opacity-60" />
+              <span className="relative inline-flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-emerald-600 via-primary to-blue-600 ring-1 ring-white/20 shadow-lg shadow-primary/30">
+                <AnimatePresence mode="wait">
+                  {isMobileMenuOpen ? (
+                    <motion.div
+                      key="close"
+                      initial={{ rotate: -90, opacity: 0 }}
+                      animate={{ rotate: 0, opacity: 1 }}
+                      exit={{ rotate: 90, opacity: 0 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      <X className="w-4 h-4 md:w-5 md:h-5" />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="menu"
+                      initial={{ rotate: 90, opacity: 0 }}
+                      animate={{ rotate: 0, opacity: 1 }}
+                      exit={{ rotate: -90, opacity: 0 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      <Menu className="w-4 h-4 md:w-5 md:h-5" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </span>
+            </motion.button>
+          </div>
         </div>
       </motion.header>
 

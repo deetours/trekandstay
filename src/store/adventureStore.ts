@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { User, Destination, BookingData } from '../types';
+import { signOut } from 'firebase/auth';
+import { auth } from '../firebase';
 
 interface AdventureStore {
   // User state
@@ -75,15 +77,11 @@ export const useAdventureStore = create<AdventureStore>((set) => ({
     set({ user: null, isAuthenticated: false, currentBooking: null, bookingStep: 0 });
     
     // Sign out from Firebase Auth
-    import('../firebase').then(({ auth }) => {
-      if (auth?.currentUser) {
-        import('firebase/auth').then(({ signOut }) => {
-          signOut(auth).catch((error) => {
-            console.error('Error signing out:', error);
-          });
-        });
-      }
-    });
+    if (auth?.currentUser) {
+      signOut(auth).catch((error) => {
+        console.error('Error signing out:', error);
+      });
+    }
     
     // Clear any persisted data
     if (typeof localStorage !== 'undefined') {

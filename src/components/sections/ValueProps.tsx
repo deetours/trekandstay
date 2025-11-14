@@ -18,10 +18,10 @@ export const ValueProps: React.FC = () => {
   const loopTransition = { repeat: Infinity, ease: 'easeInOut' as const };
 
   const iconVariants: Record<string, object> = {
-    compass: prefersReduced ? {} : { rotate: [0, 12, -8, 6, -4, 0], transition: { ...loopTransition, duration: 6 } },
+    compass: prefersReduced ? {} : { rotate: [0, 12, -8, 6, -4, 0], transition: { ...loopTransition, duration: 6 } },    
     mountain: prefersReduced ? {} : { y: [0, -4, 0], transition: { ...loopTransition, duration: 4 } },
-    leaf: prefersReduced ? {} : { rotate: [0, -10, 8, -6, 4, 0], transition: { ...loopTransition, duration: 5 } },
-    clock: prefersReduced ? {} : { rotate: [0, 3, -3, 2, -2, 0], transition: { ...loopTransition, duration: 4.5 } },
+    leaf: prefersReduced ? {} : { rotate: [0, -10, 8, -6, 4, 0], transition: { ...loopTransition, duration: 5 } },       
+    clock: prefersReduced ? {} : { rotate: [0, 3, -3, 2, -2, 0], transition: { ...loopTransition, duration: 4.5 } },     
     rupee: prefersReduced ? {} : { y: [0, -6, 0], scale: [1, 1.05, 1], transition: { ...loopTransition, duration: 3.5 } },
     heart: prefersReduced ? {} : { scale: [1, 1.12, 1], transition: { ...loopTransition, duration: 2.8 } },
   };

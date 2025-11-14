@@ -62,7 +62,8 @@ let API_BASE: string = (() => {
   if (ls) return ls.replace(/\/$/, '');
   // Vite exposes env at import.meta.env
   const envBase = (import.meta as ImportMeta).env?.VITE_API_BASE_URL || (import.meta as ImportMeta).env?.VITE_API_URL;
-  return (envBase || 'http://localhost:8000').replace(/\/$/, '');
+  // Updated default to use the new reserved IP address
+  return (envBase || 'http://140.245.255.192:8000').replace(/\/$/, '');
 })();
 
 export function setApiBaseOverride(url?: string) {

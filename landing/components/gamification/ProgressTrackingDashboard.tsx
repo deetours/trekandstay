@@ -3,39 +3,54 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   TrendingUp, 
   Calendar, 
-  Clock, 
   Target, 
   Award, 
   Star,
   BarChart3,
-  PieChart,
   Activity,
   Eye,
-  MousePointer,
-  Heart,
   Share2,
-  Phone,
   MapPin,
   Users,
   Zap,
   Trophy,
-  Gift,
   BookOpen,
   CheckCircle,
   Circle,
-  ArrowUp,
-  ArrowDown,
   Flame,
-  Timer,
-  Sparkles,
-  LineChart
+  Sparkles
 } from 'lucide-react';
+
+export interface PointAction {
+  action: string;
+  timestamp?: number;
+  points?: number;
+  category?: string;
+}
+
+export interface Achievement {
+  id: string;
+  unlocked: boolean;
+  name?: string;
+}
+
+export interface UserProgress {
+  totalPoints: number;
+  pointsHistory?: PointAction[];
+  achievements?: Achievement[];
+  timeSpent?: number;
+  sessionsCount?: number;
+  socialShares?: number;
+  conversions?: number;
+  streakDays?: number;
+  lastActivity?: number;
+}
 
 export interface UserJourneyStep {
   id: string;
   name: string;
   description: string;
-  icon: React.ComponentType<any>;
+  icon: React.ComponentType<{ className?: string }>;
   completed: boolean;
   completedAt?: number;
   points: number;
@@ -70,7 +85,7 @@ export interface ActivityLog {
 }
 
 interface ProgressTrackingDashboardProps {
-  userProgress?: any;
+  userProgress?: UserProgress;
   showDetailed?: boolean;
   onJourneyStepComplete?: (step: UserJourneyStep) => void;
   className?: string;
@@ -228,7 +243,7 @@ export const ProgressTrackingDashboard: React.FC<ProgressTrackingDashboardProps>
       totalPoints,
       level,
       experienceProgress,
-      badges: userProgress.achievements?.filter((a: any) => a.unlocked).length || 0,
+      badges: userProgress.achievements?.filter((a: Achievement) => a.unlocked).length || 0,
       achievements: userProgress.achievements?.length || 0,
       timeSpent: userProgress.timeSpent || 0,
       sessionsCount: userProgress.sessionsCount || 1,
@@ -252,49 +267,59 @@ export const ProgressTrackingDashboard: React.FC<ProgressTrackingDashboardProps>
 
       // Check completion criteria for each step
       switch (step.id) {
-        case 'land_arrival':
-          shouldComplete = userProgress.pointsHistory.some((p: any) => p.action === 'page_load');
+        case 'land_arrival': {
+          shouldComplete = userProgress.pointsHistory.some((p: PointAction) => p.action === 'page_load');
           break;
-        case 'content_exploration':
-          shouldComplete = userProgress.pointsHistory.some((p: any) => 
+        }
+        case 'content_exploration': {
+          shouldComplete = userProgress.pointsHistory.some((p: PointAction) => 
             ['highlights_read', 'content_scroll'].includes(p.action)
           );
           break;
-        case 'weather_check':
-          shouldComplete = userProgress.pointsHistory.some((p: any) => p.action === 'weather_check');
+        }
+        case 'weather_check': {
+          shouldComplete = userProgress.pointsHistory.some((p: PointAction) => p.action === 'weather_check');
           break;
-        case 'itinerary_deep_dive':
-          shouldComplete = userProgress.pointsHistory.some((p: any) => p.action === 'itinerary_view');
+        }
+        case 'itinerary_deep_dive': {
+          shouldComplete = userProgress.pointsHistory.some((p: PointAction) => p.action === 'itinerary_view');
           break;
-        case 'social_interaction':
-          shouldComplete = userProgress.pointsHistory.some((p: any) => 
+        }
+        case 'social_interaction': {
+          shouldComplete = userProgress.pointsHistory.some((p: PointAction) => 
             ['share', 'whatsapp', 'call_action'].includes(p.action)
           );
           break;
-        case 'price_consideration':
-          shouldComplete = userProgress.pointsHistory.some((p: any) => 
+        }
+        case 'price_consideration': {
+          shouldComplete = userProgress.pointsHistory.some((p: PointAction) => 
             ['pricing_view', 'calculator_use'].includes(p.action)
           );
           break;
-        case 'booking_initiation':
-          shouldComplete = userProgress.pointsHistory.some((p: any) => p.action === 'booking_start');
+        }
+        case 'booking_initiation': {
+          shouldComplete = userProgress.pointsHistory.some((p: PointAction) => p.action === 'booking_start');
           break;
-        case 'seat_selection':
-          shouldComplete = userProgress.pointsHistory.some((p: any) => p.action === 'seat_selection');
+        }
+        case 'seat_selection': {
+          shouldComplete = userProgress.pointsHistory.some((p: PointAction) => p.action === 'seat_selection');
           break;
-        case 'booking_completion':
-          shouldComplete = userProgress.pointsHistory.some((p: any) => p.action === 'booking_completed');
+        }
+        case 'booking_completion': {
+          shouldComplete = userProgress.pointsHistory.some((p: PointAction) => p.action === 'booking_completed');
           break;
-        case 'advocacy_sharing':
-          const shareCount = userProgress.pointsHistory.filter((p: any) => 
+        }
+        case 'advocacy_sharing': {
+          const shareCount = userProgress.pointsHistory.filter((p: PointAction) => 
             ['share', 'whatsapp'].includes(p.action)
           ).length;
           shouldComplete = shareCount >= 2;
           break;
+        }
       }
 
       if (shouldComplete && !step.completed) {
-        const relatedAction = userProgress.pointsHistory.find((p: any) => {
+        const relatedAction = userProgress.pointsHistory.find((p: PointAction) => {
           switch (step.id) {
             case 'land_arrival': return p.action === 'page_load';
             case 'weather_check': return p.action === 'weather_check';
@@ -319,7 +344,7 @@ export const ProgressTrackingDashboard: React.FC<ProgressTrackingDashboardProps>
     });
 
     setJourneySteps(updatedSteps);
-  }, [userProgress, onJourneyStepComplete]);
+  }, [userProgress, onJourneyStepComplete, journeySteps]);
 
   const formatTime = (ms: number): string => {
     const seconds = Math.floor(ms / 1000);
@@ -425,7 +450,7 @@ export const ProgressTrackingDashboard: React.FC<ProgressTrackingDashboardProps>
         </div>
 
         {/* Key Metrics Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-6 mb-8">
           <div className="bg-gradient-to-r from-emerald-500 to-teal-500 p-4 rounded-xl text-white">
             <div className="flex items-center gap-2 mb-2">
               <Trophy className="w-5 h-5" />

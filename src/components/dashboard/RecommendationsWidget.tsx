@@ -1,109 +1,111 @@
-import { useEffect, useState } from 'react';
-import { fetchTripRecommendations, generateTripRecommendations, TripRecommendation } from '../../services/api';
+import { useEffect, useState, useCallback } from 'react';
+import { fetchTripRecommendations, generateTripRecommendations, fetchTrips, type TripRecommendation } from '../../services/api';
 import { motion } from 'framer-motion';
-import { MapPin, Sparkles, ArrowRight, RefreshCw, Compass, Mountain, Waves } from 'lucide-react';
+import { MapPin, Sparkles, ArrowRight, RefreshCw, Compass, Mountain, Waves, Zap } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { useNavigate } from 'react-router-dom';
 
+interface Trip {
+  id: string;
+  name: string;
+  location: string;
+  price: number;
+  tags?: string[];
+  rating?: number;
+  images?: string[];
+  duration_days?: number;
+}
+
+type EnhancedRecommendation = TripRecommendation & { icon?: React.ElementType; color?: string; route?: string };
+
 export function RecommendationsWidget() {
-  type EnhancedRecommendation = TripRecommendation & { icon?: React.ElementType; color?: string; route?: string };
   const [recommendations, setRecommendations] = useState<EnhancedRecommendation[]>([]);
+  const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // Enhanced recommendations with functional navigation
-  const enhancedRecommendations = [
-    {
-      id: 1,
-      destination: 'Popular Destinations',
-      reason: 'Trending spots loved by travelers',
-      trip: 'destinations',
-      icon: Mountain,
-      color: 'from-blue-500 to-cyan-500',
-      route: '/destinations'
-    },
-    {
-      id: 2,
-      destination: 'Weekend Getaways',
-      reason: 'Perfect 2-3 day escapes near you',
-      trip: 'weekend',
-      icon: Compass,
-      color: 'from-emerald-500 to-teal-500',
-      route: '/destinations?filter=weekend'
-    },
-    {
-      id: 3,
-      destination: 'Adventure Trips',
-      reason: 'Thrilling experiences for adrenaline seekers',
-      trip: 'adventure',
-      icon: Mountain,
-      color: 'from-orange-500 to-red-500',
-      route: '/destinations?filter=adventure'
-    },
-    {
-      id: 4,
-      destination: 'Beach Holidays',
-      reason: 'Relaxing coastal destinations',
-      trip: 'beach',
-      icon: Waves,
-      color: 'from-cyan-500 to-blue-500',
-      route: '/destinations?filter=beach'
-    }
-  ];
+  // Generate recommendations dynamically from trips data
+  const generateDynamicRecommendations = useCallback((tripsData: Trip[]): EnhancedRecommendation[] => {
+    if (!tripsData || tripsData.length === 0) return [];
 
-  const fetchRecommendations = async () => {
+    const iconMap: { [key: string]: React.ElementType } = {
+      'beach': Waves,
+      'mountain': Mountain,
+      'adventure': Zap,
+      'weekend': Compass,
+      'popular': Mountain
+    };
+
+    const colorMap: { [key: string]: string } = {
+      'beach': 'from-cyan-500 to-blue-500',
+      'mountain': 'from-orange-500 to-red-500',
+      'adventure': 'from-purple-500 to-pink-500',
+      'weekend': 'from-emerald-500 to-teal-500',
+      'popular': 'from-blue-500 to-cyan-500'
+    };
+
+    // Sort by rating and pick top 4
+    const topTrips = tripsData
+      .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+      .slice(0, 4);
+
+    return topTrips.map((trip, index) => {
+      const primaryTag = trip.tags?.[0] || 'popular';
+      const icon = iconMap[primaryTag] || Mountain;
+      const color = colorMap[primaryTag] || 'from-blue-500 to-cyan-500';
+
+      return {
+        id: trip.id,
+        destination: trip.name,
+        reason: `${trip.location} • ₹${trip.price.toLocaleString()} • ${trip.duration_days || 3}D`,
+        trip: trip.id,
+        icon,
+        color,
+        route: `/trip/${trip.id}`,
+        rating: trip.rating
+      } as EnhancedRecommendation;
+    });
+  }, []);
+
+  const fetchRecommendations = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      
-      // Try to get existing recommendations first
-      let data = await fetchTripRecommendations();
-      
-      // If no recommendations exist, use enhanced fallback
-      if (data.length === 0) {
-        try {
-          await generateTripRecommendations();
-          data = await fetchTripRecommendations();
-        } catch (genError) {
-          console.warn('Could not generate recommendations:', genError);
-          // Use enhanced fallback recommendations
-          data = enhancedRecommendations;
-        }
+
+      // Fetch real trips from Firestore
+      const tripsData = await fetchTrips();
+      setTrips(tripsData || []);
+
+      if (!tripsData || tripsData.length === 0) {
+        setError('No trips available for recommendations');
+        setRecommendations([]);
+        return;
       }
-      
-      setRecommendations(data);
+
+      // Generate recommendations from real trip data
+      const dynamicRecs = generateDynamicRecommendations(tripsData);
+      setRecommendations(dynamicRecs);
     } catch (err) {
       console.error('Error fetching recommendations:', err);
-      setError('Using suggested destinations');
-      // Set enhanced fallback data even on error
-      setRecommendations(enhancedRecommendations);
+      setError('Failed to load recommendations. Please try again.');
+      setRecommendations([]);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleExplore = (recommendation: TripRecommendation & { route?: string }) => {
-    if (recommendation.route) {
-      navigate(recommendation.route);
-    } else {
-      // Fallback navigation based on destination name
-      if (recommendation.destination.toLowerCase().includes('weekend')) {
-        navigate('/destinations?filter=weekend');
-      } else if (recommendation.destination.toLowerCase().includes('beach')) {
-        navigate('/destinations?filter=beach');
-      } else if (recommendation.destination.toLowerCase().includes('adventure')) {
-        navigate('/destinations?filter=adventure');
-      } else {
-        navigate('/destinations');
-      }
-    }
-  };
+  }, [generateDynamicRecommendations]);
 
   useEffect(() => {
     fetchRecommendations();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchRecommendations]);
+
+  const handleExplore = (recommendation: EnhancedRecommendation) => {
+    if (recommendation.route) {
+      navigate(recommendation.route);
+    } else {
+      navigate(`/trip/${recommendation.trip}`);
+    }
+  };
 
   if (loading) {
     return (
@@ -132,7 +134,7 @@ export function RecommendationsWidget() {
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-amber-600" />
               <span className="text-sm font-medium text-amber-700">
-                Curated destinations for you
+                {error}
               </span>
             </div>
             <Button
@@ -168,17 +170,17 @@ export function RecommendationsWidget() {
                   <div className={`w-12 h-12 bg-gradient-to-br ${colorClass} rounded-xl flex items-center justify-center shadow-lg`}>
                     <IconComponent className="w-6 h-6 text-white" />
                   </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-gray-900 group-hover:text-gray-700 transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-gray-900 group-hover:text-gray-700 transition-colors truncate">
                       {recommendation.destination}
                     </h4>
-                    <p className="text-sm text-gray-600 max-w-xs">{recommendation.reason}</p>
+                    <p className="text-sm text-gray-600 max-w-xs truncate">{recommendation.reason}</p>
                   </div>
                 </div>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-cyan-600 text-white rounded-xl text-sm font-medium hover:from-emerald-700 hover:to-cyan-700 transition-all shadow-md group-hover:shadow-lg"
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-cyan-600 text-white rounded-xl text-sm font-medium hover:from-emerald-700 hover:to-cyan-700 transition-all shadow-md group-hover:shadow-lg shrink-0"
                 >
                   Explore
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -189,11 +191,11 @@ export function RecommendationsWidget() {
         })}
       </div>
       
-      {recommendations.length === 0 && !loading && (
+      {recommendations.length === 0 && !loading && !error && (
         <div className="text-center py-8 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200">
           <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-3" />
           <div className="text-sm font-medium text-gray-700 mb-2">No recommendations yet</div>
-          <div className="text-xs text-gray-500 mb-4">We're learning your preferences</div>
+          <div className="text-xs text-gray-500 mb-4">We're learning your preferences or waiting for trip data</div>
           <Button size="sm" onClick={fetchRecommendations}>
             <RefreshCw className="w-4 h-4 mr-2" />
             Load Recommendations
@@ -202,21 +204,23 @@ export function RecommendationsWidget() {
       )}
       
       {/* View All Button */}
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-        className="text-center pt-4"
-      >
-        <Button 
-          variant="secondary" 
-          onClick={() => navigate('/destinations')}
-          className="w-full"
+      {recommendations.length > 0 && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="text-center pt-4"
         >
-          <Compass className="w-4 h-4 mr-2" />
-          View All Destinations
-        </Button>
-      </motion.div>
+          <Button 
+            variant="secondary" 
+            onClick={() => navigate('/destinations')}
+            className="w-full"
+          >
+            <Compass className="w-4 h-4 mr-2" />
+            View All {trips.length} Destinations
+          </Button>
+        </motion.div>
+      )}
     </div>
   );
 }

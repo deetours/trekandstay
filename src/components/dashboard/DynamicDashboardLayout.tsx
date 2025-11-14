@@ -547,7 +547,7 @@ const DynamicDashboardLayout: React.FC = () => {
             <Zap className="w-4 h-4" />
             Widget Controls
           </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
             {widgets.map(widget => (
               <div key={widget.id} className="flex items-center justify-between bg-white p-2 rounded-lg border">
                 <div className="flex items-center gap-2">

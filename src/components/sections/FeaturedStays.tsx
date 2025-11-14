@@ -108,10 +108,10 @@ export function FeaturedStays() {
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">
+          <h2 className="text-4xl font-great-adventurer font-bold text-forest-green mb-4">
             Featured Stays
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="text-xl font-inter text-mountain-blue max-w-3xl mx-auto">
             Discover handpicked accommodations that offer exceptional experiences and comfort for your perfect getaway
           </p>
         </motion.div>
@@ -146,15 +146,15 @@ export function FeaturedStays() {
                 
                 <div className="p-6">
                   <div className="flex items-center gap-2 mb-2">
-                    <MapPin className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm text-gray-600">{stay.location}</span>
+                    <MapPin className="w-4 h-4 text-adventure-orange" />
+                    <span className="text-sm text-mountain-blue">{stay.location}</span>
                   </div>
                   
-                  <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                  <h3 className="text-xl font-expat-rugged font-bold text-forest-green mb-2 group-hover:text-adventure-orange transition-colors">
                     {stay.name}
                   </h3>
                   
-                  <p className="text-gray-600 text-sm mb-4">{stay.description}</p>
+                  <p className="font-inter text-mountain-blue text-sm mb-4">{stay.description}</p>
                   
                   <div className="flex items-center gap-1 mb-4">
                     <div className="flex items-center gap-1">
@@ -168,7 +168,7 @@ export function FeaturedStays() {
                     {stay.amenities.map((amenity) => (
                       <div
                         key={amenity}
-                        className="flex items-center justify-center w-8 h-8 bg-blue-50 rounded-lg text-blue-600"
+                        className="flex items-center justify-center w-8 h-8 bg-adventure-orange/10 rounded-lg text-adventure-orange"
                       >
                         {getAmenityIcon(amenity)}
                       </div>
@@ -177,15 +177,17 @@ export function FeaturedStays() {
                   
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                      <span className="text-2xl font-bold text-blue-600">{stay.price}</span>
-                      <span className="text-sm text-gray-500 line-through">{stay.originalPrice}</span>
+                      <span className="text-2xl font-outbrave font-bold text-adventure-orange">{stay.price}</span>
+                      <span className="text-sm text-mountain-blue line-through">{stay.originalPrice}</span>
                     </div>
-                    <span className="text-sm text-gray-500">per night</span>
+                    <span className="text-sm text-mountain-blue">per night</span>
                   </div>
                   
                   <Button
                     onClick={() => navigate(`/stays/${stay.id}`)}
-                    className="w-full bg-gradient-to-r from-forest-green to-waterfall-blue hover:from-forest-green/90 hover:to-waterfall-blue/90 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 transform group-hover:scale-105"
+                    variant="adventure"
+                    size="sm"
+                    className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 group-hover:scale-110 transition-transform"
                   >
                     Book Now
                   </Button>
@@ -204,8 +206,9 @@ export function FeaturedStays() {
         >
           <Button
             onClick={() => navigate('/stays')}
+            variant="primary"
             size="lg"
-            className="bg-gradient-to-r from-forest-green to-waterfall-blue hover:from-forest-green/90 hover:to-waterfall-blue/90 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 transform hover:scale-105"
+            className="font-tall-rugged text-base md:text-lg px-6 md:px-8"
           >
             Explore All Stays
           </Button>

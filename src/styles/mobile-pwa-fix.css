@@ -1,0 +1,258 @@
+/* Mobile PWA Responsiveness Fix - AGGRESSIVE MOBILE FIRST */
+
+/* CRITICAL: Ensure proper sizing on all devices */
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+  -webkit-touch-callout: none;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+body {
+  width: 100vw !important;
+  overflow-x: clip !important;
+}
+
+/* Fix safe area insets for notch devices */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left)) !important;
+    padding-right: max(0px, env(safe-area-inset-right)) !important;
+    padding-bottom: max(0px, env(safe-area-inset-bottom)) !important;
+  }
+  
+  main {
+    padding-left: max(0px, env(safe-area-inset-left)) !important;
+    padding-right: max(0px, env(safe-area-inset-right)) !important;
+  }
+}
+
+/* AGGRESSIVE: Force single column EVERYWHERE on mobile */
+@media screen and (max-width: 1023px) {
+  /* Override ALL grid columns to 1 on devices under 1024px */
+  .grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+  
+  .grid-cols-1,
+  .grid-cols-2,
+  .grid-cols-3,
+  .grid-cols-4,
+  .sm\:grid-cols-2,
+  .md\:grid-cols-2,
+  .md\:grid-cols-3,
+  .md\:grid-cols-4,
+  .lg\:grid-cols-2,
+  .lg\:grid-cols-3,
+  .lg\:grid-cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* Hide any second column items */
+  .grid > :nth-child(2) {
+    display: block !important;
+    width: 100% !important;
+  }
+  
+  /* Ensure grid items are full width */
+  .grid > * {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  
+  /* Ensure content is readable on mobile */
+  main, [role="main"] {
+    padding: 0;
+    width: 100%;
+  }
+  
+  section {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
+  /* Fix card layouts */
+  [class*="card"], [class*="Card"] {
+    margin-bottom: 1rem;
+    width: 100%;
+  }
+  
+  /* Improve spacing */
+  h1, h2, h3, h4, h5, h6 {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  
+  /* Fix long text wrapping */
+  p, span, div {
+    word-break: break-word;
+  }
+  
+  /* Make buttons full width on mobile */
+  button {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  
+  /* Fix input sizing */
+  input, textarea, select {
+    min-height: 44px;
+    font-size: 16px;
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  
+  /* Remove iOS zoom on input focus */
+  input:focus, textarea:focus, select:focus {
+    font-size: 16px;
+  }
+  
+  /* Fix images on mobile */
+  img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+  
+  /* Full-width containers */
+  .container, .max-w-7xl, .max-w-6xl, .max-w-5xl, .max-w-4xl {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 1rem !important;
+  }
+  
+  /* Fix flex containers */
+  [class*="flex"] {
+    flex-wrap: wrap;
+  }
+  
+  /* Ensure gaps are consistent */
+  .gap-4, .gap-6, .gap-8 {
+    gap: 1rem !important;
+  }
+  
+  /* Fix header on mobile */
+  header {
+    position: sticky !important;
+    top: 0;
+    z-index: 40;
+  }
+  
+  /* Fix footer on mobile */
+  footer {
+    width: 100%;
+    margin: 0;
+    padding: 1rem;
+  }
+}
+
+/* Tablet/iPad specific fixes */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .grid-cols-1 {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)) !important;
+  }
+  
+  .md\:grid-cols-2 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  
+  .md\:grid-cols-3 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  
+  .md\:grid-cols-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* Large screens */
+@media (min-width: 1025px) {
+  .lg\:grid-cols-3 {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+  
+  .lg\:grid-cols-4 {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+}
+
+/* PWA specific - when in standalone mode */
+@media (display-mode: standalone) {
+  body {
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+    padding-top: 0;
+  }
+  
+  /* Remove header padding in PWA mode for more space */
+  header {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+}
+
+/* High density displays (Retina) */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  * {
+    -webkit-backface-visibility: hidden;
+    -webkit-perspective: 1000;
+  }
+}
+
+/* Force 16px base font to prevent iOS zoom */
+@media (max-height: 500px) and (orientation: landscape) {
+  body {
+    font-size: 14px;
+  }
+  
+  input, textarea, select, button {
+    font-size: 16px;
+  }
+}
+
+/* Prevent layout shift on scroll */
+html {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Remove any unwanted horizontal scrolling */
+* {
+  max-width: 100%;
+}
+
+body {
+  position: relative;
+  width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Ensure proper stacking context */
+main {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: calc(100vh - 80px);
+}
+
+/* Fix flex shrinking issues */
+[class*="flex"] > * {
+  min-width: 0;
+  word-break: break-word;
+}
+
+/* Better text rendering on mobile */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}

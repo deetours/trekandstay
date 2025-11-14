@@ -19,8 +19,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { usePopupTriggers } from '../hooks/usePopupTriggers';
 import { Logo } from '../components/common/Logo';
 import { LocalScene } from '../components/3d/LocalScene';
-import { collection, getDocs } from 'firebase/firestore';
-import { db, waitForFirestore, getDbOrThrow } from '../firebase';
+import { fetchTrips } from '../services/api';
 
 interface TripDoc { id: string; name: string; location: string; duration?: string; difficulty?: string; price?: number; images?: string[]; tags?: string[]; description?: string; highlights?: string[]; rating?: number; reviewCount?: number; }
 
@@ -82,22 +81,38 @@ export const DestinationsPage: React.FC = () => {
     let active = true;
     (async () => {
       try {
-        let activeDb = db;
-        if (!activeDb) {
-          try { activeDb = await waitForFirestore(3000); } catch { try { activeDb = getDbOrThrow(); } catch { activeDb = undefined; } }
-        }
-        if (!activeDb) {
-          setError('Firestore database not available');
-          return;
-        }
-        const snap = await getDocs(collection(activeDb, 'trips'));
+        setLoading(true);
+        setError(null);
+        
+        // Fetch from Django backend
+        const data = await fetchTrips();
         if (!active) return;
-        const trips: TripDoc[] = snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<TripDoc, 'id'>) }));
+        
+        // Map API response to TripDoc format
+        const trips: TripDoc[] = data.map((trip: Record<string, unknown>) => ({
+          id: trip.id?.toString() || trip.slug,
+          name: trip.name || trip.title,
+          location: trip.location,
+          duration: trip.duration || `${trip.duration_days || 3} Days`,
+          difficulty: trip.difficulty,
+          price: trip.price,
+          images: trip.images || [trip.image],
+          tags: trip.tags || [],
+          description: trip.description,
+          highlights: trip.highlights || [],
+          rating: trip.rating || 4.5,
+          reviewCount: trip.review_count || trip.reviewCount || 0,
+        }));
+        
         setRawTrips(trips);
-      } catch (e) {
-        const message = e instanceof Error ? e.message : 'Failed to load destinations';
-        setError(message);
-      } finally { if (active) setLoading(false); }
+      } catch (err) {
+        console.error('Error fetching trips:', err);
+        if (active) {
+          setError('Failed to load destinations. Please ensure Firebase/Firestore is properly configured');
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
     })();
     return () => { active = false; };
   }, []);
@@ -172,26 +187,26 @@ export const DestinationsPage: React.FC = () => {
             <div className="flex flex-col items-center mb-4">
               <Logo size="lg" showText={false} />
             </div>
-            <h1 className="text-4xl lg:text-6xl font-oswald font-bold text-forest-green mb-4">
+            <h1 className="text-3xl sm:text-4xl lg:text-6xl font-oswald font-bold text-forest-green mb-4">
               {routeCategoryMeta[pathSegment]?.title || 'Adventure Destinations'}
             </h1>
-            <p className="text-xl text-mountain-blue font-inter max-w-3xl mx-auto">
+            <p className="text-base sm:text-lg lg:text-xl text-mountain-blue font-inter max-w-3xl mx-auto px-4">
               {routeCategoryMeta[pathSegment]?.subtitle || 'Discover curated adventures. Search, filter and find your next trek.'}
             </p>
           </motion.div>
 
           {/* Loading / Error */}
           {loading && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-              {Array.from({ length:6 }).map((_,i)=>(<div key={i} className="h-96 rounded-2xl bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 animate-pulse" />))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 mb-12">
+              {Array.from({ length:6 }).map((_,i)=>(<div key={i} className="h-72 sm:h-80 lg:h-96 rounded-2xl bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 animate-pulse" />))}
             </div>
           )}
-          {error && !loading && <div className="text-center text-red-600 mb-8">{error}</div>}
+          {error && !loading && <div className="text-center text-red-600 mb-8 text-sm sm:text-base">{error}</div>}
 
           {!loading && !error && (
             <>
               <motion.div
-                className="rounded-2xl shadow-xl p-6 mb-8 bg-[var(--card)] border border-[var(--border)] transition-colors"
+                className="rounded-2xl shadow-xl p-4 sm:p-6 mb-8 bg-[var(--card)] border border-[var(--border)] transition-colors"
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
@@ -201,30 +216,30 @@ export const DestinationsPage: React.FC = () => {
                   <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <input
                     type="text"
-                    placeholder="Search destinations, locations, or activities..."
-                    className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-adventure-orange focus:border-transparent transition-all duration-200 text-lg"
+                    placeholder="Search destinations..."
+                    className="w-full pl-12 pr-4 py-3 sm:py-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-adventure-orange focus:border-transparent transition-all duration-200 font-medium min-h-[44px] text-base"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
 
-                {/* Category Filters */}
-                <div className="flex flex-wrap gap-3 mb-6">
+                {/* Category Filters - Wrap on mobile */}
+                <div className="flex flex-wrap gap-2 sm:gap-3 mb-6">
                   {categories.map(c => { const Icon = c.icon; return (
-                    <button key={c.id} onClick={()=>setSelectedCategory(c.id)} className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${selectedCategory===c.id? 'bg-adventure-orange text-white shadow-lg':'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-                      <Icon className="w-4 h-4" /><span className="font-medium">{c.name}</span>
+                    <button key={c.id} onClick={()=>setSelectedCategory(c.id)} className={`flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 rounded-lg transition-all duration-200 text-xs sm:text-sm font-medium ${selectedCategory===c.id? 'bg-adventure-orange text-white shadow-lg':'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+                      <Icon className="w-4 h-4" /><span className="hidden sm:inline">{c.name}</span><span className="sm:hidden">{c.name.split(' ')[0]}</span>
                     </button>
                   );})}
                 </div>
 
-                {/* Difficulty and Sort */}
-                <div className="flex flex-wrap gap-4 items-center">
-                  <div className="flex items-center space-x-2">
-                    <Filter className="w-5 h-5 text-gray-500" />
+                {/* Difficulty and Sort - Stack on mobile, flex on desktop */}
+                <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-start sm:items-center">
+                  <div className="flex items-center space-x-2 w-full sm:w-auto">
+                    <Filter className="w-5 h-5 text-gray-500 flex-shrink-0" />
                     <select
                       value={selectedDifficulty}
                       onChange={(e) => setSelectedDifficulty(e.target.value)}
-                      className="border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-adventure-orange focus:border-transparent"
+                      className="flex-1 border border-gray-200 rounded-lg px-3 py-2 sm:py-3 focus:ring-2 focus:ring-adventure-orange focus:border-transparent font-medium min-h-[44px] text-sm"
                     >
                       {difficulties.map(d => <option key={d} value={d}>Difficulty: {d}</option>)}
                     </select>
@@ -233,7 +248,7 @@ export const DestinationsPage: React.FC = () => {
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className="border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-adventure-orange focus:border-transparent"
+                    className="w-full sm:w-auto border border-gray-200 rounded-lg px-3 py-2 sm:py-3 focus:ring-2 focus:ring-adventure-orange focus:border-transparent font-medium min-h-[44px] text-sm"
                   >
                     <option value="rating">Sort by Rating</option>
                     <option value="price">Sort by Price</option>
@@ -258,7 +273,7 @@ export const DestinationsPage: React.FC = () => {
 
               {/* Destinations Grid */}
               <motion.div
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.6, delay: 0.4 }}
@@ -274,7 +289,7 @@ export const DestinationsPage: React.FC = () => {
                   >
                     <Card className="overflow-hidden h-full hover:shadow-2xl transition-all duration-300">
                       {/* Image */}
-                      <div className="relative overflow-hidden h-64">
+                      <div className="relative overflow-hidden h-48 sm:h-56 lg:h-64">
                         <img
                           src={d.image}
                           alt={d.name}
@@ -283,44 +298,44 @@ export const DestinationsPage: React.FC = () => {
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                         
                         {/* Category Badge */}
-                        <div className="absolute top-4 left-4">
-                          <div className="flex items-center space-x-1 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 text-sm font-medium">
-                            <CategoryIcon className="w-4 h-4 text-adventure-orange" />
-                            <span className="text-gray-700 capitalize">{d.category}</span>
+                        <div className="absolute top-2 sm:top-4 left-2 sm:left-4">
+                          <div className="flex items-center space-x-1 bg-white/90 backdrop-blur-sm rounded-full px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium">
+                            <CategoryIcon className="w-3 h-3 sm:w-4 sm:h-4 text-adventure-orange" />
+                            <span className="text-gray-700 capitalize hidden xs:inline">{d.category}</span>
                           </div>
                         </div>
 
                         {/* Difficulty Badge */}
-                        <div className="absolute top-4 right-4">
-                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${getDifficultyColor(d.difficulty)}`}>
+                        <div className="absolute top-2 sm:top-4 right-2 sm:right-4">
+                          <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${getDifficultyColor(d.difficulty)}`}>
                             {d.difficulty}
                           </span>
                         </div>
 
                         {/* Price */}
-                        <div className="absolute bottom-4 right-4">
-                          <div className="bg-adventure-orange text-white px-3 py-1 rounded-full font-oswald font-bold">
+                        <div className="absolute bottom-2 sm:bottom-4 right-2 sm:right-4">
+                          <div className="bg-adventure-orange text-white px-2 sm:px-3 py-1 rounded-full font-oswald font-bold text-xs sm:text-sm">
                             ₹{d.price.toLocaleString()}
                           </div>
                         </div>
                       </div>
 
                       {/* Content */}
-                      <div className="p-6">
-                        <h3 className="text-xl font-oswald font-bold text-forest-green group-hover:text-adventure-orange transition-colors mb-2">
+                      <div className="p-3 sm:p-4 lg:p-6">
+                        <h3 className="text-base sm:text-lg lg:text-xl font-oswald font-bold text-forest-green group-hover:text-adventure-orange transition-colors mb-2">
                           {d.name}
                         </h3>
                         <div className="flex items-center text-gray-600 mb-3">
-                          <MapPin className="w-4 h-4 mr-1" />
-                          <span className="text-sm">{d.location}</span>
+                          <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
+                          <span className="text-xs sm:text-sm">{d.location}</span>
                         </div>
-                        <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                        <p className="text-gray-600 text-xs sm:text-sm mb-3 lg:mb-4 line-clamp-2">
                           {d.description}
                         </p>
 
                         {/* Stats */}
-                        <div className="flex items-center justify-between mb-4 text-sm">
-                          <div className="flex items-center space-x-4">
+                        <div className="flex items-center justify-between mb-3 lg:mb-4 text-xs sm:text-sm flex-wrap gap-2">
+                          <div className="flex items-center space-x-2 sm:space-x-4">
                             <div className="flex items-center">
                               <Star className="w-4 h-4 text-yellow-400 fill-current mr-1" />
                               <span className="font-medium">{d.rating.toFixed(1)}</span>
@@ -335,27 +350,27 @@ export const DestinationsPage: React.FC = () => {
                         </div>
 
                         {/* Highlights */}
-                        <div className="flex flex-wrap gap-1 mb-4">
+                        <div className="flex flex-wrap gap-1 mb-3 lg:mb-4">
                           {d.highlights.slice(0,3).map((h,hi)=>(<span key={hi} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">{h}</span>))}
-                          {d.highlights.length>3 && (<span className="text-xs text-gray-500">+{d.highlights.length-3} more</span>)}
+                          {d.highlights.length>3 && (<span className="text-xs text-gray-500">+{d.highlights.length-3}</span>)}
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="flex space-x-2">
+                        <div className="flex gap-2 text-xs sm:text-sm">
                           <Link to={`/trip/${d.id}`} className="flex-1" onClick={trackTripView}>
                             <Button
                               variant="adventure"
                               size="sm"
-                              className="w-full font-oswald"
+                              className="w-full font-oswald min-h-[44px]"
                             >
-                              View Details
+                              Details
                             </Button>
                           </Link>
-                          <Link to="/payment">
+                          <Link to="/payment" className="flex-1">
                             <Button
                               variant="secondary"
                               size="sm"
-                              className="px-3"
+                              className="w-full min-h-[44px]"
                             >
                               Book
                             </Button>
@@ -363,7 +378,7 @@ export const DestinationsPage: React.FC = () => {
                           <Button
                             variant="secondary"
                             size="sm"
-                            className="px-3"
+                            className="px-2 sm:px-3 min-h-[44px]"
                           >
                             <Camera className="w-4 h-4" />
                           </Button>

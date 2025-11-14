@@ -39,20 +39,6 @@ function deriveCategory(t: TripDoc): string {
 	return 'adventure';
 }
 
-const categoryColors = {
-	waterfall: 'text-waterfall-blue bg-waterfall-blue/10',
-	fort: 'text-earth-brown bg-earth-brown/10',
-	beach: 'text-mountain-blue bg-mountain-blue/10',
-	hill: 'text-forest-green bg-forest-green/10',
-};
-
-const difficultyColors = {
-	Easy: 'text-green-600 bg-green-100',
-	Moderate: 'text-yellow-600 bg-yellow-100',
-	Challenging: 'text-orange-600 bg-orange-100',
-	Extreme: 'text-red-600 bg-red-100',
-};
-
 export const FeaturedTreks: React.FC = () => {
 	const [trips, setTrips] = useState<TripDoc[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -60,17 +46,24 @@ export const FeaturedTreks: React.FC = () => {
 
 	useEffect(() => {
 		let active = true;
+		let timeoutId: NodeJS.Timeout | undefined;
+
 		(async () => {
 			try {
 				setLoading(true);
 				setError(null);
-				
-				// Fetch from Django backend
-				const data = await fetchTrips();
-				console.log('FeaturedTreks: Fetched trips:', data);
-				
+
+				// Add timeout to prevent hanging requests
+				const timeoutPromise = new Promise<never>((_, reject) => {
+					timeoutId = setTimeout(() => reject(new Error('Request timeout')), 10000);
+				});
+
+				// Fetch from Django backend with timeout
+				const fetchPromise = fetchTrips();
+				const data = await Promise.race([fetchPromise, timeoutPromise]) as TripDoc[];
+
 				if (!active) return;
-				
+
 				if (!data || data.length === 0) {
 					console.warn('FeaturedTreks: No trips returned from API');
 					setTrips([]);
@@ -78,55 +71,53 @@ export const FeaturedTreks: React.FC = () => {
 					return;
 				}
 
-				// Sort trips: popular/confirmed first, then others
-				const sortedTrips = data
+				// Simplified sorting - prioritize by rating and status only
+				const sortedTrips = (data as Record<string, unknown>[])
+					.filter((trip: Record<string, unknown>) => trip.price && typeof trip.price === 'number' && trip.price > 0) // Only show trips with prices
 					.sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
-						// Priority 1: Confirmed/popular trips (status === 'confirmed' or rating > 4.5)
-						const aPriority = (a.status === 'confirmed' || (a.rating && typeof a.rating === 'number' && a.rating > 4.5)) ? 2 : 
-										(a.status === 'promoted') ? 1 : 0;
-						const bPriority = (b.status === 'confirmed' || (b.rating && typeof b.rating === 'number' && b.rating > 4.5)) ? 2 : 
-										(b.status === 'promoted') ? 1 : 0;
-						
-						if (aPriority !== bPriority) return bPriority - aPriority;
-						
-						// Secondary sort by rating
-						return (typeof b.rating === 'number' ? b.rating : 0) - (typeof a.rating === 'number' ? a.rating : 0);
+						// Simple priority: confirmed/popular first, then by rating
+						const aScore = (a.status === 'confirmed' ? 3 : a.status === 'promoted' ? 2 : 1) + (typeof a.rating === 'number' ? a.rating : 0);
+						const bScore = (b.status === 'confirmed' ? 3 : b.status === 'promoted' ? 2 : 1) + (typeof b.rating === 'number' ? b.rating : 0);
+						return bScore - aScore;
 					})
-					.slice(0, 6) // Take first 6 trips (prioritized)
+					.slice(0, 6) // Take only 6 trips
 					.map((trip: Record<string, unknown>) => ({
-						id: trip.id?.toString() || trip.slug,
-						name: trip.name || trip.title,
-						location: trip.location,
-						difficulty: trip.difficulty,
-						duration: trip.duration || `${trip.duration_days || 3} Days`,
-						price: trip.price,
-						highlights: trip.highlights || [],
-						images: trip.images || [trip.image],
-						rating: trip.rating || 4.5,
-						reviewCount: trip.review_count || trip.reviewCount || 0,
-						category: trip.category,
-						tags: trip.tags || [],
-						spotsAvailable: trip.available_seats || trip.spotsLeft,
-						nextDeparture: trip.next_departure,
-						availableSlots: trip.available_slots,
-						isAvailable: trip.is_available,
-						status: trip.status,
-						maxCapacity: trip.max_capacity,
+						id: String(trip.id || trip.slug || Math.random()),
+						name: String(trip.name || trip.title || 'Adventure Trip'),
+						location: String(trip.location || 'Karnataka'),
+						difficulty: String(trip.difficulty || 'Moderate'),
+						duration: String(trip.duration || `${trip.duration_days || 3} Days`),
+						price: Number(trip.price) || 0,
+						highlights: Array.isArray(trip.highlights) ? trip.highlights.slice(0, 2) : ['Scenic views', 'Guided trek'],
+						images: Array.isArray(trip.images) ? trip.images : [trip.image || 'https://via.placeholder.com/400x300?text=Adventure'],
+						rating: Number(trip.rating) || 4.5,
+						reviewCount: Number(trip.review_count || trip.reviewCount) || 0,
+						category: String(trip.category || ''),
+						tags: Array.isArray(trip.tags) ? trip.tags : [],
+						availableSlots: Number(trip.available_slots || trip.available_seats) || undefined,
+						status: String(trip.status || ''),
 					}));
 
-				console.log('FeaturedTreks: Sorted trips:', sortedTrips);
+				console.log('FeaturedTreks: Processed trips:', sortedTrips.length);
 				setTrips(sortedTrips);
 			} catch (err) {
 				console.error('FeaturedTreks: Error fetching trips:', err);
 				if (active) {
-					setError('Failed to load featured treks');
+					setError(err instanceof Error ? err.message : 'Failed to load featured treks');
 					setTrips([]);
 				}
 			} finally {
-				if (active) setLoading(false);
+				if (active) {
+					setLoading(false);
+				}
+				if (timeoutId) clearTimeout(timeoutId);
 			}
 		})();
-		return () => { active = false; };
+
+		return () => {
+			active = false;
+			if (timeoutId !== undefined) clearTimeout(timeoutId);
+		};
 	}, []);
 
 	const featuredTreks = useMemo(() => trips.map(t => ({
@@ -142,9 +133,7 @@ export const FeaturedTreks: React.FC = () => {
 		image: (t.images && t.images[0]) || 'https://via.placeholder.com/400x300?text=Adventure',
 		highlights: t.highlights && t.highlights.length ? t.highlights : ['Scenic views','Great experience','Guided trek'],
 		availableSlots: t.availableSlots,
-		isAvailable: t.isAvailable,
 		status: t.status,
-		maxCapacity: t.maxCapacity,
 	})), [trips]);
 
 	const containerVariants = {
@@ -152,15 +141,15 @@ export const FeaturedTreks: React.FC = () => {
 		show: {
 			opacity: 1,
 			transition: {
-				staggerChildren: 0.2,
+				staggerChildren: 0.05,
 				delayChildren: 0.1,
 			},
 		},
 	};
 
 	const itemVariants = {
-		hidden: { opacity: 0, y: 30 },
-		show: { opacity: 1, y: 0 },
+		hidden: { opacity: 0, y: 20 },
+		show: { opacity: 1, y: 0, transition: { duration: 0.2 } },
 	};
 
 	// Don't render section if no trips and not loading
@@ -175,7 +164,7 @@ export const FeaturedTreks: React.FC = () => {
 			<section className="py-16 bg-gradient-to-br from-orange-50 to-red-50">
 				<div className="max-w-7xl mx-auto px-4 text-center">
 					<p className="text-red-600 text-lg mb-4">{error}</p>
-					<p className="text-gray-600">Please ensure Django backend is running on http://localhost:8000</p>
+					<p className="text-gray-600">Please ensure Firebase/Firestore is properly configured</p>
 				</div>
 			</section>
 		);
@@ -185,9 +174,28 @@ export const FeaturedTreks: React.FC = () => {
 		return (
 			<section className="py-16 bg-gradient-to-br from-orange-50 to-red-50">
 				<div className="max-w-7xl mx-auto px-4">
+					<div className="text-center mb-12">
+						<div className="flex items-center justify-center gap-2 mb-4">
+							<div className="w-8 h-8 bg-orange-300 rounded-full animate-pulse"></div>
+							<div className="w-64 h-12 bg-orange-300 rounded-lg animate-pulse"></div>
+							<div className="w-8 h-8 bg-red-300 rounded-full animate-pulse"></div>
+						</div>
+						<div className="w-96 h-6 bg-orange-200 rounded mx-auto animate-pulse"></div>
+					</div>
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 						{Array.from({ length: 4 }).map((_,i) => (
-							<div key={i} className="h-72 rounded-2xl bg-gradient-to-r from-orange-200 via-red-100 to-orange-200 animate-pulse" />
+							<div key={i} className="bg-white rounded-2xl shadow-lg overflow-hidden">
+								<div className="aspect-[4/3] bg-gradient-to-r from-orange-200 via-red-100 to-orange-200 animate-pulse"></div>
+								<div className="p-5 space-y-3">
+									<div className="h-5 bg-gray-200 rounded animate-pulse"></div>
+									<div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+									<div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse"></div>
+									<div className="flex justify-between items-center pt-2">
+										<div className="h-6 bg-gray-200 rounded w-20 animate-pulse"></div>
+										<div className="h-8 bg-gray-200 rounded w-24 animate-pulse"></div>
+									</div>
+								</div>
+							</div>
 						))}
 					</div>
 				</div>
@@ -210,7 +218,7 @@ export const FeaturedTreks: React.FC = () => {
 				>
 					<div className="flex items-center justify-center gap-2 mb-4">
 						<Flame className="w-8 h-8 text-orange-500" />
-						<h2 className="text-4xl lg:text-5xl font-oswald font-bold text-orange-600">
+						<h2 className="text-4xl lg:text-5xl font-great-adventurer font-bold text-orange-600">
 							🔥 Hot Deals
 						</h2>
 						<Flame className="w-8 h-8 text-red-500" />
@@ -236,13 +244,18 @@ export const FeaturedTreks: React.FC = () => {
 								glow
 							>
 								<div className="relative overflow-hidden aspect-[4/3] bg-gray-100">
-									   <motion.img
+									   <img
 										   src={trek.image}
 										   alt={trek.name}
-										   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+										   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
 										   loading="lazy"
 										   decoding="async"
 										   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+										   onError={(e) => {
+										   		const target = e.target as HTMLImageElement;
+										   		target.src = 'https://via.placeholder.com/400x300?text=Adventure';
+										   		target.onerror = null; // Prevent infinite loop
+										   	}}
 									   />
 
 									   {/* Image Overlay */}
@@ -274,7 +287,7 @@ export const FeaturedTreks: React.FC = () => {
 
 								{/* Content */}
 								<div className="p-5">
-									<h3 className="text-lg font-oswald font-bold text-orange-600 mb-2 group-hover:text-red-600 transition-colors">
+									<h3 className="text-lg font-expat-rugged font-bold text-orange-600 mb-2 group-hover:text-red-600 transition-colors">
 										{trek.name}
 									</h3>
 
@@ -308,7 +321,7 @@ export const FeaturedTreks: React.FC = () => {
 									{/* Price and CTA */}
 									<div className="flex items-center justify-between">
 										<div>
-											<span className="text-2xl font-oswald font-bold text-orange-600">
+											<span className="text-2xl font-outbrave font-bold text-orange-600">
 												₹{trek.price.toLocaleString()}
 											</span>
 											<span className="text-sm text-gray-500 ml-1">per person</span>

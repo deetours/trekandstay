@@ -38,14 +38,14 @@ export default function QuizPage() {
   return (
     <div className="min-h-screen bg-warm-sand flex flex-col">
       {/* Header with Progress */}
-      <div className="bg-cloud-white shadow-sm py-4 px-4">
+      <div className="bg-cloud-white shadow-sm py-3 sm:py-4 px-4">
         <div className="max-w-3xl mx-auto">
           <QuizProgress current={currentQuestion + 1} total={totalQuestions} />
         </div>
       </div>
 
       {/* Question Area */}
-      <div className="flex-1 flex items-center justify-center px-4 py-12">
+      <div className="flex-1 flex items-center justify-center px-3 sm:px-4 py-8 sm:py-12">
         <div className="max-w-3xl w-full">
           <AnimatePresence mode="wait">
             <motion.div
@@ -68,7 +68,7 @@ export default function QuizPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               onClick={handleBack}
-              className="mt-8 flex items-center gap-2 text-mystic-indigo hover:text-deep-forest transition-colors font-medium"
+              className="mt-6 sm:mt-8 flex items-center gap-2 text-mystic-indigo hover:text-deep-forest transition-colors font-medium text-sm sm:text-base py-2 sm:py-3 px-3 sm:px-4"
             >
               <ChevronLeft className="w-5 h-5" />
               Previous Question

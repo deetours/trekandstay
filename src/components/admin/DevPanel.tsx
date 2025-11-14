@@ -5,7 +5,7 @@ import { setApiBaseOverride } from '../../utils/api';
 
 export const DevPanel: React.FC = () => {
   const [base, setBase] = useState<string>(() => {
-  try { return localStorage.getItem('api_base') || (import.meta as ImportMeta).env?.VITE_API_BASE_URL || 'http://localhost:8000/api'; } catch { return 'http://localhost:8000/api'; }
+  try { return localStorage.getItem('api_base') || (import.meta as ImportMeta).env?.VITE_API_BASE_URL || 'http://140.245.255.192:8000/api'; } catch { return 'http://140.245.255.192:8000/api'; }
   });
   const [status, setStatus] = useState<string>('');
   const [loading, setLoading] = useState(false);

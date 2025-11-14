@@ -1,6 +1,6 @@
 import React from 'react';
 import { PageTransition } from '../components/layout/PageTransition';
-import { SignInPage } from './SignInPage';
+import SignInPage from './SignInPage';
 
 export function AdminLoginPage() {
   return (

@@ -1,0 +1,165 @@
+/**
+ * PWA Mobile App Feel Styles
+ * Ensures the application looks and feels like a native mobile app
+ */
+
+/* Prevent unwanted scrolling and zooming behaviors on mobile */
+@media (hover: none) and (pointer: coarse) {
+  /* Ensure inputs don't trigger zoom */
+  input, select, textarea, button {
+    font-size: 16px !important;
+    padding: 10px !important;
+  }
+
+  /* Prevent double-tap zoom */
+  a, button, input {
+    touch-action: manipulation;
+  }
+
+  /* Better mobile tap targets */
+  button, a[role="button"], input[type="button"], input[type="submit"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Smooth scrolling */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* iOS specific fixes */
+@supports (padding: max(0px)) {
+  html, body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+
+  body {
+    padding-top: max(0px, env(safe-area-inset-top));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+}
+
+/* Remove iOS blue highlight */
+* {
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}
+
+/* Prevent text selection on UI elements */
+button, a, input[type="submit"], input[type="button"], [role="button"] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Allow text selection in inputs and textareas */
+input, textarea, [contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Full screen for PWA */
+@media (display-mode: standalone) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Hide address bar on scroll (Android) */
+  main {
+    min-height: 100vh;
+  }
+}
+
+/* Fullscreen mode */
+@media (display-mode: fullscreen) {
+  body {
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+}
+
+/* Prevent unwanted zoom on form interaction */
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="search"],
+input[type="url"],
+input[type="number"],
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+textarea,
+select {
+  font-size: 16px; /* Prevents zoom on iOS */
+}
+
+/* Improve form appearance */
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+}
+
+/* Status bar integration */
+@media (display-mode: standalone) {
+  body {
+    background-color: #007AFF; /* Matches theme-color */
+  }
+}
+
+/* Notch support for older devices */
+@supports (padding: env(safe-area-inset-top)) {
+  main {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+}
+
+/* Hardware keyboard detection */
+@media (hover: hover) {
+  /* Desktop/keyboard devices */
+  body {
+    user-select: auto;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) {
+  /* Mobile touch devices */
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Larger touch targets */
+  button, a, label {
+    padding: 12px !important;
+    min-height: 48px;
+    min-width: 48px;
+  }
+}
+
+/* Prevent pinch zoom */
+@media (pointer: coarse) {
+  html {
+    touch-action: pan-y;
+  }
+}
+
+/* Performance: Use GPU acceleration for scrolling */
+main, .scrollable {
+  will-change: transform;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+/* Portrait orientation lock (if needed) */
+@media (max-width: 768px) and (orientation: landscape) {
+  body {
+    /* Prevent landscape on phones if desired */
+  }
+}

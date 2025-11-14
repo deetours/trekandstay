@@ -194,7 +194,9 @@ export function StoriesWidget() {
           <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
             <Button 
               onClick={() => navigate('/stories/new')} 
-              className="bg-gradient-to-r from-forest-green to-waterfall-blue hover:from-forest-green/90 hover:to-waterfall-blue/90 shadow-lg px-5 py-2 text-sm text-white"
+              variant="adventure"
+              size="sm"
+              className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 group-hover:scale-110 transition-transform"
             >
               <Camera className="w-4 h-4 mr-2" />
               Share Your Story
@@ -204,7 +206,7 @@ export function StoriesWidget() {
             <Button 
               variant="secondary" 
               onClick={() => navigate('/stories')}
-              className="px-5 py-2 text-sm border border-forest-green/30 text-forest-green hover:bg-forest-green/10"
+              className="px-5 py-2 text-sm border border-adventure-orange/30 text-adventure-orange hover:bg-adventure-orange/10"
             >
               View All Stories
             </Button>

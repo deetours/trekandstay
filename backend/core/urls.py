@@ -2,6 +2,7 @@ from rest_framework.routers import DefaultRouter
 from django.urls import path, include
 from rest_framework.authtoken.views import obtain_auth_token
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
+from api.views.whatsapp_view import WhatsAppViewSet
 from .views import (
     UserProfileViewSet,
     BookingViewSet,
@@ -97,6 +98,7 @@ router.register(r'templates', MessageTemplateViewSet, basename='message-template
 router.register(r'analytics', AnalyticsViewSet, basename='analytics')
 router.register(r'nurturing', NurturingAutomationViewSet, basename='nurturing')
 router.register(r'rag', AdvancedRAGViewSet, basename='rag')
+router.register(r'whatsapp', WhatsAppViewSet, basename='whatsapp')
 
 urlpatterns = [
     # Traditional Token Auth (Deprecated - use JWT instead)

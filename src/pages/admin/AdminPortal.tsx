@@ -12,6 +12,7 @@ const Products = React.lazy(() => import('./AdminProductsPage'));
 const Stories = React.lazy(() => import('./AdminStoriesPage'));
 const Leads = React.lazy(() => import('./AdminLeadsPage'));
 const Tasks = React.lazy(() => import('./AdminTasksPage'));
+const MarketingCampaignPage = React.lazy(() => import('../MarketingCampaignPage'));
 
 // Direct import TIER 2 admin components (named exports)
 import { BookingManagement } from '../../components/admin/BookingManagement';
@@ -35,6 +36,7 @@ const tabs: TabDef[] = [
   { id: 'analytics', label: 'Analytics', description: 'KPIs and business metrics' },
   { id: 'ai-insights', label: 'AI Insights', description: 'Business intelligence and analytics' },
   { id: 'whatsapp', label: 'WhatsApp', description: 'Customer conversations and messaging' },
+  { id: 'campaigns', label: 'Campaigns', description: 'Marketing campaigns and messaging' },
   { id: 'automation', label: 'Automation', description: 'Workflow builder and triggers' },
   { id: 'voice-ai', label: 'Voice AI', description: 'Voice commands and AI assistant' },
   { id: 'trips', label: 'Trips', description: 'Manage trips' },
@@ -303,7 +305,7 @@ export const AdminPortal: React.FC = () => {
             <span className="truncate">AI-Powered Admin Tools</span>
           </h3>
           <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {['ai-insights', 'whatsapp', 'automation', 'voice-ai'].map(tabId => {
+            {['ai-insights', 'whatsapp', 'campaigns', 'automation', 'voice-ai'].map(tabId => {
               const tab = tabs.find(t => t.id === tabId);
               return (
                 <button
@@ -332,7 +334,7 @@ export const AdminPortal: React.FC = () => {
             <span className="truncate">Content Management</span>
           </h3>
           <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {tabs.filter(t => !['overview', 'ai-insights', 'whatsapp', 'automation', 'voice-ai', 'analytics', 'bookings', 'users'].includes(t.id)).map(t => (
+            {tabs.filter(t => !['overview', 'ai-insights', 'whatsapp', 'campaigns', 'automation', 'voice-ai', 'analytics', 'bookings', 'users'].includes(t.id)).map(t => (
               <button
                 key={t.id}
                 onClick={() => setActive(t.id)}
@@ -469,6 +471,7 @@ export const AdminPortal: React.FC = () => {
       case 'whatsapp': return <WhatsAppManager key={`whatsapp-${reloadKey}`} isVisible={true} />;
       case 'automation': return <WorkflowBuilder key={`automation-${reloadKey}`} />;
       case 'voice-ai': return <VoiceAssistant key={`voice-ai-${reloadKey}`} />;
+      case 'campaigns': return <MarketingCampaignPage key={`campaigns-${reloadKey}`} />;
     case 'trips': return <Trips key={`trips-${reloadKey}`} />;
       case 'products': return <Products key={`products-${reloadKey}`} />;
       case 'stories': return <Stories key={`stories-${reloadKey}`} />;

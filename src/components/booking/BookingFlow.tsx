@@ -72,19 +72,65 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({ tripId, tripName, base
   const [seatLock, setSeatLock] = useState<SeatLockState | null>(null);
   const [lockExpired, setLockExpired] = useState(false);
 
-  // Acquire seat lock locally (would call backend in prod)
+  // Prevent body scrolling while BookingFlow modal is mounted
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+    document.body.style.height = '100vh';
+    document.body.classList.add('modal-open');
+    document.documentElement.style.overflow = 'hidden';
+    
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.height = '';
+      document.body.classList.remove('modal-open');
+      document.documentElement.style.overflow = '';
+    };
+  }, []);
+
+  // Acquire seat lock - AUTO CALL ON MOUNT
   const acquireSeatLock = useCallback(async () => {
-    if (seatLock?.id) return;
+    if (seatLock?.id) {
+      console.log('🔒 Seat lock already acquired:', seatLock.id);
+      return;
+    }
     try {
+      console.log('🔓 Attempting to acquire seat lock for trip', tripId, 'seats', groupSize);
       const res = await apiAcquireSeatLock(Number(tripId), groupSize);
-      if (!res) throw new Error('No response');
+      console.log('📡 Seat lock API response:', res);
+      
+      if (!res) throw new Error('Server returned empty response. Please try again.');
+      if (!res.id || !res.expires_at) throw new Error('Invalid seat lock response from server.');
+      
+      const expiresTime = new Date(res.expires_at).getTime();
+      if (isNaN(expiresTime)) throw new Error('Invalid expiry time from server.');
+      
       const now = Date.now();
-      setSeatLock({ id: res.id, lockedAt: now, expiresAt: new Date(res.expires_at).getTime(), seats: res.seats });
+      setSeatLock({ id: res.id, lockedAt: now, expiresAt: expiresTime, seats: res.seats || groupSize });
       setLockExpired(false);
+      console.log('✅ Seat lock acquired successfully. ID:', res.id, 'Expires at:', new Date(expiresTime));
     } catch (e) {
-      error({ title: 'Seat Lock Failed', description: e instanceof Error ? e.message : String(e) });
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      console.error('❌ Seat lock acquisition error:', errorMsg);
+      if (errorMsg.includes('409') || errorMsg.includes('Not enough') || errorMsg.includes('fully booked')) {
+        error({ title: '⚠️ Sorry, Seats Not Available', description: 'These seats are no longer available. Please select a different trip or fewer travelers.' });
+      } else if (errorMsg.includes('401') || errorMsg.includes('Unauthorized')) {
+        error({ title: '❌ Authentication Required', description: 'Please log in to book a trip.' });
+      } else {
+        error({ title: '❌ Seat Lock Failed', description: errorMsg || 'Could not reserve seats. Please try again.' });
+      }
     }
   }, [seatLock, groupSize, tripId, error]);
+
+  // AUTO-ACQUIRE SEAT LOCK WHEN COMPONENT MOUNTS
+  useEffect(() => {
+    console.log('🎯 BookingFlow mounted, attempting to acquire seat lock...');
+    acquireSeatLock();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tripId, groupSize]); // Re-run if trip or group size changes
 
   // Heartbeat refresh every 2 minutes
   useEffect(() => {
@@ -218,136 +264,146 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({ tripId, tripName, base
   };
 
   return (
-    <Card className="p-6 md:p-7 relative overflow-hidden">
-      <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-emerald-200/40 blur-3xl" />
-      <div className="absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-blue-200/40 blur-3xl" />
-      <div className="relative z-10">
-        <h2 className="text-2xl font-bold mb-1 flex items-center gap-2"><Lock className="w-5 h-5 text-primary" /> Reserve Your Seat</h2>
-        <p className="text-sm text-gray-600 mb-4">Secure your spot for <span className="font-semibold">{tripName}</span>. Complete the steps to proceed to payment.</p>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4" onClick={onCancel}>
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0, y: 50 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.95, opacity: 0, y: 50 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+        onClick={e => e.stopPropagation()}
+        className="w-full max-w-2xl"
+      >
+        <Card className="p-3 md:p-7 relative overflow-hidden max-h-[95vh] md:max-h-[92vh] flex flex-col">
+          <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-emerald-200/40 blur-3xl" />
+          <div className="absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-blue-200/40 blur-3xl" />
+      <div className="relative z-10 flex flex-col overflow-hidden overscroll-contain flex-1 scrollbar-hide" style={{ overflowY: 'hidden' }}>
+        <h2 className="text-lg md:text-2xl font-bold mb-1 md:mb-2 flex items-center gap-2"><Lock className="w-4 md:w-5 h-4 md:h-5 text-primary" /> Reserve Your Seat</h2>
+        <p className="text-xs md:text-sm text-gray-600 mb-3 md:mb-4">Secure your spot for <span className="font-semibold">{tripName}</span>. Complete the steps to proceed to payment.</p>
         <StepIndicator />
 
         {/* Capacity Warning */}
         {!isAvailable && (
-          <div className="mb-4 text-sm font-medium text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded-lg flex items-center gap-2">
-            <AlertCircle className="w-4 h-4" /> This trip is fully booked. Please check back later or choose another trip.
+          <div className="mb-2 md:mb-4 text-xs md:text-sm font-medium text-red-700 bg-red-50 border border-red-200 px-2 md:px-3 py-1.5 md:py-2 rounded-lg flex items-center gap-2">
+            <AlertCircle className="w-3 md:w-4 h-3 md:h-4 flex-shrink-0" /> <span>This trip is fully booked. Please try another.</span>
           </div>
         )}
         {isAvailable && availableSlots !== undefined && availableSlots <= 2 && availableSlots > 0 && (
-          <div className="mb-4 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 px-3 py-2 rounded-lg flex items-center gap-2">
-            <Flame className="w-4 h-4" /> Only {availableSlots} spot{availableSlots === 1 ? '' : 's'} left! Book now before it's too late.
+          <div className="mb-2 md:mb-4 text-xs md:text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 px-2 md:px-3 py-1.5 md:py-2 rounded-lg flex items-center gap-2">
+            <Flame className="w-3 md:w-4 h-3 md:h-4 flex-shrink-0" /> <span>Only {availableSlots} spot{availableSlots === 1 ? '' : 's'} left!</span>
           </div>
         )}
         {isAvailable && availableSlots !== undefined && availableSlots > 2 && availableSlots <= 5 && (
-          <div className="mb-4 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 px-3 py-2 rounded-lg flex items-center gap-2">
-            <ClockIcon className="w-4 h-4" /> Limited availability: Only {availableSlots} spots remaining.
+          <div className="mb-2 md:mb-4 text-xs md:text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 px-2 md:px-3 py-1.5 md:py-2 rounded-lg flex items-center gap-2">
+            <ClockIcon className="w-3 md:w-4 h-3 md:h-4 flex-shrink-0" /> <span>Limited: {availableSlots} spots left</span>
           </div>
         )}
 
         {seatLock && !lockExpired && (
-          <div className="mb-4 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg flex items-center gap-2">
-            <Shield className="w-4 h-4" /> Seats locked for {minutes}:{seconds.toString().padStart(2,'0')} minutes
+          <div className="mb-2 md:mb-4 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 md:px-3 py-1.5 md:py-2 rounded-lg flex items-center gap-2">
+            <Shield className="w-3 md:w-4 h-3 md:h-4 flex-shrink-0" /> <span>Seats locked for {minutes}:{seconds.toString().padStart(2,'0')}</span>
           </div>
         )}
         {lockExpired && (
-          <div className="mb-4 text-xs font-medium text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded-lg flex items-center gap-2">
-            <AlertCircle className="w-4 h-4" /> Seat lock expired. Adjust details to relock.
+          <div className="mb-2 md:mb-4 text-xs font-medium text-red-700 bg-red-50 border border-red-200 px-2 md:px-3 py-1.5 md:py-2 rounded-lg flex items-center gap-2">
+            <AlertCircle className="w-3 md:w-4 h-3 md:h-4 flex-shrink-0" /> <span>Seat lock expired. Adjust to relock.</span>
           </div>
         )}
 
         <AnimatePresence mode="wait">
           {step === 1 && (
-            <motion.div key="step1" initial={{ opacity:0, x:10 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-10 }} className="space-y-6">
+            <motion.div key="step1" initial={{ opacity:0, x:10 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-10 }} className="space-y-3 md:space-y-6">
               <div>
-                <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1"><CalendarDays className="w-4 h-4 text-primary" /> Departure Date</label>
-                <input type="date" value={date} onChange={e=>setDate(e.target.value)} min={new Date().toISOString().split('T')[0]} className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-primary focus:outline-none" />
+                <label className="flex items-center gap-1 text-xs md:text-sm font-medium text-gray-700 mb-1"><CalendarDays className="w-3 md:w-4 h-3 md:h-4 text-primary" /> Departure Date</label>
+                <input type="date" value={date} onChange={e=>setDate(e.target.value)} min={new Date().toISOString().split('T')[0]} className="w-full px-2 md:px-3 py-1.5 md:py-2 text-sm rounded-lg border border-gray-300 focus:ring-primary focus:outline-none" />
               </div>
               <div>
-                <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1"><Users className="w-4 h-4 text-primary" /> Group Size</label>
+                <label className="flex items-center gap-1 text-xs md:text-sm font-medium text-gray-700 mb-1"><Users className="w-3 md:w-4 h-3 md:h-4 text-primary" /> Group Size</label>
                 <div className="flex items-center gap-2">
                   <Button variant="secondary" size="sm" onClick={()=>setGroupSize(g=>Math.max(1,g-1))}>-</Button>
-                  <span className="w-12 text-center font-semibold">{groupSize}</span>
+                  <span className="w-10 text-center font-semibold text-sm">{groupSize}</span>
                   <Button variant="secondary" size="sm" onClick={()=>setGroupSize(g=>Math.min(20,g+1))}>+</Button>
                 </div>
-                <p className="text-[11px] text-gray-500 mt-1">{availableSlots ?? spotsAvailable ?? 0} spots left. We tentatively lock your seats.</p>
+                <p className="text-[10px] md:text-[11px] text-gray-500 mt-0.5">{availableSlots ?? spotsAvailable ?? 0} spots left</p>
               </div>
               {routeOptions.length>0 && (
                 <div>
-                  <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2"><Lock className="w-4 h-4 text-primary" /> Route</label>
-                  <div className="flex flex-wrap gap-2">
+                  <label className="flex items-center gap-1 text-xs md:text-sm font-medium text-gray-700 mb-1.5"><Lock className="w-3 md:w-4 h-3 md:h-4 text-primary" /> Route</label>
+                  <div className="flex flex-wrap gap-1.5 md:gap-2">
                     {routeOptions.map(o => (
-                      <button key={o.label} type="button" onClick={()=>{ setRoute(o.label); setTouchedRoute(true); }} className={`px-3 py-1.5 rounded-lg text-xs font-medium ring-1 transition ${route===o.label ? 'bg-emerald-600 text-white ring-emerald-400 shadow':'bg-white text-gray-600 ring-gray-300 hover:bg-gray-50'}`}>
-                        {o.label}
-                        <span className="opacity-70 ml-1">₹{o.price.toLocaleString('en-IN')}</span>
+                      <button key={o.label} type="button" onClick={()=>{ setRoute(o.label); setTouchedRoute(true); }} className={`px-2 md:px-3 py-1 md:py-1.5 rounded-lg text-xs font-medium ring-1 transition ${route===o.label ? 'bg-emerald-600 text-white ring-emerald-400 shadow':'bg-white text-gray-600 ring-gray-300 hover:bg-gray-50'}`}>
+                        {o.label} <span className="opacity-70 ml-0.5">₹{o.price.toLocaleString('en-IN')}</span>
                       </button>
                     ))}
                   </div>
-                  {!route && <p className="text-[11px] text-red-500 mt-1">Select a route to continue.</p>}
+                  {!route && <p className="text-[10px] text-red-500 mt-0.5">Select a route</p>}
                 </div>
               )}
-              <div className="bg-gradient-to-r from-emerald-50 to-blue-50 border border-emerald-100/70 rounded-xl p-4 text-sm flex flex-col gap-1">
+              <div className="bg-gradient-to-r from-emerald-50 to-blue-50 border border-emerald-100/70 rounded-lg p-3 md:p-4 text-xs md:text-sm flex flex-col gap-0.5 md:gap-1">
                 <div className="flex items-center justify-between"><span className="text-gray-600">Base price</span><span className="font-medium">₹{effectiveBase.toLocaleString('en-IN')}</span></div>
                 <div className="flex items-center justify-between"><span className="text-gray-600">Participants</span><span className="font-medium">× {groupSize}</span></div>
-                <div className="border-t border-emerald-200 my-1" />
-                <div className="flex items-center justify-between text-lg font-bold"><span>Total</span><span className="bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent">₹{total.toLocaleString('en-IN')}</span></div>
+                <div className="border-t border-emerald-200 my-0.5 md:my-1" />
+                <div className="flex items-center justify-between text-base md:text-lg font-bold"><span>Total</span><span className="bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent">₹{total.toLocaleString('en-IN')}</span></div>
               </div>
             </motion.div>
           )}
           {step === 2 && (
-            <motion.div key="step2" initial={{ opacity:0, x:10 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-10 }} className="space-y-5">
-              <div className="grid md:grid-cols-2 gap-5">
+            <motion.div key="step2" initial={{ opacity:0, x:10 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-10 }} className="space-y-2.5 md:space-y-5">
+              <div className="grid md:grid-cols-2 gap-2.5 md:gap-5">
                 <div>
-                  <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1"><User className="w-4 h-4 text-primary" /> Full Name</label>
-                  <input value={customer.name} onChange={e=>setCustomer(c=>({ ...c, name:e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-primary focus:outline-none" placeholder="Your name" />
+                  <label className="flex items-center gap-1 text-xs md:text-sm font-medium text-gray-700 mb-0.5 md:mb-1"><User className="w-3 md:w-4 h-3 md:h-4 text-primary" /> Full Name</label>
+                  <input value={customer.name} onChange={e=>setCustomer(c=>({ ...c, name:e.target.value }))} className="w-full px-2 md:px-3 py-1.5 md:py-2 text-sm rounded-lg border border-gray-300 focus:ring-primary focus:outline-none" placeholder="Your name" />
                 </div>
                 <div>
-                  <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1"><Phone className="w-4 h-4 text-primary" /> Phone</label>
-                  <input value={customer.phone} onChange={e=>setCustomer(c=>({ ...c, phone:e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-primary focus:outline-none" placeholder="10-digit mobile" />
+                  <label className="flex items-center gap-1 text-xs md:text-sm font-medium text-gray-700 mb-0.5 md:mb-1"><Phone className="w-3 md:w-4 h-3 md:h-4 text-primary" /> Phone</label>
+                  <input value={customer.phone} onChange={e=>setCustomer(c=>({ ...c, phone:e.target.value }))} className="w-full px-2 md:px-3 py-1.5 md:py-2 text-sm rounded-lg border border-gray-300 focus:ring-primary focus:outline-none" placeholder="10-digit" />
                 </div>
                 <div>
-                  <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1"><Mail className="w-4 h-4 text-primary" /> Email</label>
-                  <input value={customer.email} onChange={e=>setCustomer(c=>({ ...c, email:e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-primary focus:outline-none" placeholder="email@example.com" />
+                  <label className="flex items-center gap-1 text-xs md:text-sm font-medium text-gray-700 mb-0.5 md:mb-1"><Mail className="w-3 md:w-4 h-3 md:h-4 text-primary" /> Email</label>
+                  <input value={customer.email} onChange={e=>setCustomer(c=>({ ...c, email:e.target.value }))} className="w-full px-2 md:px-3 py-1.5 md:py-2 text-sm rounded-lg border border-gray-300 focus:ring-primary focus:outline-none" placeholder="email@example.com" />
                 </div>
                 <div>
-                  <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1"><Globe2 className="w-4 h-4 text-primary" /> Dietary</label>
-                  <input value={diet} onChange={e=>setDiet(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-primary focus:outline-none" placeholder="Veg / Non-veg / Allergies" />
+                  <label className="flex items-center gap-1 text-xs md:text-sm font-medium text-gray-700 mb-0.5 md:mb-1"><Globe2 className="w-3 md:w-4 h-3 md:h-4 text-primary" /> Dietary</label>
+                  <input value={diet} onChange={e=>setDiet(e.target.value)} className="w-full px-2 md:px-3 py-1.5 md:py-2 text-sm rounded-lg border border-gray-300 focus:ring-primary focus:outline-none" placeholder="Veg/Non-veg" />
                 </div>
               </div>
               <div>
-                <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1"><Shield className="w-4 h-4 text-primary" /> Medical / Notes</label>
-                <textarea value={medical} onChange={e=>setMedical(e.target.value)} rows={3} className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-primary focus:outline-none resize-none" placeholder="Any medical conditions we should know" />
-                <p className="text-[11px] text-gray-500 mt-1">Shared only with trek leaders for your safety.</p>
+                <label className="flex items-center gap-1 text-xs md:text-sm font-medium text-gray-700 mb-0.5 md:mb-1"><Shield className="w-3 md:w-4 h-3 md:h-4 text-primary" /> Medical / Notes</label>
+                <textarea value={medical} onChange={e=>setMedical(e.target.value)} rows={2} className="w-full px-2 md:px-3 py-1.5 md:py-2 text-sm rounded-lg border border-gray-300 focus:ring-primary focus:outline-none resize-none" placeholder="Any conditions we should know" />
+                <p className="text-[10px] md:text-[11px] text-gray-500 mt-0.5">For trek leaders only</p>
               </div>
             </motion.div>
           )}
           {step === 3 && (
-            <motion.div key="step3" initial={{ opacity:0, x:10 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-10 }} className="space-y-6">
-              <div className="rounded-xl border border-emerald-100 bg-gradient-to-r from-emerald-50 to-blue-50 p-4 text-sm">
+            <motion.div key="step3" initial={{ opacity:0, x:10 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-10 }} className="space-y-3 md:space-y-6">
+              <div className="rounded-lg md:rounded-xl border border-emerald-100 bg-gradient-to-r from-emerald-50 to-blue-50 p-3 md:p-4 text-xs md:text-sm">
                 <h3 className="font-semibold mb-2">Review & Confirm</h3>
-                <ul className="space-y-1">
+                <ul className="space-y-0.5 md:space-y-1">
                   <li className="flex justify-between"><span className="text-gray-600">Trip</span><span className="font-medium">{tripName}</span></li>
                   <li className="flex justify-between"><span className="text-gray-600">Departure</span><span className="font-medium">{date || nextDeparture || 'TBA'}</span></li>
                   {routeOptions.length > 0 && <li className="flex justify-between"><span className="text-gray-600">Route</span><span className="font-medium">{route || '—'}</span></li>}
                   <li className="flex justify-between"><span className="text-gray-600">Participants</span><span className="font-medium">{groupSize}</span></li>
-                  <li className="flex justify-between"><span className="text-gray-600">Total</span><span className="font-bold">₹{total.toLocaleString('en-IN')}</span></li>
+                  <li className="flex justify-between text-base md:text-lg"><span className="text-gray-600">Total</span><span className="font-bold">₹{total.toLocaleString('en-IN')}</span></li>
                 </ul>
-                {!seatLock && <div className="mt-3 text-xs text-red-600 flex items-center gap-1"><AlertCircle className="w-4 h-4" /> Seats not locked. Go back one step to re-lock.</div>}
+                {!seatLock && <div className="mt-2 md:mt-3 text-xs text-red-600 flex items-center gap-1"><AlertCircle className="w-3 md:w-4 h-3 md:h-4 flex-shrink-0" /> <span>Seats not locked. Go back to re-lock.</span></div>}
               </div>
-              <div className="text-xs text-gray-500 leading-relaxed">By confirming you agree to our cancellation & safety policies. You will be redirected to payment to complete an advance (if applicable).</div>
+              <div className="text-[10px] md:text-xs text-gray-500 leading-relaxed">By confirming you agree to our cancellation & safety policies. You will be redirected to payment.</div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        <div className="mt-8 flex items-center justify-between">
-          <Button variant="ghost" disabled={step===1} onClick={goPrev}><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button>
-          {step < 3 && <Button onClick={goNext} disabled={!canContinueFromStep()}>{step===1 ? 'Continue' : 'Continue'} <ArrowRight className="w-4 h-4 ml-1" /></Button>}
-          {step === 3 && <Button onClick={submit} loading={loading} className="bg-gradient-to-r from-primary to-blue-600 text-white">Confirm & Pay <CheckCircle2 className="w-4 h-4 ml-2" /></Button>}
+        <div className="mt-4 md:mt-8 flex items-center justify-between gap-2">
+          <Button variant="ghost" size="sm" disabled={step===1} onClick={goPrev}><ArrowLeft className="w-3 md:w-4 h-3 md:h-4 mr-1" /> Back</Button>
+          {step < 3 && <Button size="sm" onClick={goNext} disabled={!canContinueFromStep()}>{step===1 ? 'Continue' : 'Continue'} <ArrowRight className="w-3 md:w-4 h-3 md:h-4 ml-1" /></Button>}
+          {step === 3 && <Button onClick={submit} loading={loading} size="sm" className="bg-gradient-to-r from-primary to-blue-600 text-white">Confirm & Pay <CheckCircle2 className="w-3 md:w-4 h-3 md:h-4 ml-1" /></Button>}
         </div>
-        <div className="mt-4 flex items-center justify-between text-[11px] text-gray-500">
-          <span>Protected booking • Secure payment</span>
+        <div className="mt-2 md:mt-4 flex items-center justify-between text-[10px] md:text-[11px] text-gray-500">
+          <span>Protected • Secure</span>
           {seatLock && !lockExpired && <span>Lock expires in {minutes}:{seconds.toString().padStart(2,'0')}</span>}
         </div>
-  {onCancel && <div className="mt-2 text-right"><button onClick={async ()=>{ if (seatLock?.id) { try { await apiReleaseSeatLock(seatLock.id); } catch (releaseErr) { console.error('Release seat lock failed', releaseErr); } } onCancel(); }} className="text-xs text-gray-500 hover:underline">Cancel</button></div>}
-      </div>
-    </Card>
+        {onCancel && <div className="mt-2 text-right"><button onClick={async ()=>{ if (seatLock?.id) { try { await apiReleaseSeatLock(seatLock.id); } catch (releaseErr) { console.error('Release seat lock failed', releaseErr); } } onCancel(); }} className="text-xs text-gray-500 hover:underline">Cancel</button></div>}
+        </div>
+        </Card>
+      </motion.div>
+    </div>
   );
 };

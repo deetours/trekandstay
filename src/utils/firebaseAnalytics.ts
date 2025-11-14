@@ -6,6 +6,7 @@
  */
 
 import { analytics } from '../firebase';
+import { logEvent } from 'firebase/analytics';
 
 /**
  * Safely log an event to Firebase Analytics
@@ -19,14 +20,9 @@ export const logAnalyticsEvent = (eventName: string, parameters?: Record<string,
   }
   
   try {
-    // Dynamic import of logEvent to avoid issues
-    import('firebase/analytics').then(({ logEvent }) => {
-      if (analytics) {
-        logEvent(analytics, eventName, parameters);
-      }
-    }).catch((error) => {
-      console.warn('Failed to log analytics event:', error);
-    });
+    if (analytics) {
+      logEvent(analytics, eventName, parameters);
+    }
   } catch (error) {
     console.warn('Analytics event logging failed:', error);
   }

@@ -20,7 +20,8 @@ const SUGGESTED: string[] = [
 ];
 
 // Backend base (reuse Vite env like other API helper)
-const API_BASE = (import.meta as ImportMeta).env?.VITE_API_URL || 'http://localhost:8000';
+// Updated to use the new reserved IP address
+const API_BASE = (import.meta as ImportMeta).env?.VITE_API_URL || 'http://140.245.255.192:8000';
 
 
 interface Source {

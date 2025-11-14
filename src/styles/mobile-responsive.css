@@ -1,0 +1,237 @@
+/* Mobile-First Responsive Design */
+
+/* Ensure proper scrolling on all devices */
+html, body {
+  width: 100%;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Mobile viewport optimization */
+@media (max-width: 640px) {
+  /* Extra small phones */
+  html {
+    font-size: 14px;
+  }
+  
+  body {
+    padding: 0;
+    overflow-x: hidden;
+  }
+  
+  #root {
+    width: 100%;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  
+  /* Ensure full-width mobile experience */
+  main, section, article, div[role="main"] {
+    width: 100%;
+    overflow-x: hidden;
+  }
+  
+  /* Mobile button sizing for touch targets */
+  button, a[role="button"], input[type="button"], input[type="submit"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Remove double tap zoom delay */
+  button, a, input {
+    touch-action: manipulation;
+  }
+  
+  /* Optimize text for mobile */
+  h1 { font-size: 1.75rem !important; }
+  h2 { font-size: 1.5rem !important; }
+  h3 { font-size: 1.25rem !important; }
+  
+  /* Ensure inputs are readable (16px prevents zoom) */
+  input, textarea, select {
+    font-size: 16px;
+  }
+}
+
+/* Small phones and tablets */
+@media (min-width: 641px) and (max-width: 767px) {
+  html {
+    font-size: 15px;
+  }
+  
+  h1 { font-size: 2rem !important; }
+  h2 { font-size: 1.75rem !important; }
+}
+
+/* Tablets and small desktops */
+@media (min-width: 768px) and (max-width: 1023px) {
+  html {
+    font-size: 15px;
+  }
+}
+
+/* Large desktops */
+@media (min-width: 1024px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+/* Prevent layout shift on scrollbar appearance */
+html {
+  scrollbar-gutter: stable;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* PWA Specific - Full screen mobile experience */
+@media (display-mode: standalone) {
+  /* App is installed */
+  body {
+    background: #ffffff;
+  }
+  
+  /* Remove browser UI from showing */
+  html, body, #root {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+/* Safe area insets for notch devices */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+    padding-top: max(0px, env(safe-area-inset-top));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+}
+
+/* Prevent double-tap zoom on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  a, button, input[type="button"], input[type="submit"], input[type="text"], 
+  input[type="email"], input[type="tel"], textarea, select {
+    font-size: 16px;
+  }
+  
+  input:focus {
+    font-size: 16px;
+  }
+}
+
+/* iOS-specific fixes */
+input[type="date"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="time"],
+input[type="week"],
+input[type="number"] {
+  -webkit-appearance: none;
+  appearance: none;
+  font-size: 16px;
+}
+
+/* Fix iOS input focus zoom */
+@media (max-width: 767px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="search"],
+  textarea,
+  select {
+    font-size: 16px !important;
+    min-height: 44px;
+  }
+}
+
+/* Ensure proper fullscreen for video/images on mobile */
+img, video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Prevent unwanted text selection on mobile */
+body {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input, textarea, [contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Touch feedback optimization */
+@media (hover: none) and (pointer: coarse) {
+  button, a, input {
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* Optimize for landscape orientation */
+@media (max-height: 500px) and (orientation: landscape) {
+  body {
+    padding: 0;
+  }
+  
+  h1 {
+    font-size: 1.5rem;
+    margin: 0.5rem 0;
+  }
+  
+  h2 {
+    font-size: 1.25rem;
+  }
+}
+
+/* PWA Install prompt styling */
+.pwa-install-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border-top: 1px solid #e5e7eb;
+  padding: 1rem;
+  z-index: 1000;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Ensure pages don't look small/zoomed out */
+.page-container, main, [role="main"] {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Flex containers should stack on mobile */
+.flex-row-responsive {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .flex-row-responsive {
+    flex-direction: row;
+  }
+}

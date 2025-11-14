@@ -33,6 +33,7 @@ import {
 import { adminAPI } from '../services/adminAPI';
 import { fetchTripBySlug } from '../services/api';
 import { analytics, trackBookingStep, trackLeadStep, trackConversion } from '../services/analyticsTracker';
+import { acquireSeatLock as apiAcquireSeatLock, refreshSeatLock as apiRefreshSeatLock, releaseSeatLock as apiReleaseSeatLock } from '../utils/api';
 
 // Import Interactive Components
 import {
@@ -110,6 +111,13 @@ const TripLandingPage: React.FC = () => {
     interest: ''
   });
   const [paymentStep, setPaymentStep] = useState<'details' | 'upi' | 'success'>('details');
+  const [seatLock, setSeatLock] = useState<{ id?: number; lockedAt?: number; expiresAt?: number; seats?: number } | null>(null);
+  const [lockExpired, setLockExpired] = useState(false);
+  const lockRefreshRef = useRef<number | undefined>(undefined);
+  const [now, setNow] = useState<number>(Date.now());
+  const lockTimeLeft = seatLock?.expiresAt ? Math.max(0, (seatLock.expiresAt || 0) - now) : 0;
+  const lockMinutes = Math.floor(lockTimeLeft / 60000);
+  const lockSeconds = Math.floor((lockTimeLeft % 60000) / 1000);
   const [userInteraction, setUserInteraction] = useState(0);
   const [seatAvailability, setSeatAvailability] = useState<Record<string, boolean>>({});
   const [realTimeData, setRealTimeData] = useState({
@@ -328,16 +336,50 @@ const TripLandingPage: React.FC = () => {
       trip_price: trip?.price,
       available_seats: trip?.spotsAvailable
     });
+    // Attempt to acquire seat lock immediately for the default seats
+    (async () => {
+      try {
+        const seats = bookingData.seats || 1;
+        console.log('TripLandingPage: trying initial seat lock for', trip?.id, 'seats', seats);
+        const res = await apiAcquireSeatLock(Number(trip?.id), seats);
+        if (res && res.id && res.expires_at) {
+          const expiresTime = new Date(res.expires_at).getTime();
+          setSeatLock({ id: res.id, lockedAt: Date.now(), expiresAt: expiresTime, seats: res.seats || seats });
+          setLockExpired(false);
+          console.log('TripLandingPage: seat lock acquired', res.id);
+        } else {
+          console.warn('TripLandingPage: seat lock response invalid', res);
+        }
+      } catch (err) {
+        console.warn('TripLandingPage: seat lock failed on open', err);
+      }
+    })();
   };
 
   const handleBookingNext = () => {
     if (bookingStep === 'details') {
-      setBookingStep('seats');
-      startUrgencyTimer();
-      trackBookingStep('details_completed', {
-        seats_selected: bookingData.seats,
-        batch_selected: bookingData.selectedBatch
-      });
+      // Ensure seat lock exists before moving to seats. If none, attempt one more time.
+      (async () => {
+        if (!seatLock) {
+          try {
+            const res = await apiAcquireSeatLock(Number(trip?.id), bookingData.seats || 1);
+            if (res && res.id && res.expires_at) {
+              const expiresTime = new Date(res.expires_at).getTime();
+              setSeatLock({ id: res.id, lockedAt: Date.now(), expiresAt: expiresTime, seats: res.seats || bookingData.seats });
+              setLockExpired(false);
+              console.log('TripLandingPage: seat lock acquired on continue', res.id);
+            }
+          } catch (err) {
+            console.warn('TripLandingPage: seat lock failed when continuing to seats', err);
+          }
+        }
+        setBookingStep('seats');
+        startUrgencyTimer();
+        trackBookingStep('details_completed', {
+          seats_selected: bookingData.seats,
+          batch_selected: bookingData.selectedBatch
+        });
+      })();
     } else if (bookingStep === 'seats') {
       setBookingStep('payment');
       trackBookingStep('seats_selected', {
@@ -346,6 +388,70 @@ const TripLandingPage: React.FC = () => {
       });
     }
   };
+
+  // Prevent body scrolling while modal is open
+  useEffect(() => {
+    if (showBookingModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [showBookingModal]);
+
+  // Refresh seat lock periodically (every 2 minutes)
+  useEffect(() => {
+    if (!seatLock?.id || lockExpired) return;
+    const id = window.setInterval(async () => {
+      try {
+        const refreshed = await apiRefreshSeatLock(seatLock.id!);
+        if (refreshed && refreshed.expires_at) {
+          setSeatLock(sl => sl ? { ...sl, expiresAt: new Date(refreshed.expires_at).getTime() } : sl);
+        }
+      } catch (err) {
+        console.warn('TripLandingPage: refresh seat lock failed', err);
+        setLockExpired(true);
+      }
+    }, 120000);
+    lockRefreshRef.current = id;
+    return () => { clearInterval(id); lockRefreshRef.current = undefined; };
+  }, [seatLock?.id, lockExpired]);
+
+  // Update now every second while seat lock exists so UI updates
+  useEffect(() => {
+    if (!seatLock) return;
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [seatLock]);
+
+  // Expire lock when time passes
+  useEffect(() => {
+    if (!seatLock?.expiresAt) return;
+    const id = window.setInterval(() => {
+      if (Date.now() >= (seatLock?.expiresAt || 0)) {
+        setLockExpired(true);
+        setSeatLock(null);
+        clearInterval(id);
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [seatLock?.expiresAt]);
+
+  // Release seat lock when modal closes
+  useEffect(() => {
+    if (!showBookingModal && seatLock?.id) {
+      (async () => {
+        try {
+          await apiReleaseSeatLock(seatLock.id!);
+        } catch (err) {
+          console.warn('TripLandingPage: release seat lock failed', err);
+        } finally {
+          setSeatLock(null);
+        }
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showBookingModal]);
 
   const handleBookingPrev = () => {
     if (bookingStep === 'seats') {
@@ -1152,6 +1258,17 @@ Thank you for choosing Trek & Stay Adventures!`;
                       }`} />
                     </div>
                   ))}
+                </div>
+                {/* Seat lock status (visible immediately when modal opens) */}
+                <div className="mt-3 text-sm text-gray-600 flex items-center justify-between">
+                  <div>
+                    {seatLock && !lockExpired ? (
+                      <span className="text-emerald-600 font-medium">Seats locked • Expires in {lockMinutes}:{String(lockSeconds).padStart(2,'0')}</span>
+                    ) : (
+                      <span className="text-red-600 font-medium">Seats not locked</span>
+                    )}
+                  </div>
+                  {seatLock && !lockExpired && <div className="text-xs text-gray-500">Lock ID: {seatLock.id}</div>}
                 </div>
               </div>
 

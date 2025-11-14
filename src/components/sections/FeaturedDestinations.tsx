@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Star as StarIcon, Clock, Users, ArrowRight, X } from 'lucide-react';
+import { MapPin, Star as StarIcon, Clock, Users, ArrowRight, X, ShieldCheck } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Link } from 'react-router-dom';
@@ -58,6 +58,48 @@ export const FeaturedDestinations: React.FC = () => {
 	const [trips, setTrips] = useState<TripDoc[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [scrollPosition, setScrollPosition] = useState(0);
+
+	// Prevent body scroll when quick view modal is open
+	useEffect(() => {
+		if (quickView) {
+			// Store current scroll position
+			const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
+			setScrollPosition(currentScroll);
+			
+			// Prevent body scroll
+			document.body.style.overflow = 'hidden';
+			document.body.style.position = 'fixed';
+			document.body.style.width = '100%';
+			document.body.style.height = '100vh';
+			document.body.style.top = `-${currentScroll}px`;
+			document.body.classList.add('modal-open');
+			document.documentElement.style.overflow = 'hidden';
+		} else {
+			// Restore scroll position
+			document.body.style.overflow = '';
+			document.body.style.position = '';
+			document.body.style.width = '';
+			document.body.style.height = '';
+			document.body.style.top = '';
+			document.body.classList.remove('modal-open');
+			document.documentElement.style.overflow = '';
+			
+			// Restore scroll position after a brief delay to ensure DOM is updated
+			setTimeout(() => {
+				window.scrollTo(0, scrollPosition);
+			}, 0);
+		}
+		return () => { 
+			document.body.style.overflow = '';
+			document.body.style.position = '';
+			document.body.style.width = '';
+			document.body.style.height = '';
+			document.body.style.top = '';
+			document.body.classList.remove('modal-open');
+			document.documentElement.style.overflow = '';
+		};
+	}, [quickView, scrollPosition]);
 
 	useEffect(() => {
 		let active = true;
@@ -68,25 +110,25 @@ export const FeaturedDestinations: React.FC = () => {
 				if (!active) return;
 				
 				// Take first 8 trips for featured section
-				const featuredTrips = data.slice(0, 8).map((trip: Record<string, unknown>) => ({
-					id: trip.id?.toString() || trip.slug,
-					name: trip.name || trip.title,
-					location: trip.location,
-					difficulty: trip.difficulty,
-					duration: trip.duration || `${trip.duration_days || 3} Days`,
-					price: trip.price,
-					highlights: trip.highlights || [],
-					images: trip.images || [trip.image],
-					rating: trip.rating || 4.5,
-					reviewCount: trip.review_count || trip.reviewCount || 0,
-					category: trip.category,
-					tags: trip.tags || [],
-					spotsAvailable: trip.available_seats || trip.spotsLeft,
-					nextDeparture: trip.next_departure,
-					availableSlots: trip.available_slots,
-					isAvailable: trip.is_available,
-					status: trip.status,
-					maxCapacity: trip.max_capacity,
+				const featuredTrips: TripDoc[] = data.slice(0, 8).map((trip: Record<string, unknown>) => ({
+					id: String(trip.id || trip.slug || ''),
+					name: String(trip.name || trip.title || ''),
+					location: String(trip.location || ''),
+					difficulty: trip.difficulty ? String(trip.difficulty) : undefined,
+					duration: trip.duration ? String(trip.duration) : trip.duration_days ? `${trip.duration_days} Days` : undefined,
+					price: trip.price ? Number(trip.price) : undefined,
+					highlights: Array.isArray(trip.highlights) ? trip.highlights.map(String) : [],
+					images: Array.isArray(trip.images) ? trip.images.map(String) : trip.image ? [String(trip.image)] : [],
+					rating: trip.rating ? Number(trip.rating) : undefined,
+					reviewCount: trip.review_count ? Number(trip.review_count) : trip.reviewCount ? Number(trip.reviewCount) : undefined,
+					category: trip.category ? String(trip.category) : undefined,
+					tags: Array.isArray(trip.tags) ? trip.tags.map(String) : [],
+					spotsAvailable: trip.available_seats ? Number(trip.available_seats) : trip.spotsLeft ? Number(trip.spotsLeft) : undefined,
+					nextDeparture: trip.next_departure ? String(trip.next_departure) : undefined,
+					availableSlots: trip.available_slots ? Number(trip.available_slots) : undefined,
+					isAvailable: Boolean(trip.is_available),
+					status: trip.status ? String(trip.status) : undefined,
+					maxCapacity: trip.max_capacity ? Number(trip.max_capacity) : undefined,
 				}));
 				
 				setTrips(featuredTrips);
@@ -156,25 +198,25 @@ export const FeaturedDestinations: React.FC = () => {
 	}
 
 	return (
-		<section id="destinations" className="py-20 bg-gradient-to-br from-stone-gray to-white">
+		<section id="destinations" className="py-16 md:py-20 bg-gradient-to-br from-stone-gray/80 via-white to-white">
 			<div className="max-w-7xl mx-auto px-4">
 				<motion.div
-					className="text-center mb-16"
+					className="text-center mb-12 md:mb-16"
 					initial={{ opacity: 0, y: 30 }}
 					whileInView={{ opacity: 1, y: 0 }}
 					viewport={{ once: true }}
 					transition={{ duration: 0.8 }}
 				>
-					<h2 className="text-4xl lg:text-5xl font-oswald font-bold text-forest-green mb-4">
+					<h2 className="text-3xl md:text-4xl lg:text-5xl font-great-adventurer font-bold text-forest-green mb-3 md:mb-4">
 						Featured Adventures
 					</h2>
-					<p className="text-xl text-mountain-blue font-inter max-w-3xl mx-auto">
+					<p className="text-lg md:text-xl font-inter text-mountain-blue/80 max-w-3xl mx-auto px-2">
 						Discover our most popular destinations, carefully curated for the ultimate adventure experience
 					</p>
 				</motion.div>
 
 				<motion.div
-					className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-8"
+					className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6 lg:gap-8 w-full"
 					variants={containerVariants}
 					initial="hidden"
 					whileInView="show"
@@ -183,12 +225,12 @@ export const FeaturedDestinations: React.FC = () => {
 					{destinations.map((destination, index) => (
 						<motion.div key={destination.id} variants={itemVariants}>
 							<Card
-								className={`h-full group cursor-pointer overflow-hidden ${destination.status === 'promoted' ? 'ring-2 ring-orange-400 shadow-lg shadow-orange-400/30' : ''}`}
+								className={`h-full group cursor-pointer overflow-hidden hover:shadow-2xl transition-all duration-300 ${destination.status === 'promoted' ? 'ring-2 ring-orange-400 shadow-lg shadow-orange-400/30' : 'shadow-lg hover:shadow-xl'}`}
 								hover
 								tilt
 								glow={index % 2 === 0}
 							>
-								<div className="relative overflow-hidden aspect-[4/3] bg-gray-100">
+								<div className="relative overflow-hidden aspect-video bg-gray-100">
 									   <motion.img
 										   src={destination.image}
 										   alt={destination.name}
@@ -199,111 +241,112 @@ export const FeaturedDestinations: React.FC = () => {
 									   />
 
 									   {/* Image Overlay */}
-									   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+									   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
 									   {/* Category Badge */}
-									   <div className="absolute top-4 left-4">
+									   <div className="absolute top-3 left-3">
 										   <span
-											   className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${categoryColors[destination.category as keyof typeof categoryColors]}`}
+											   className={`px-3 py-1.5 rounded-full text-xs font-bold capitalize shadow-md ${categoryColors[destination.category as keyof typeof categoryColors]}`}
 										   >
 											   {destination.category}
 										   </span>
 									   </div>
 
 									   {/* Difficulty Badge */}
-									   <div className="absolute top-4 right-4">
+									   <div className="absolute top-3 right-3">
 										   <span
-											   className={`px-3 py-1 rounded-full text-xs font-medium ${difficultyColors[destination.difficulty as keyof typeof difficultyColors]}`}
+											   className={`px-3 py-1.5 rounded-full text-xs font-bold shadow-md ${difficultyColors[destination.difficulty as keyof typeof difficultyColors]}`}
 										   >
 											   {destination.difficulty}
 										   </span>
 									   </div>
 
 									   {/* Capacity/Status Badges */}
-									   <div className="absolute top-4 left-20 flex gap-2">
+									   <div className="absolute top-3 left-24 flex gap-2">
 										   {destination.status === 'promoted' && (
-											   <span className="px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg">
+											   <span className="px-2.5 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg animate-pulse">
 												   🔥 Hot Deal
 											   </span>
 										   )}
 										   {destination.availableSlots !== undefined && destination.availableSlots <= 2 && destination.availableSlots > 0 && (
-											   <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-500 text-white">
+											   <span className="px-2.5 py-1.5 rounded-full text-xs font-bold bg-red-500 text-white shadow-lg">
 												   Only {destination.availableSlots} left!
 											   </span>
 										   )}
 										   {destination.availableSlots !== undefined && destination.availableSlots === 0 && (
-											   <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-500 text-white">
+											   <span className="px-2.5 py-1.5 rounded-full text-xs font-bold bg-gray-600 text-white shadow-lg">
 												   Fully Booked
 											   </span>
 										   )}
 									   </div>
 
-									   {/* Rating */}
-									   <div className="absolute bottom-4 left-4 flex items-center space-x-1 text-white">
+									   {/* Rating - Now more prominent */}
+									   <div className="absolute bottom-3 left-3 flex items-center space-x-2 bg-black/40 backdrop-blur-sm px-3 py-2 rounded-full">
 										   <StarIcon className="w-4 h-4 fill-current text-sunset-yellow" />
-										   <span className="text-sm font-medium">{destination.rating}</span>
-										   <span className="text-xs opacity-80">({destination.reviewCount})</span>
+										   <span className="text-sm font-bold text-white">{destination.rating}</span>
+										   <span className="text-xs text-white/80">({destination.reviewCount})</span>
 									   </div>
 								   </div>
 
 								{/* Content */}
-								<div className="p-6">
-									<h3 className="text-xl font-oswald font-bold text-forest-green mb-2 group-hover:text-adventure-orange transition-colors">
+								<div className="p-4 md:p-5 flex flex-col h-full">
+									<h3 className="text-lg md:text-xl font-expat-rugged font-bold text-forest-green mb-2 group-hover:text-adventure-orange transition-colors line-clamp-2">
 										{destination.name}
 									</h3>
 
-									<div className="flex items-center text-mountain-blue mb-3">
-										<MapPin className="w-4 h-4 mr-1" />
-										<span className="text-sm font-inter">{destination.location}</span>
+									<div className="flex items-center text-mountain-blue/80 mb-3 text-sm">
+										<MapPin className="w-4 h-4 mr-1.5 flex-shrink-0" />
+										<span className="truncate">{destination.location}</span>
 									</div>
 
 									{/* Highlights */}
-									<ul className="text-sm text-gray-600 mb-4 space-y-1">
+									<ul className="text-xs text-gray-600 mb-4 space-y-1.5 flex-grow">
 										{destination.highlights.slice(0, 2).map((highlight, i) => (
-											<li key={i} className="flex items-center">
-												<div className="w-1 h-1 bg-adventure-orange rounded-full mr-2" />
-												{highlight}
+											<li key={i} className="flex items-start">
+												<div className="w-1.5 h-1.5 bg-adventure-orange rounded-full mr-2 mt-1 flex-shrink-0" />
+												<span className="line-clamp-1">{highlight}</span>
 											</li>
 										))}
 									</ul>
 
 									{/* Meta Info */}
-									<div className="flex items-center justify-between text-sm text-mountain-blue mb-4">
-										<div className="flex items-center">
-											<Clock className="w-4 h-4 mr-1" />
+									<div className="flex items-center justify-between text-xs text-mountain-blue/80 mb-4 gap-2">
+										<div className="flex items-center min-w-fit">
+											<Clock className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
 											<span>{destination.duration}</span>
 										</div>
-										<div className="flex items-center">
-											<Users className="w-4 h-4 mr-1" />
-											<span>{destination.availableSlots !== undefined ? `${destination.availableSlots} available` : 'Check availability'}</span>
+										<div className="flex items-center min-w-fit text-right">
+											<Users className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+											<span className="truncate">{destination.availableSlots !== undefined ? `${destination.availableSlots} avail` : 'Check'}</span>
 										</div>
 									</div>
 
 									{/* Price and CTA */}
-									<div className="flex items-center justify-between">
+									<div className="flex items-center justify-between gap-2">
 										<div>
-											<span className="text-2xl font-oswald font-bold text-forest-green">
+											<span className="text-lg md:text-xl font-outbrave font-bold text-forest-green">
 												₹{destination.price.toLocaleString()}
 											</span>
-											<span className="text-sm text-gray-500 ml-1">per person</span>
+											<span className="text-xs text-gray-500 ml-1">/person</span>
 										</div>
-										<div className="flex items-center gap-2">
+										<div className="flex items-center gap-1.5">
 											<Button
 												variant="secondary"
 												size="sm"
 												onClick={() => setQuickView(destination)}
 												aria-label={`Quick view ${destination.name}`}
+												className="text-xs"
 											>
 												Quick view
 											</Button>
-											<Link to={`/trip/${destination.id}`}>
+											<Link to={`/trip/${destination.id}`} className="flex-shrink-0">
 												<Button
 													variant="adventure"
 													size="sm"
 													className="group-hover:scale-110 transition-transform"
 													aria-label={`View details for ${destination.name}`}
 												>
-													<ArrowRight className="w-4 h-4" />
+													<ArrowRight className="w-3.5 h-3.5" />
 												</Button>
 											</Link>
 										</div>
@@ -316,26 +359,26 @@ export const FeaturedDestinations: React.FC = () => {
 
 				{/* View All Button + Link */}
 				<motion.div
-					className="text-center mt-12"
+					className="text-center mt-12 md:mt-16"
 					initial={{ opacity: 0, y: 20 }}
 					whileInView={{ opacity: 1, y: 0 }}
 					viewport={{ once: true }}
 					transition={{ delay: 0.5, duration: 0.6 }}
 				>
-					<div className="flex items-center justify-center gap-4">
+					<div className="flex flex-col md:flex-row items-center justify-center gap-3 md:gap-4">
 						<Link to="/destinations">
 							<Button
 								variant="primary"
 								size="lg"
-								className="font-oswald text-lg px-8"
+								className="font-tall-rugged text-base md:text-lg px-6 md:px-8"
 							>
 								View All Destinations
-								<ArrowRight className="ml-2 w-5 h-5" />
+								<ArrowRight className="ml-2 w-4 h-4 md:w-5 md:h-5" />
 							</Button>
 						</Link>
 						<Link
 							to="/catalog"
-							className="text-mountain-blue hover:text-forest-green underline-offset-2 hover:underline"
+							className="text-sm md:text-base text-mountain-blue hover:text-forest-green underline-offset-2 hover:underline"
 						>
 							or open the full catalog explorer
 						</Link>
@@ -343,70 +386,116 @@ export const FeaturedDestinations: React.FC = () => {
 				</motion.div>
 			</div>
 
-			{/* Quick View Modal */}
+			{/* Quick View Modal - CENTERED ON SCREEN */}
 			{quickView && (
 				<div
 					role="dialog"
 					aria-modal="true"
 					aria-label={`${quickView.name} quick view`}
-					className="fixed inset-0 z-50 flex items-center justify-center"
+					className="fixed inset-0 z-50 flex items-center justify-center p-1.5 sm:p-4 md:p-6"
+					style={{ top: 0, left: 0, right: 0, bottom: 0, overflowY: 'hidden' }}
 				>
-					<div className="absolute inset-0 bg-black/50" onClick={() => setQuickView(null)} />
-					<div className="relative bg-white rounded-2xl shadow-2xl max-w-3xl w-[92vw] overflow-hidden">
+					<div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setQuickView(null)} />
+					<motion.div 
+						className="relative bg-white rounded-xl sm:rounded-2xl md:rounded-3xl shadow-2xl w-full max-w-sm sm:max-w-xl md:max-w-2xl max-h-[90vh] sm:max-h-[85vh] md:max-h-[90vh] flex flex-col"
+						initial={{ opacity: 0, scale: 0.8, y: 50 }}
+						animate={{ opacity: 1, scale: 1, y: 0 }}
+						exit={{ opacity: 0, scale: 0.8, y: 50 }}
+						transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+					>
+						{/* Close Button - Fixed to top */}
 						<button
-							className="absolute top-3 right-3 p-2 rounded-full bg-black/10 hover:bg-black/20"
+							className="absolute top-2 sm:top-3 md:top-4 right-2 sm:right-3 md:right-4 p-1.5 sm:p-2 md:p-2.5 rounded-full bg-white/90 hover:bg-white shadow-lg z-20 transition-all hover:shadow-xl"
 							aria-label="Close"
 							onClick={() => setQuickView(null)}
 						>
-							<X className="w-5 h-5" />
+							<X className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-800" />
 						</button>
-						<div className="grid md:grid-cols-2">
-							<div className="relative aspect-[4/3] bg-gray-100">
-								<img
-									src={quickView.image}
-									alt={quickView.name}
-									className="w-full h-full object-cover"
-									loading="lazy"
-									decoding="async"
-								/>
-								<div className="absolute bottom-3 left-3 flex items-center gap-2 text-white">
-									<StarIcon className="w-4 h-4 text-sunset-yellow" />
-									<span className="text-sm font-medium">{quickView.rating} ({quickView.reviewCount})</span>
-								</div>
-							</div>
-							<div className="p-5 md:p-6">
-								<h3 className="text-xl font-oswald font-bold text-forest-green">{quickView.name}</h3>
-								<div className="flex items-center text-mountain-blue mt-1">
-									<MapPin className="w-4 h-4 mr-1" />
-									<span className="text-sm">{quickView.location}</span>
-								</div>
-								<ul className="mt-4 space-y-2 text-sm text-gray-700">
-									{quickView.highlights.slice(0, 3).map((h, i) => (
-										<li key={i} className="flex items-center">
-											<div className="w-1.5 h-1.5 bg-adventure-orange rounded-full mr-2" />
-											{h}
-										</li>
-									))}
-								</ul>
-								<div className="mt-4 flex items-center gap-4 text-sm text-mountain-blue">
-									<div className="flex items-center"><Clock className="w-4 h-4 mr-1" />{quickView.duration}</div>
-									<div className="flex items-center"><Users className="w-4 h-4 mr-1" />Max 12</div>
-								</div>
-								<div className="mt-6 flex items-center justify-between">
-									<div>
-										<span className="text-2xl font-oswald font-bold text-forest-green">₹{quickView.price.toLocaleString()}</span>
-										<span className="text-sm text-gray-500 ml-1">per person</span>
+
+					{/* Scrollable Content */}
+					<div className="overflow-y-auto flex-1 overscroll-none pr-1.5 sm:pr-2 md:pr-3" style={{ overflowX: 'hidden' }}>
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+							{/* Image Section */}
+							<div className="relative w-full h-32 sm:h-40 md:h-full md:min-h-[350px] bg-gray-100">
+									<img
+										src={quickView.image}
+										alt={quickView.name}
+										className="w-full h-full object-cover"
+										loading="lazy"
+										decoding="async"
+									/>
+									<div className="absolute top-1.5 sm:top-2 md:top-4 left-1.5 sm:left-2 md:left-4 flex items-center gap-1.5 sm:gap-2 bg-black/50 backdrop-blur-sm px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 md:py-2 rounded-full text-white">
+										<StarIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 fill-current text-sunset-yellow" />
+										<span className="text-xs md:text-sm font-medium">{quickView.rating} ({quickView.reviewCount})</span>
 									</div>
-									<div className="flex gap-2">
-										<Link to={`/trip/${quickView.id}`} onClick={() => setQuickView(null)}>
-											<Button variant="adventure" size="md">View details</Button>
+								</div>
+
+							{/* Content Section */}
+							<div className="p-2 sm:p-3 md:p-6 flex flex-col space-y-1.5 sm:space-y-2 md:space-y-4 overflow-y-auto">
+									<div>
+										<h3 className="text-base sm:text-lg md:text-3xl font-expat-rugged font-bold text-forest-green leading-tight">{quickView.name}</h3>
+										<div className="flex items-center text-mountain-blue mt-0.5 sm:mt-1 md:mt-2">
+											<MapPin className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 mr-1 sm:mr-1.5 md:mr-2 flex-shrink-0" />
+											<span className="text-xs md:text-sm">{quickView.location}</span>
+										</div>
+									</div>
+
+									{/* Highlights - Max 2 on mobile */}
+									<div>
+										<h4 className="text-xs md:text-sm font-bold text-gray-700 mb-1">Highlights:</h4>
+										<ul className="space-y-0.5 md:space-y-1 text-xs md:text-sm text-gray-700">
+											{quickView.highlights.slice(0, 2).map((h, i) => (
+												<li key={i} className="flex items-start">
+													<div className="w-0.5 h-0.5 sm:w-1 sm:h-1 md:w-1.5 md:h-1.5 bg-adventure-orange rounded-full mr-1 sm:mr-1.5 md:mr-2.5 mt-1 flex-shrink-0" />
+													<span className="line-clamp-1">{h}</span>
+												</li>
+											))}
+										</ul>
+									</div>
+
+									{/* Info Row */}
+									<div className="grid grid-cols-3 gap-1 sm:gap-2 py-1 sm:py-2 md:py-3 border-t border-b border-gray-200">
+										<div className="text-center">
+											<Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 mx-auto mb-0.5 sm:mb-1 text-mountain-blue" />
+											<div className="text-xs md:text-sm font-semibold text-gray-800">{quickView.duration}</div>
+										</div>
+										<div className="text-center">
+											<Users className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 mx-auto mb-0.5 sm:mb-1 text-mountain-blue" />
+											<div className="text-xs md:text-sm font-semibold text-gray-800">{quickView.availableSlots || 'Check'}</div>
+										</div>
+										<div className="text-center">
+											<ShieldCheck className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 mx-auto mb-0.5 sm:mb-1 text-green-600" />
+											<div className="text-xs md:text-sm font-semibold text-green-700">Certified</div>
+										</div>
+									</div>
+
+									{/* Price & CTA */}
+									<div className="space-y-1 sm:space-y-1.5 md:space-y-3 mt-auto pt-1 sm:pt-1.5 md:pt-2">
+										<div>
+											<span className="text-lg sm:text-xl md:text-3xl font-outbrave font-bold text-forest-green">₹{quickView.price.toLocaleString()}</span>
+											<span className="text-xs text-gray-500 ml-1 md:ml-2">/person</span>
+										</div>
+										<Link to={`/trip/${quickView.id}`} className="block">
+											<Button
+												variant="primary"
+												size="lg"
+												className="w-full text-xs sm:text-sm py-1.5 sm:py-2 md:py-3 min-h-[36px] sm:min-h-[40px] md:min-h-[44px]"
+												onClick={() => setQuickView(null)}
+											>
+												View Full Details & Book
+											</Button>
 										</Link>
-										<Button variant="secondary" size="md" onClick={() => setQuickView(null)}>Close</Button>
+										<button
+											className="w-full py-1 sm:py-1.5 md:py-2.5 px-2 sm:px-3 md:px-4 border-2 border-gray-300 text-gray-700 font-semibold text-xs sm:text-sm md:text-base rounded-lg sm:rounded-lg md:rounded-xl hover:bg-gray-50 transition-colors min-h-[36px] sm:min-h-[40px] md:min-h-[44px]"
+											onClick={() => setQuickView(null)}
+										>
+											Close
+										</button>
 									</div>
 								</div>
 							</div>
 						</div>
-					</div>
+					</motion.div>
 				</div>
 			)}
 		</section>

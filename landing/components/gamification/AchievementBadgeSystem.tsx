@@ -8,35 +8,15 @@ import {
   Zap, 
   Target,
   Award,
-  Gift,
-  Flame,
-  Heart,
-  Eye,
-  Map,
   Compass,
   Mountain,
-  Camera,
   Share2,
-  Users,
   Calendar,
-  Phone,
   Clock,
-  Rocket,
   Diamond,
-  Gem,
   Medal,
-  Sparkles,
-  TrendingUp,
-  Bookmark,
   MessageCircle,
-  MapPin,
-  Sunrise,
-  Moon,
-  Sun,
-  CloudRain,
-  Wind,
-  Snowflake,
-  Leaf
+  CloudRain
 } from 'lucide-react';
 
 export interface BadgeUnlockCondition {
@@ -48,12 +28,25 @@ export interface BadgeUnlockCondition {
   description: string;
 }
 
+export interface PointAction {
+  action: string;
+  category?: string;
+  timestamp?: number;
+}
+
+export interface UserProgress {
+  totalPoints: number;
+  pointsHistory?: PointAction[];
+  sessionStart?: number;
+  streakCount?: number;
+}
+
 export interface Badge {
   id: string;
   name: string;
   description: string;
   longDescription?: string;
-  icon: React.ComponentType<any>;
+  icon: React.ComponentType<{ className?: string }>;
   bgGradient: string;
   iconColor: string;
   rarity: 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | 'legendary';
@@ -68,7 +61,7 @@ export interface Badge {
 }
 
 interface AchievementBadgeSystemProps {
-  userProgress?: any;
+  userProgress?: UserProgress;
   onBadgeUnlocked?: (badge: Badge) => void;
   showDetailed?: boolean;
   className?: string;
@@ -388,41 +381,49 @@ export const AchievementBadgeSystem: React.FC<AchievementBadgeSystemProps> = ({
       // Check each unlock condition
       const allConditionsMet = badge.unlockConditions.every(condition => {
         switch (condition.type) {
-          case 'points':
+          case 'points': {
             return userProgress.totalPoints >= condition.threshold;
+          }
           
-          case 'actions':
+          case 'actions': {
             if (!condition.actions) return false;
-            const actionCount = userProgress.pointsHistory?.filter((point: any) => 
+            const actionCount = userProgress.pointsHistory?.filter((point: PointAction) => 
               condition.actions!.includes(point.action)
             ).length || 0;
             return actionCount >= condition.threshold;
+          }
           
-          case 'time_spent':
+          case 'time_spent': {
             const sessionTime = Date.now() - (userProgress.sessionStart || Date.now());
             return sessionTime >= condition.threshold;
+          }
           
-          case 'social_actions':
-            const socialCount = userProgress.pointsHistory?.filter((point: any) => 
+          case 'social_actions': {
+            const socialCount = userProgress.pointsHistory?.filter((point: PointAction) => 
               point.category === 'social'
             ).length || 0;
             return socialCount >= condition.threshold;
+          }
           
-          case 'engagement_level':
+          case 'engagement_level': {
             return userProgress.totalPoints >= condition.threshold;
+          }
           
-          case 'streak':
+          case 'streak': {
             return (userProgress.streakCount || 0) >= condition.threshold;
+          }
           
-          case 'combo':
+          case 'combo': {
             // Complex combination logic
             if (!condition.actions) return false;
             return condition.actions.every(requiredAction => 
-              userProgress.pointsHistory?.some((point: any) => point.action === requiredAction)
+              userProgress.pointsHistory?.some((point: PointAction) => point.action === requiredAction)
             );
+          }
           
-          default:
+          default: {
             return false;
+          }
         }
       });
 
@@ -447,17 +448,19 @@ export const AchievementBadgeSystem: React.FC<AchievementBadgeSystemProps> = ({
           let conditionProgress = 0;
           
           switch (condition.type) {
-            case 'points':
+            case 'points': {
               conditionProgress = Math.min(1, userProgress.totalPoints / condition.threshold);
               break;
-            case 'actions':
+            }
+            case 'actions': {
               if (condition.actions) {
-                const actionCount = userProgress.pointsHistory?.filter((point: any) => 
+                const actionCount = userProgress.pointsHistory?.filter((point: PointAction) => 
                   condition.actions!.includes(point.action)
                 ).length || 0;
                 conditionProgress = Math.min(1, actionCount / condition.threshold);
               }
               break;
+            }
             // Add other progress calculations as needed
           }
           
@@ -483,18 +486,6 @@ export const AchievementBadgeSystem: React.FC<AchievementBadgeSystemProps> = ({
     }
   };
 
-  const getCategoryIcon = (category: Badge['category']) => {
-    switch (category) {
-      case 'explorer': return Mountain;
-      case 'social': return Users;
-      case 'adventurer': return Rocket;
-      case 'master': return Crown;
-      case 'legend': return Trophy;
-      case 'seasonal': return Leaf;
-      default: return Star;
-    }
-  };
-
   const unlockedBadges = badges.filter(b => b.unlocked && !b.isHidden);
   const visibleBadges = badges.filter(b => !b.isHidden);
 
@@ -502,7 +493,7 @@ export const AchievementBadgeSystem: React.FC<AchievementBadgeSystemProps> = ({
     <div className={className}>
       {/* Badge Collection Grid */}
       {showDetailed && (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
           {visibleBadges.map(badge => (
             <motion.div
               key={badge.id}

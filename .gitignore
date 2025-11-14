@@ -29,3 +29,84 @@ firebase-service-account.json
 serviceAccountKey.json
 *.key
 *.pem
+
+# Local Netlify folder
+.netlify
+
+# Local backend service account (do NOT commit)
+backend/firebase-key.json
+
+# All environment files with secrets
+.env
+.env.local
+.env.production
+.env.staging
+.env.development
+.env.example
+.env.example.*
+.env.multi-llm
+.env.phase1-2
+
+# API Keys and tokens
+*API_KEY*
+*SECRET_KEY*
+*TOKEN*
+*PASSWORD*
+*DATABASE_URL*
+
+# WhatsApp specific secrets
+WHATSAPP_*
+OPENAI_*
+PINECONE_*
+KIMI_*
+MINIMAX_*
+GROK_*
+QWEN_*
+
+# Database files
+*.db
+*.sqlite3
+backend/db.sqlite3
+backend/travel_dashboard/db.sqlite3
+
+# Cache and temporary files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Django specific
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+staticfiles/
+media/
+
+# Redis dumps
+dump.rdb
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

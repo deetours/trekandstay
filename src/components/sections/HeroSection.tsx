@@ -1,7 +1,8 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { ArrowDown, Play, MapPin, Users, Star } from 'lucide-react';
+import { ArrowDown, Play, Mountain, Heart, Award } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { Typewriter } from '../ui/typewriter-text';
 
 const videos = [
   'https://res.cloudinary.com/ddw48hdrf/video/upload/v1756152096/t_s_wfbtzn.mp4', // Your local video - make sure it exists in public/videos/
@@ -54,7 +55,7 @@ export const HeroSection: React.FC = () => {
           transition={{ duration: 1, ease: 'easeOut' }}
         >
           <motion.h1
-            className="text-5xl lg:text-7xl font-oswald font-bold mb-6 leading-tight"
+            className="font-outbrave text-5xl lg:text-7xl font-bold mb-6 leading-tight"
             animate={{
               textShadow: [
                 '0 0 20px rgba(255, 107, 53, 0.5)',
@@ -68,13 +69,19 @@ export const HeroSection: React.FC = () => {
               ease: 'easeInOut',
             }}
           >
-            Discover Karnataka's
-            <br />
-            <span className="text-adventure-orange">Hidden Gems</span>
+            <Typewriter
+              text="Discover Karnataka's Hidden Gems"
+              speed={150}
+              loop={false}
+              cursor=""
+              className="inline"
+              highlightText="Hidden Gems"
+              highlightClass="text-adventure-orange"
+            />
           </motion.h1>
           
           <motion.p
-            className="text-xl lg:text-2xl font-inter mb-8 max-w-3xl mx-auto leading-relaxed"
+            className="font-inter text-xl lg:text-2xl mb-8 max-w-3xl mx-auto leading-relaxed"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.8 }}
@@ -91,9 +98,9 @@ export const HeroSection: React.FC = () => {
             transition={{ delay: 0.5, duration: 0.8 }}
           >
             {[
-              { icon: MapPin, label: '50+ Destinations', count: '50+' },
-              { icon: Users, label: 'Happy Adventurers', count: '2000+' },
-              { icon: Star, label: 'Average Rating', count: '4.9' },
+              { icon: Mountain, label: '50+ Destinations', count: '50+' },
+              { icon: Heart, label: 'Happy Adventurers', count: '2000+' },
+              { icon: Award, label: 'Average Rating', count: '4.9' },
             ].map((stat, index) => {
               const Icon = stat.icon;
               return (
@@ -105,7 +112,7 @@ export const HeroSection: React.FC = () => {
                 >
                   <Icon className="w-6 h-6 text-adventure-orange" />
                   <div>
-                    <div className="font-oswald font-bold text-xl">{stat.count}</div>
+                    <div className="font-outbrave font-bold text-xl">{stat.count}</div>
                     <div className="font-inter text-sm opacity-90">{stat.label}</div>
                   </div>
                 </motion.div>
@@ -123,7 +130,7 @@ export const HeroSection: React.FC = () => {
             <Button
               variant="adventure"
               size="xl"
-              className="font-oswald text-lg px-8 py-4"
+              className="font-tall-rugged text-lg px-8 py-4"
               onClick={scrollToDestinations}
             >
               Explore Adventures
@@ -133,7 +140,7 @@ export const HeroSection: React.FC = () => {
             <Button
               variant="ghost"
               size="xl"
-              className="text-white border-white/30 hover:bg-white/20 font-oswald text-lg px-8 py-4"
+              className="text-white border-white/30 hover:bg-white/20 font-tall-rugged text-lg px-8 py-4"
               icon={<Play className="w-5 h-5" />}
             >
               Watch Stories
@@ -143,7 +150,7 @@ export const HeroSection: React.FC = () => {
 
         {/* Floating Action Elements */}
         <motion.div
-          className="absolute -bottom-24 left-1/2 transform -translate-x-1/2"
+          className="absolute -bottom-16 left-1/2 transform -translate-x-1/2"
           animate={{
             y: [0, -10, 0],
           }}

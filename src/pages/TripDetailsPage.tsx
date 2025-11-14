@@ -930,8 +930,8 @@ const TripDetailsPage: React.FC = () => {
 
       {/* Booking Flow Overlay */}
       {showBooking && (
-        <div className="fixed inset-0 z-[90] flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full md:max-w-2xl md:rounded-2xl md:shadow-2xl md:overflow-hidden animate-in fade-in slide-in-from-bottom md:slide-in-from-bottom-0 duration-300">
+        <div className="fixed inset-0 z-[90] flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm p-0 md:p-4 overflow-y-auto md:overflow-visible">
+          <div className="w-full h-full md:h-auto md:max-w-2xl md:max-h-[90vh] md:rounded-2xl md:shadow-2xl md:overflow-hidden flex flex-col animate-in fade-in slide-in-from-bottom md:slide-in-from-bottom-0 duration-300">
             <BookingFlow
               tripId={trip.id}
               tripName={trip.name}
