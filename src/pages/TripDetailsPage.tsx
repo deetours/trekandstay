@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, startTransition } from 'react';
+import React, { useEffect, useRef, useState, startTransition, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useToast } from '../components/ui/useToast';
@@ -7,14 +7,16 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs'
 import { Button } from '../components/ui/Button';
 import { Avatar, AvatarImage, AvatarFallback } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
+import { AuroraBackground } from '../components/ui/aurora-background';
 import { Breadcrumbs } from '../components/layout/Breadcrumbs';
-import { MapPin, Star, CheckCircle2, XCircle, CalendarDays, Clock, Users, Shield, Mountain, X, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Pause, Play, Sparkles, Backpack, Compass, Sun, Leaf, Flame, Heart, PhoneCall, MessageCircle } from 'lucide-react';
+import { MapPin, Star, CheckCircle2, XCircle, CalendarDays, Clock, Users, Shield, Mountain, X, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Pause, Play, Sparkles, Backpack, Compass, Sun, Leaf, Flame, Heart, PhoneCall, MessageCircle, Lock, Edit, Calendar, Package, FileText } from 'lucide-react';
 // Firestore
 import { doc as fsDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 // API helpers (without old getTrip)
-import { createLead, sendWhatsApp, addToWishlist } from '../utils/api';
+import { createLead, sendWhatsApp, API_BASE } from '../utils/api';
 import { trackTripView, trackBookClick, trackRouteSelect, trackExitIntent } from '../utils/tracking';
+import { useAuth } from '../hooks/useAuth';
 import { BookingFlow } from '../components/booking/BookingFlow';
 import { products } from '../data/shopProducts';
 
@@ -49,6 +51,43 @@ interface TripData {
   essentials?: string[];
   reviews?: { author: string; text: string }[];
   routeOptions?: RouteOption[];
+}
+
+interface TripPlan {
+  id: string;
+  tripId: string;
+  tripName: string;
+  title?: string;
+  customItinerary: ItineraryDay[];
+  packingList: PackingItem[];
+  notes: string;
+  reminders: string[];
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ItineraryDay {
+  id: string;
+  day: number;
+  date: string;
+  activities: ItineraryActivity[];
+}
+
+interface ItineraryActivity {
+  id: string;
+  time: string;
+  activity: string;
+  location: string;
+  notes: string;
+}
+
+interface PackingItem {
+  id: string;
+  category: string;
+  item: string;
+  quantity: number;
+  packed: boolean;
 }
 
 // Simple in-memory cache to reduce refetch flicker
@@ -426,7 +465,7 @@ function GuideCard({ guide }: { guide: TripData['guide'] }) {
 const TripDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { toast, success, error } = useToast();
+  const { toast } = useToast();
   const [trip, setTrip] = useState<TripData | null>(null);
   const [loadingTrip, setLoadingTrip] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -500,6 +539,7 @@ const TripDetailsPage: React.FC = () => {
   const [preRoute, setPreRoute] = useState<string>('');
   const initialLoadRef = useRef(true);
   const exitListenerRef = useRef<((e: MouseEvent)=>void) | null>(null);
+  const [showTripPlanner, setShowTripPlanner] = useState(false);
 
   // Fetch trip from Firestore (realtime + cache to reduce flicker)
   useEffect(() => {
@@ -534,7 +574,7 @@ const TripDetailsPage: React.FC = () => {
         const tripData: TripData = {
           id: snap.id,
           name: (data.name as string) || 'Untitled Trip',
-          images: Array.isArray(data.images) && data.images.length ? data.images : ['https://via.placeholder.com/1200x800?text=Trip'],
+          images: Array.isArray(data.images) && data.images.length ? data.images : ['https://picsum.photos/1200/800?random=trip'],
           location: (data.location as string) || 'TBD',
           duration: (data.duration as string) || '—',
           spotsAvailable: (data.spotsAvailable as number) ?? (data.spots_available as number) ?? 0,
@@ -596,18 +636,8 @@ const TripDetailsPage: React.FC = () => {
   };
   const handleAddWishlist = async () => {
     if (!trip) return;
-    try {
-      await addToWishlist(Number(trip.id));
-      success({ title: 'Added', description: 'Saved to your list.' });
-    } catch (e: unknown) {
-      const msg = String((e as Error)?.message || 'Please sign in');
-      if (msg.includes('401') || msg.toLowerCase().includes('not authenticated')) {
-        error({ title: 'Sign in required', description: 'Please sign in to save trips.' });
-        setTimeout(() => navigate('/login', { state: { from: `/trip/${trip.id}` } }), 1200);
-      } else {
-        error({ title: 'Could not save', description: msg });
-      }
-    }
+    // Open the trip planner modal instead of just adding to wishlist
+    setShowTripPlanner(true);
   };
 
   // Loading / not found states
@@ -750,7 +780,9 @@ const TripDetailsPage: React.FC = () => {
             </div>
           <TabsContent value="overview" className="space-y-5 relative z-10">
             <div className="mt-4 sm:mt-6">
-              <HighlightsList highlights={trip.highlights || []} />
+              <AuroraBackground showRadialGradient={true}>
+                <HighlightsList highlights={trip.highlights || []} />
+              </AuroraBackground>
             </div>
             {/* Route Options Preview (pre-booking) */}
             {(trip.routeOptions || []).length>0 && (
@@ -947,6 +979,13 @@ const TripDetailsPage: React.FC = () => {
         </div>
       )}
 
+      {/* Trip Planner Modal */}
+      <TripPlannerModal
+        isOpen={showTripPlanner}
+        onClose={() => setShowTripPlanner(false)}
+        trip={{ id: trip.id, name: trip.name, duration: trip.duration, location: trip.location }}
+      />
+
       {/* Sticky bottom bar (mobile) */}
       <div className="fixed inset-x-0 bottom-0 z-40 md:hidden pointer-events-none">
         <div className={`transition-all duration-300 ${mobileBarVisible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'} pointer-events-auto mx-3 mb-3 rounded-2xl border shadow-lg bg-white/95 backdrop-blur px-3 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex flex-col gap-3`}> 
@@ -961,7 +1000,7 @@ const TripDetailsPage: React.FC = () => {
               <div className="flex items-center gap-2 text-[10px] font-medium text-gray-600">
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700"><CalendarDays className="w-3.5 h-3.5" /> {departMeta.displayDate}</span>
                 {departMeta.departLabel && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700"><Clock className="w-3.5 h-3.5" /> {departMeta.departLabel.replace('Departs ','In ')}</span>}
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${(trip.spotsAvailable??0) <=5 ? 'bg-red-50 text-red-600':'bg-emerald-50 text-emerald-600'} `}><Users className="w-3.5 h-3.5" /> {(trip.spotsAvailable)||0}</span>
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${(trip.spotsAvailable??0) <=5 ? 'bg-red-50 text-red-600 ring-red-200' : 'bg-emerald-50 text-emerald-600 ring-emerald-200'} `}><Users className="w-3.5 h-3.5" /> {(trip.spotsAvailable)||0}</span>
               </div>
             </div>
             <Button
@@ -1031,7 +1070,7 @@ const TripDetailsPage: React.FC = () => {
                 <div className="flex items-center gap-3 text-[11px] font-medium mt-1">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 ring-1 ring-blue-200"><CalendarDays className="w-3.5 h-3.5" /> Next: {departMeta.displayDate}</span>
                   {departMeta.departLabel && <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"><Clock className="w-3.5 h-3.5" /> {departMeta.departLabel}</span>}
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full ring-1 ${(trip.spotsAvailable??0)<=5 ? 'bg-red-50 text-red-600 ring-red-200':'bg-emerald-50 text-emerald-600 ring-emerald-200'}`}><Users className="w-3.5 h-3.5" /> {(trip.spotsAvailable)||0} left</span>
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full ring-1 ${(trip.spotsAvailable??0)<=5 ? 'bg-red-50 text-red-600 ring-red-200' : 'bg-emerald-50 text-emerald-600 ring-emerald-200'}`}><Users className="w-3.5 h-3.5" /> {(trip.spotsAvailable)||0} left</span>
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200"><Shield className="w-3.5 h-3.5" /> Free cancellation</span>
                 </div>
               </div>
@@ -1079,6 +1118,663 @@ const TripDetailsPage: React.FC = () => {
         </div>
       </div>
     </main>
+  );
+};
+
+// Tab Components
+const ItineraryTab: React.FC<{
+  plan: TripPlan | null;
+  setPlan: (plan: TripPlan) => void;
+  isEditing: boolean;
+}> = ({ plan, setPlan, isEditing }) => {
+  if (!plan) return null;
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Custom Itinerary</h3>
+        {isEditing && (
+          <button
+            onClick={() => {
+              const newDay: ItineraryDay = {
+                id: Date.now().toString(),
+                day: plan.customItinerary.length + 1,
+                date: new Date(Date.now() + plan.customItinerary.length * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                activities: [],
+              };
+              setPlan({
+                ...plan,
+                customItinerary: [...plan.customItinerary, newDay],
+              });
+            }}
+            className="px-3 py-1 text-sm bg-primary text-white rounded hover:bg-primary/90"
+          >
+            Add Day
+          </button>
+        )}
+      </div>
+
+      {plan.customItinerary.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          <p>No custom itinerary yet</p>
+          {isEditing && (
+            <button
+              onClick={() => {
+                const newDay: ItineraryDay = {
+                  id: Date.now().toString(),
+                  day: 1,
+                  date: new Date().toISOString().split('T')[0],
+                  activities: [],
+                };
+                setPlan({
+                  ...plan,
+                  customItinerary: [newDay],
+                });
+              }}
+              className="mt-4 px-4 py-2 bg-primary text-white rounded hover:bg-primary/90"
+            >
+              Create Your Itinerary
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {plan.customItinerary.map((day: ItineraryDay) => (
+            <div key={day.id} className="p-4 border border-gray-200 rounded-lg">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center text-lg font-semibold">
+                  {day.day}
+                </div>
+                <div className="flex-1 space-y-3">
+                  {isEditing ? (
+                    <>
+                      <input
+                        type="date"
+                        value={day.date}
+                        onChange={(e) => {
+                          setPlan({
+                            ...plan,
+                            customItinerary: plan.customItinerary.map((d: ItineraryDay) =>
+                              d.id === day.id ? { ...d, date: e.target.value } : d
+                            ),
+                          });
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded"
+                      />
+                      <div className="space-y-2">
+                        {day.activities.map((activity: ItineraryActivity) => (
+                          <div key={activity.id} className="flex gap-2">
+                            <input
+                              type="time"
+                              value={activity.time}
+                              onChange={(e) => {
+                                setPlan({
+                                  ...plan,
+                                  customItinerary: plan.customItinerary.map((d: ItineraryDay) =>
+                                    d.id === day.id ? {
+                                      ...d,
+                                      activities: d.activities.map((a: ItineraryActivity) =>
+                                        a.id === activity.id ? { ...a, time: e.target.value } : a
+                                      ),
+                                    } : d
+                                  ),
+                                });
+                              }}
+                              className="px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                            <input
+                              type="text"
+                              placeholder="Activity"
+                              value={activity.activity}
+                              onChange={(e) => {
+                                setPlan({
+                                  ...plan,
+                                  customItinerary: plan.customItinerary.map((d: ItineraryDay) =>
+                                    d.id === day.id ? {
+                                      ...d,
+                                      activities: d.activities.map((a: ItineraryActivity) =>
+                                        a.id === activity.id ? { ...a, activity: e.target.value } : a
+                                      ),
+                                    } : d
+                                  ),
+                                });
+                              }}
+                              className="flex-1 px-3 py-1 border border-gray-300 rounded"
+                            />
+                            <input
+                              type="text"
+                              placeholder="Location"
+                              value={activity.location}
+                              onChange={(e) => {
+                                setPlan({
+                                  ...plan,
+                                  customItinerary: plan.customItinerary.map((d: ItineraryDay) =>
+                                    d.id === day.id ? {
+                                      ...d,
+                                      activities: d.activities.map((a: ItineraryActivity) =>
+                                        a.id === activity.id ? { ...a, location: e.target.value } : a
+                                      ),
+                                    } : d
+                                  ),
+                                });
+                              }}
+                              className="flex-1 px-3 py-1 border border-gray-300 rounded"
+                            />
+                            <button
+                              onClick={() => {
+                                setPlan({
+                                  ...plan,
+                                  customItinerary: plan.customItinerary.map((d: ItineraryDay) =>
+                                    d.id === day.id ? {
+                                      ...d,
+                                      activities: d.activities.filter((a: ItineraryActivity) => a.id !== activity.id),
+                                    } : d
+                                  ),
+                                });
+                              }}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          onClick={() => {
+                            const newActivity: ItineraryActivity = {
+                              id: Date.now().toString(),
+                              time: '09:00',
+                              activity: '',
+                              location: '',
+                              notes: '',
+                            };
+                            setPlan({
+                              ...plan,
+                              customItinerary: plan.customItinerary.map((d: ItineraryDay) =>
+                                d.id === day.id ? {
+                                  ...d,
+                                  activities: [...d.activities, newActivity],
+                                } : d
+                              ),
+                            });
+                          }}
+                          className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                        >
+                          Add Activity
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <h4 className="font-semibold">{new Date(day.date).toLocaleDateString()}</h4>
+                      {day.activities.length === 0 ? (
+                        <p className="text-gray-500 italic">No activities planned</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {day.activities.map((activity: ItineraryActivity) => (
+                            <div key={activity.id} className="flex items-start gap-3 p-2 bg-gray-50 rounded">
+                              <span className="text-sm font-medium text-primary">{activity.time}</span>
+                              <div className="flex-1">
+                                <p className="font-medium">{activity.activity}</p>
+                                <p className="text-sm text-gray-600">{activity.location}</p>
+                                {activity.notes && <p className="text-sm text-gray-500">{activity.notes}</p>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+                {isEditing && (
+                  <button
+                    onClick={() => {
+                      setPlan({
+                        ...plan,
+                        customItinerary: plan.customItinerary.filter((d: ItineraryDay) => d.id !== day.id),
+                      });
+                    }}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const PackingTab: React.FC<{
+  plan: TripPlan | null;
+  setPlan: (plan: TripPlan) => void;
+  isEditing: boolean;
+}> = ({ plan, setPlan, isEditing }) => {
+  if (!plan) return null;
+  const categories = ['Essentials', 'Clothing', 'Footwear', 'Electronics', 'Toiletries', 'Documents', 'Miscellaneous'];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Packing List</h3>
+        {isEditing && (
+          <button
+            onClick={() => {
+              const newItem: PackingItem = {
+                id: Date.now().toString(),
+                category: 'Essentials',
+                item: '',
+                quantity: 1,
+                packed: false,
+              };
+              setPlan({
+                ...plan,
+                packingList: [...plan.packingList, newItem],
+              });
+            }}
+            className="px-3 py-1 text-sm bg-primary text-white rounded hover:bg-primary/90"
+          >
+            Add Item
+          </button>
+        )}
+      </div>
+
+      {categories.map((category) => {
+        const categoryItems = plan.packingList.filter((item: PackingItem) => item.category === category);
+        if (categoryItems.length === 0 && !isEditing) return null;
+
+        return (
+          <div key={category} className="space-y-2">
+            <h4 className="font-medium text-gray-900">{category}</h4>
+            <div className="space-y-2">
+              {categoryItems.map((item: PackingItem) => (
+                <div key={item.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded">
+                  <input
+                    type="checkbox"
+                    checked={item.packed}
+                    onChange={() => {
+                      setPlan({
+                        ...plan,
+                        packingList: plan.packingList.map((i: PackingItem) =>
+                          i.id === item.id ? { ...i, packed: !i.packed } : i
+                        ),
+                      });
+                    }}
+                    className="w-4 h-4"
+                  />
+                  {isEditing ? (
+                    <>
+                      <input
+                        type="text"
+                        value={item.item}
+                        onChange={(e) => {
+                          setPlan({
+                            ...plan,
+                            packingList: plan.packingList.map((i: PackingItem) =>
+                              i.id === item.id ? { ...i, item: e.target.value } : i
+                            ),
+                          });
+                        }}
+                        className="flex-1 px-2 py-1 border border-gray-300 rounded"
+                      />
+                      <input
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) => {
+                          setPlan({
+                            ...plan,
+                            packingList: plan.packingList.map((i: PackingItem) =>
+                              i.id === item.id ? { ...i, quantity: parseInt(e.target.value) || 1 } : i
+                            ),
+                          });
+                        }}
+                        className="w-16 px-2 py-1 border border-gray-300 rounded text-center"
+                      />
+                      <select
+                        value={item.category}
+                        onChange={(e) => {
+                          setPlan({
+                            ...plan,
+                            packingList: plan.packingList.map((i: PackingItem) =>
+                              i.id === item.id ? { ...i, category: e.target.value } : i
+                            ),
+                          });
+                        }}
+                        className="px-2 py-1 border border-gray-300 rounded"
+                      >
+                        {categories.map((cat) => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => {
+                          setPlan({
+                            ...plan,
+                            packingList: plan.packingList.filter((i: PackingItem) => i.id !== item.id),
+                          });
+                        }}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <span className={item.packed ? 'line-through text-gray-500' : ''}>
+                      {item.item} {item.quantity > 1 ? `(${item.quantity})` : ''}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const NotesTab: React.FC<{
+  plan: TripPlan | null;
+  setPlan: (plan: TripPlan) => void;
+  isEditing: boolean;
+}> = ({ plan, setPlan, isEditing }) => {
+  if (!plan) return null;
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-lg font-semibold mb-2">Trip Notes</h3>
+        {isEditing ? (
+          <textarea
+            value={plan.notes}
+            onChange={(e) => setPlan({ ...plan, notes: e.target.value })}
+            placeholder="Add your trip notes, reminders, important information..."
+            className="w-full px-3 py-2 border border-gray-300 rounded"
+            rows={8}
+          />
+        ) : (
+          <div className="p-4 bg-gray-50 rounded min-h-[200px]">
+            {plan.notes || <span className="text-gray-500 italic">No notes yet</span>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Trip Planner Modal Component
+const TripPlannerModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  trip: { id: string; name: string; duration?: string; location: string };
+}> = ({ isOpen, onClose, trip }) => {
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const [activeTab, setActiveTab] = useState<'itinerary' | 'packing' | 'notes'>('itinerary');
+  const [plan, setPlan] = useState<TripPlan | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+
+  const loadTripPlan = useCallback(async () => {
+    if (!isAuthenticated || !trip.id) return;
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/v1/trip-plans/?trip=${trip.id}`, {
+        headers: {
+          'Authorization': `Token ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const plans = await response.json();
+        if (plans.length > 0) {
+          const backendPlan = plans[0];
+          // Transform snake_case to camelCase
+          const transformedPlan: TripPlan = {
+            id: backendPlan.id.toString(),
+            tripId: backendPlan.trip.toString(),
+            tripName: trip.name,
+            title: backendPlan.title,
+            customItinerary: backendPlan.custom_itinerary || [],
+            packingList: backendPlan.packing_list || [],
+            notes: backendPlan.notes || '',
+            reminders: backendPlan.reminders || [],
+            metadata: backendPlan.metadata || {},
+            createdAt: backendPlan.created_at,
+            updatedAt: backendPlan.updated_at,
+          };
+          setPlan(transformedPlan);
+        } else {
+          // Create default plan
+          const newPlan: TripPlan = {
+            id: `temp-${Date.now()}`,
+            tripId: trip.id,
+            tripName: trip.name,
+            customItinerary: [],
+            packingList: [
+              { id: '1', category: 'Essentials', item: 'Passport/ID', quantity: 1, packed: false },
+              { id: '2', category: 'Clothing', item: 'T-shirts', quantity: 5, packed: false },
+              { id: '3', category: 'Footwear', item: 'Walking Shoes', quantity: 1, packed: false },
+            ],
+            notes: '',
+            reminders: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          setPlan(newPlan);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load trip plan:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isAuthenticated, trip.id, trip.name]);
+
+  // Check authentication when modal opens
+  useEffect(() => {
+    if (isOpen && !authLoading && !isAuthenticated) {
+      setShowLoginPrompt(true);
+    } else if (isOpen && !authLoading && isAuthenticated) {
+      loadTripPlan();
+    }
+  }, [isOpen, isAuthenticated, authLoading, loadTripPlan]);
+
+  const savePlan = async () => {
+    if (!plan || !isAuthenticated) return;
+
+    setIsLoading(true);
+    try {
+      const planData = {
+        trip: parseInt(trip.id),
+        title: plan.title || 'My Trip Plan',
+        custom_itinerary: plan.customItinerary,
+        packing_list: plan.packingList,
+        notes: plan.notes,
+        reminders: plan.reminders,
+        metadata: plan.metadata || {},
+      };
+
+      const method = plan.id.startsWith('temp-') ? 'POST' : 'PUT';
+      const url = plan.id.startsWith('temp-')
+        ? `${API_BASE}/api/v1/trip-plans/`
+        : `${API_BASE}/api/v1/trip-plans/${plan.id}/`;
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Authorization': `Token ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(planData),
+      });
+
+      if (response.ok) {
+        const savedPlan = await response.json();
+        setPlan({
+          ...plan,
+          id: savedPlan.id.toString(),
+          updatedAt: new Date().toISOString(),
+        });
+        setIsEditing(false);
+        // Show success message
+        alert('Trip plan saved successfully!');
+      } else {
+        throw new Error('Failed to save plan');
+      }
+    } catch (error) {
+      console.error('Failed to save trip plan:', error);
+      alert('Failed to save trip plan. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  // Show loading while auth is initializing
+  if (authLoading) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login prompt if not authenticated
+  if (showLoginPrompt) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 text-center">
+          <div className="mb-6">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-8 h-8 text-primary" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Login Required</h2>
+            <p className="text-gray-600">
+              You need to be logged in to create and save trip plans. Your plans will be stored securely in your account.
+            </p>
+          </div>
+          <div className="space-y-3">
+            <button
+              onClick={() => {
+                setShowLoginPrompt(false);
+                // Navigate to login page
+                window.location.href = '/signin';
+              }}
+              className="w-full px-4 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 transition"
+            >
+              Login to Continue
+            </button>
+            <button
+              onClick={() => setShowLoginPrompt(false)}
+              className="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition"
+            >
+              Maybe Later
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading || !plan) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your trip plan...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="w-full max-w-4xl max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Trip Planner</h2>
+            <p className="text-gray-600">{trip.name} - {trip.location}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            {!isEditing ? (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
+              >
+                <Edit className="w-4 h-4 inline mr-2" />
+                Edit Plan
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  onClick={savePlan}
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+                >
+                  {isLoading ? 'Saving...' : 'Save Plan'}
+                </button>
+                <button
+                  onClick={() => setIsEditing(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-lg transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200">
+          {[
+            { id: 'itinerary', label: 'Itinerary', icon: Calendar },
+            { id: 'packing', label: 'Packing List', icon: Package },
+            { id: 'notes', label: 'Notes', icon: FileText },
+          ].map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id as 'itinerary' | 'packing' | 'notes')}
+              className={`flex items-center gap-2 px-6 py-4 font-medium transition ${
+                activeTab === id
+                  ? 'text-primary border-b-2 border-primary'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Content */}
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+          {activeTab === 'itinerary' && (
+            <ItineraryTab plan={plan} setPlan={setPlan} isEditing={isEditing} />
+          )}
+          {activeTab === 'packing' && (
+            <PackingTab plan={plan} setPlan={setPlan} isEditing={isEditing} />
+          )}
+          {activeTab === 'notes' && (
+            <NotesTab plan={plan} setPlan={setPlan} isEditing={isEditing} />
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
 

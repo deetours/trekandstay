@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import UserProfile, Booking, TripHistory, TripRecommendation, Lead
-from .models import Guide, Trip, Review, Author, Story, StoryImage, StoryAudio, StoryRating, Wishlist, Payment
+from .models import Guide, Trip, Review, Author, Story, StoryImage, StoryAudio, StoryRating, Wishlist, Payment, TripPlan
 
 admin.site.register(UserProfile)
 admin.site.register(Booking)
@@ -17,3 +17,4 @@ admin.site.register(StoryAudio)
 admin.site.register(StoryRating)
 admin.site.register(Wishlist)
 admin.site.register(Payment)
+admin.site.register(TripPlan)

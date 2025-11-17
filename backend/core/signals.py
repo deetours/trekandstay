@@ -54,6 +54,58 @@ def send_booking_confirmation_email(sender, instance, created, **kwargs):
         logger.error(f"Error sending booking confirmation email: {str(e)}", exc_info=True)
 
 
+def send_booking_confirmation_whatsapp(booking, payment):
+    """
+    Send WhatsApp confirmation message after payment is verified
+    Called manually from views.py after payment confirmation
+    """
+    try:
+        user = booking.user
+        
+        if not user.username:  # WhatsApp number stored in username
+            logger.warning(f"No WhatsApp number for user {user.id}, skipping WhatsApp confirmation")
+            return
+        
+        # Format confirmation message
+        message = f"""🎉 *Booking Confirmed!*
+
+Hi {user.first_name or user.username},
+
+Your booking has been confirmed! Here are the details:
+
+🏔️ *Trip:* {booking.destination}
+💺 *Seats:* {booking.seats}
+💰 *Advance Paid:* ₹{payment.amount}
+📅 *Date:* {booking.date.strftime('%d %B %Y') if booking.date else 'TBD'}
+
+*Booking ID:* #{booking.id}
+
+We'll send you the complete itinerary and joining instructions soon.
+
+For any questions, reply to this message or call us at +91-XXXXXXXXXX.
+
+Safe travels! 🏔️✨
+
+- Team Trek & Stay"""
+        
+        # Import and send WhatsApp message
+        from .views import send_whatsapp_message
+        send_whatsapp_message(
+            phone=user.username,
+            message=message,
+            session_id='booking_confirmations'
+        )
+        
+        # Update booking confirmation flag
+        booking.confirmation_whatsapp_sent = True
+        booking.save(update_fields=['confirmation_whatsapp_sent'])
+        
+        logger.info(f"Booking confirmation WhatsApp sent to {user.username}")
+        
+    except Exception as e:
+        logger.error(f"Error sending booking confirmation WhatsApp: {str(e)}", exc_info=True)
+
+
 @receiver(post_save, sender=Payment)
 def send_payment_confirmation_email(sender, instance, created, **kwargs):
     """

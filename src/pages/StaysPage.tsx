@@ -209,7 +209,7 @@ export const StaysPage: React.FC = () => {
       capacity: s.capacity || 2,
       price: s.price || 5000,
       category,
-      image: (s.images && s.images[0]) || 'https://via.placeholder.com/600x400?text=Stay',
+      image: (s.images && s.images[0]) || 'https://picsum.photos/600/400?random=stay',
       description: s.description || 'Comfortable accommodation',
       features: s.features && s.features.length ? s.features : ['Comfortable', 'Clean', 'Well-located'],
       amenities: s.amenities || []

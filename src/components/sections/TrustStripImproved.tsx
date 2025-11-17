@@ -40,7 +40,7 @@ export const TrustStripImproved: React.FC<{ className?: string }> = ({ className
       <div className="max-w-6xl mx-auto px-4 md:px-6">
         {/* Section Header */}
         <div className="mb-12 md:mb-14 text-center">
-          <h2 className="font-great-adventurer text-3xl md:text-4xl font-bold text-forest-green mb-3">
+          <h2 className="font-oswald text-3xl md:text-4xl font-bold text-forest-green mb-3">
             Why Explorers Choose Us
           </h2>
           <p className="font-inter text-lg md:text-xl text-mountain-blue/70 max-w-2xl mx-auto">
@@ -114,7 +114,7 @@ export const TrustStripImproved: React.FC<{ className?: string }> = ({ className
 
                   {/* Value - Large Number/Stat */}
                   <motion.div
-                    className={`font-outbrave text-2xl md:text-3xl font-bold transition-colors duration-300 ${
+                    className={`font-oswald text-2xl md:text-3xl font-bold transition-colors duration-300 ${
                       hoveredIndex === index 
                         ? 'text-adventure-orange' 
                         : 'text-mountain-blue'

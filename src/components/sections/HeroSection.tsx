@@ -3,6 +3,7 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import { ArrowDown, Play, Mountain, Heart, Award } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Typewriter } from '../ui/typewriter-text';
+import { BackgroundBeams } from '../ui/background-beams';
 
 const videos = [
   'https://res.cloudinary.com/ddw48hdrf/video/upload/v1756152096/t_s_wfbtzn.mp4', // Your local video - make sure it exists in public/videos/
@@ -45,8 +46,15 @@ export const HeroSection: React.FC = () => {
         aria-hidden="true"
         style={{ transition: 'opacity 0.5s' }}
       />
+      {/* Background Beams - Behind overlay */}
+      <div className="absolute inset-0" style={{ zIndex: 5 }}>
+        <BackgroundBeams className="opacity-60" />
+      </div>
       {/* Overlay for readability */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/60 z-10" />
+
+      {/* Gradient fade-out at bottom to blend into ValueProps */}
+      <div className="absolute bottom-0 left-0 right-0 h-40 md:h-64 bg-gradient-to-b from-transparent via-black/20 to-white/70 z-20 pointer-events-none" />
       {/* Hero Content */}
       <motion.div style={{ y, opacity }} className="relative z-20 text-center text-white px-4 max-w-6xl mx-auto">
         <motion.div
@@ -55,7 +63,7 @@ export const HeroSection: React.FC = () => {
           transition={{ duration: 1, ease: 'easeOut' }}
         >
           <motion.h1
-            className="font-outbrave text-5xl lg:text-7xl font-bold mb-6 leading-tight"
+            className="font-oswald text-5xl lg:text-7xl font-bold mb-6 leading-tight"
             animate={{
               textShadow: [
                 '0 0 20px rgba(255, 107, 53, 0.5)',
@@ -112,7 +120,7 @@ export const HeroSection: React.FC = () => {
                 >
                   <Icon className="w-6 h-6 text-adventure-orange" />
                   <div>
-                    <div className="font-outbrave font-bold text-xl">{stat.count}</div>
+                    <div className="font-oswald font-bold text-xl">{stat.count}</div>
                     <div className="font-inter text-sm opacity-90">{stat.label}</div>
                   </div>
                 </motion.div>

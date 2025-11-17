@@ -42,9 +42,6 @@ export const Button: React.FC<ButtonProps> = ({
       transition: { type: "spring", stiffness: 400, damping: 10 }
     },
     whileTap: { scale: 0.95 },
-    initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.3 }
   };
 
   return (

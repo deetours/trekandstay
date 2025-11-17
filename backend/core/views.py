@@ -6,7 +6,7 @@ from django.db import transaction, models
 from django.db.models import Avg, Count
 from django.utils import timezone
 import cloudinary.uploader as cloud_uploader
-from .models import UserProfile, Booking, TripHistory, TripRecommendation, Lead, Author, Story, StoryImage, StoryAudio, StoryRating, Trip, Guide, Review, Wishlist, Payment, ChatFAQ, SeatLock, MessageTemplate, LeadEvent, OutboundMessage, Task, PaymentVerificationLog, TransactionAudit, UserProgress, PointTransaction, Badge, BadgeUnlock, GamificationEvent, Challenge, UserChallengeProgress, LeadQualificationScore, LeadQualificationRule, LeadPrioritizationQueue
+from .models import UserProfile, Booking, TripHistory, TripRecommendation, Lead, Author, Story, StoryImage, StoryAudio, StoryRating, Trip, Guide, Review, Wishlist, TripPlan, Payment, ChatFAQ, SeatLock, MessageTemplate, LeadEvent, OutboundMessage, Task, PaymentVerificationLog, TransactionAudit, UserProgress, PointTransaction, Badge, BadgeUnlock, GamificationEvent, Challenge, UserChallengeProgress, LeadQualificationScore, LeadQualificationRule, LeadPrioritizationQueue, BookingLimit, OTPVerification
 from .serializers import (
     UserProfileSerializer,
     BookingSerializer,
@@ -22,6 +22,7 @@ from .serializers import (
     GuideSerializer,
     ReviewSerializer,
     WishlistSerializer,
+    TripPlanSerializer,
     PaymentSerializer,
     ChatFAQSerializer,
     SeatLockSerializer,
@@ -48,6 +49,9 @@ from datetime import timedelta
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Import signal functions
+from .signals import send_booking_confirmation_email, send_booking_confirmation_whatsapp
 
 class LeadViewSet(viewsets.ModelViewSet):
     queryset = Lead.objects.all().order_by('-created_at')
@@ -406,6 +410,17 @@ class StoryViewSet(viewsets.ModelViewSet):
 class WishlistViewSet(viewsets.ModelViewSet):
     queryset = Wishlist.objects.all().order_by('-created_at')
     serializer_class = WishlistSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return super().get_queryset().filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class TripPlanViewSet(viewsets.ModelViewSet):
+    queryset = TripPlan.objects.all().order_by('-updated_at')
+    serializer_class = TripPlanSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):

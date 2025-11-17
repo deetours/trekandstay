@@ -469,6 +469,39 @@ class Wishlist(models.Model):
     def __str__(self) -> str:
         return f"{self.user.username} → {self.trip.name}"
 
+class TripPlan(models.Model):
+    """User's personalized trip planning data"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trip_plans')
+    trip = models.ForeignKey('Trip', on_delete=models.CASCADE, related_name='trip_plans')
+    
+    # Plan metadata
+    title = models.CharField(max_length=200, default='My Trip Plan')
+    is_public = models.BooleanField(default=False)
+    
+    # Custom itinerary - stored as JSON
+    custom_itinerary = models.JSONField(default=list, blank=True)  # List of itinerary items
+    
+    # Packing list - stored as JSON
+    packing_list = models.JSONField(default=list, blank=True)  # List of packing items
+    
+    # Trip notes
+    notes = models.TextField(blank=True)
+    
+    # Reminders and additional data
+    reminders = models.JSONField(default=list, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ('user', 'trip')
+        ordering = ['-updated_at']
+    
+    def __str__(self):
+        return f"{self.user.username}'s plan for {self.trip.name}"
+
 class ChatFAQ(models.Model):
     question = models.CharField(max_length=300)
     answer = models.TextField()

@@ -1,36 +1,39 @@
 // src/services/api.ts
-// API service with Firestore fallback
+// Hybrid API service: Firestore for trips + Django backend for other features
 
 import axios from 'axios';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { getDbOrThrow } from '../firebase';
 
-// Firestore fallback URL (for now)
-export const API_BASE_URL = 'firestore-fallback';
+// ============= API BASE URLS =============
+export const FIRESTORE_API = 'firestore'; // marker for Firestore queries
+export const DJANGO_API_BASE_URL = import.meta.env.VITE_DJANGO_API_BASE_URL || 'http://150.230.130.48/api';
 
-export const api = axios.create({
-  baseURL: API_BASE_URL,
+// Django API client
+export const djangoAPI = axios.create({
+  baseURL: DJANGO_API_BASE_URL,
   timeout: 15000,
 });
 
-api.interceptors.response.use(
+// Fallback for old API calls
+export const api = djangoAPI;
+
+djangoAPI.interceptors.response.use(
   (res) => res,
   (err) => {
-    console.error('API error:', err?.response?.data || err.message);
+    console.warn('Django API call:', err?.config?.url, 'Status:', err?.response?.status);
     return Promise.reject(err);
   }
 );
-
-export default api;
 
 let authToken: string | null = null;
 
 export function setAuthToken(token: string | null) {
   authToken = token;
   if (token) {
-    api.defaults.headers.common['Authorization'] = `Token ${token}`;
+    djangoAPI.defaults.headers.common['Authorization'] = `Token ${token}`;
   } else {
-    delete api.defaults.headers.common['Authorization'];
+    delete djangoAPI.defaults.headers.common['Authorization'];
   }
 }
 
@@ -40,10 +43,11 @@ function getAuthHeaders(): Record<string, string> {
   return headers;
 }
 
-// Firestore-based trip fetching (fallback)
+// ============= FIRESTORE-BASED TRIP FETCHING (PRIMARY) =============
+
 export async function fetchTrips() {
   try {
-    console.log('Fetching trips from Firestore...');
+    console.log('✅ Fetching trips from Firestore...');
     const db = getDbOrThrow();
     const tripsRef = collection(db, 'trips');
     const q = query(tripsRef, orderBy('createdAt', 'desc'), limit(50));
@@ -52,7 +56,6 @@ export async function fetchTrips() {
     const trips = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
-      // Ensure required fields exist
       name: doc.data().name || doc.data().title || 'Unnamed Trip',
       location: doc.data().location || 'TBD',
       price: doc.data().price || 0,
@@ -72,82 +75,134 @@ export async function fetchTrips() {
       createdAt: doc.data().createdAt,
     }));
 
-    console.log('Fetched trips from Firestore:', trips.length);
+    console.log('✅ Loaded trips from Firestore:', trips.length);
     return trips;
   } catch (error) {
-    console.error('Error fetching from Firestore:', error);
-    // Return empty array as fallback
+    console.error('❌ Error fetching from Firestore:', error);
     return [];
   }
 }
 
 export async function fetchTripBySlug(slug: string) {
-  // Firestore fallback - return mock trip
-  console.log('fetchTripBySlug called - returning mock trip (Firestore fallback)');
-  return {
-    id: slug,
-    name: 'Sample Trip',
-    location: 'Sample Location',
-    price: 5000,
-    duration_days: 3,
-    difficulty_level: 'Moderate',
-    description: 'A sample trip for testing',
-    highlights: ['Scenic views', 'Great experience'],
-    images: ['https://via.placeholder.com/400x300?text=Trip'],
-    rating: 4.5,
-    review_count: 10
-  };
+  try {
+    const db = getDbOrThrow();
+    const tripsRef = collection(db, 'trips');
+    const q = query(tripsRef, orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+
+    const trip = querySnapshot.docs.find(doc =>
+      doc.data().slug === slug || doc.id === slug
+    );
+
+    if (trip) {
+      return {
+        id: trip.id,
+        ...trip.data(),
+        name: trip.data().name || trip.data().title,
+        location: trip.data().location || 'TBD',
+      };
+    }
+    console.warn('Trip not found in Firestore:', slug);
+    return null;
+  } catch (error) {
+    console.error('Error fetching trip by slug:', error);
+    return null;
+  }
 }
 
+// ============= DJANGO-BASED APIS (BOOKINGS, WISHLIST, LEADS, WHATSAPP) =============
+
 export async function fetchTripHistory() {
-  // Firestore fallback - return empty array
-  console.log('fetchTripHistory called - returning empty array (Firestore fallback)');
-  return [];
+  try {
+    const response = await djangoAPI.get('/trips/history/', {
+      headers: getAuthHeaders(),
+    });
+    console.log('✅ Fetched trip history from Django');
+    return response.data;
+  } catch (error) {
+    console.warn('⚠️  Trip history unavailable:', error);
+    return [];
+  }
 }
 
 export async function fetchTripRecommendations() {
-  // Firestore fallback - return empty array
-  console.log('fetchTripRecommendations called - returning empty array (Firestore fallback)');
-  return [];
+  try {
+    const response = await djangoAPI.get('/trips/recommendations/', {
+      headers: getAuthHeaders(),
+    });
+    console.log('✅ Fetched recommendations from Django');
+    return response.data;
+  } catch (error) {
+    console.warn('⚠️  Recommendations unavailable:', error);
+    return [];
+  }
 }
 
 export async function generateTripRecommendations() {
-  // Firestore fallback - return empty array
-  console.log('generateTripRecommendations called - returning empty array (Firestore fallback)');
-  return [];
+  try {
+    const response = await djangoAPI.post('/trips/recommendations/generate/', {}, {
+      headers: getAuthHeaders(),
+    });
+    console.log('✅ Generated recommendations from Django');
+    return response.data;
+  } catch (error) {
+    console.warn('⚠️  Recommendation generation unavailable:', error);
+    return [];
+  }
 }
 
 export async function fetchWishlist() {
-  // Firestore fallback - return empty array
-  console.log('fetchWishlist called - returning empty array (Firestore fallback)');
-  return [];
+  try {
+    const response = await djangoAPI.get('/wishlist/', {
+      headers: getAuthHeaders(),
+    });
+    console.log('✅ Fetched wishlist from Django');
+    return response.data;
+  } catch (error) {
+    console.warn('⚠️  Wishlist unavailable, using local fallback:', error);
+    return [];
+  }
 }
 
 export async function addToWishlist(tripId: number) {
-  // Firestore fallback - mock success
-  console.log('addToWishlist called - mock success (Firestore fallback)');
-  return { id: Date.now(), trip: tripId };
+  try {
+    const response = await djangoAPI.post('/wishlist/', { trip: tripId }, {
+      headers: getAuthHeaders(),
+    });
+    console.log('✅ Added to wishlist on Django');
+    return response.data;
+  } catch (error) {
+    console.error('❌ Add to wishlist failed:', error);
+    throw error;
+  }
 }
 
-export async function removeFromWishlist(wishlistId: number) {
-  // Firestore fallback - mock success
-  console.log('removeFromWishlist called - mock success (Firestore fallback)');
-  return true;
+export async function removeFromWishlist(id: number) {
+  try {
+    await djangoAPI.delete(`/wishlist/${id}/`, {
+      headers: getAuthHeaders(),
+    });
+    console.log('✅ Removed from wishlist on Django');
+    return true;
+  } catch (error) {
+    console.error('❌ Remove from wishlist failed:', error);
+    throw error;
+  }
 }
 
 export async function fetchUserProfile() {
-  // Firestore fallback - return mock profile
-  console.log('fetchUserProfile called - returning mock profile (Firestore fallback)');
-  return {
-    id: 1,
-    username: 'guest',
-    email: 'guest@example.com',
-    first_name: 'Guest',
-    last_name: 'User'
-  };
+  try {
+    const response = await djangoAPI.get('/auth/me/', {
+      headers: getAuthHeaders(),
+    });
+    console.log('✅ Fetched user profile from Django');
+    return response.data;
+  } catch (error) {
+    console.warn('⚠️  User profile unavailable:', error);
+    return { id: 1, username: 'guest', email: 'guest@example.com' };
+  }
 }
 
-// Booking-related APIs
 export async function createBooking(data: {
   trip: number;
   seats: number;
@@ -156,25 +211,35 @@ export async function createBooking(data: {
   traveler_email: string;
   notes?: string;
 }) {
-  // Firestore fallback - mock booking creation
-  console.log('createBooking called - mock success (Firestore fallback)', data);
-  return {
-    id: Date.now(),
-    ...data,
-    status: 'pending',
-    created_at: new Date().toISOString()
-  };
+  try {
+    const response = await djangoAPI.post('/bookings/', data, {
+      headers: getAuthHeaders(),
+    });
+    console.log('✅ Booking created on Django');
+    return response.data;
+  } catch (error) {
+    console.error('❌ Booking creation failed:', error);
+    throw error;
+  }
 }
 
-export async function acquireSeatLock(tripId: number, seats: number) {
-  // Firestore fallback - mock success
-  console.log('acquireSeatLock called - mock success (Firestore fallback)');
-  return { success: true, lock_id: Date.now() };
+export async function acquireSeatLock(id: number, count: number) {
+  try {
+    const response = await djangoAPI.post(`/trips/${id}/seat-lock/`, { seats: count }, {
+      headers: getAuthHeaders(),
+    });
+    console.log('✅ Seat lock acquired on Django');
+    return response.data;
+  } catch (error) {
+    console.error('❌ Seat lock failed:', error);
+    throw error;
+  }
 }
 
-// Types for the API responses
+// ============= TYPE DEFINITIONS =============
+
 export interface Trip {
-  id: number;
+  id: number | string;
   name: string;
   location: string;
   price: number;
@@ -182,10 +247,11 @@ export interface Trip {
   spots_available: number;
   total_spots: number;
   start_date: string;
-  end_date: string;
+  end_date?: string;
   difficulty_level: string;
   image_url?: string;
   description?: string;
+  rating?: number;
 }
 
 export interface TripHistory {
@@ -204,26 +270,9 @@ export interface TripRecommendation {
 }
 
 export interface DashboardSummary {
-  user: {
-    id: number;
-    name: string;
-    email: string;
-    completedTrips: number;
-    adventurePoints: number;
-  };
-  stats: {
-    totalBookings: number;
-    pendingBookings: number;
-    confirmedBookings: number;
-    wishlistCount: number;
-    recommendationsCount: number;
-    completedTrips: number;
-    adventurePoints: number;
-  };
-  recentActivity: {
-    bookings: Booking[];
-    wishlist: WishlistItem[];
-  };
+  user: { id: number; name: string; email: string; completedTrips: number; adventurePoints: number };
+  stats: { totalBookings: number; pendingBookings: number; confirmedBookings: number; wishlistCount: number; recommendationsCount: number; completedTrips: number; adventurePoints: number };
+  recentActivity: { bookings: Booking[]; wishlist: WishlistItem[] };
 }
 
 export interface Booking {
@@ -247,241 +296,182 @@ export interface WishlistItem {
   created_at: string;
 }
 
-// ============= ADMIN API ENDPOINTS =============
+// ============= ADMIN API ENDPOINTS (DJANGO) =============
 
 export const adminAPI = {
-  // Trip Management (Admin Only)
-  createTrip: async (tripData: {
-    name: string;
-    location: string;
-    price: number;
-    duration_days: number;
-    difficulty_level: string;
-    description: string;
-    highlights?: string[];
-    included?: string[];
-    images?: string[];
-    guide_id?: number;
-    total_spots: number;
-    spots_available: number;
-    start_date?: string;
-    end_date?: string;
-  }) => {
-    const response = await api.post('/admin/trips/', tripData);
+  // Trip Management
+  createTrip: async (tripData: Record<string, unknown>) => {
+    const response = await djangoAPI.post('/admin/trips/', tripData, { headers: getAuthHeaders() });
     return response.data;
   },
 
-  updateTrip: async (tripId: number, tripData: Partial<{
-    name: string;
-    location: string;
-    price: number;
-    duration_days: number;
-    difficulty_level: string;
-    description: string;
-    highlights: string[];
-    included: string[];
-    images: string[];
-    guide_id: number;
-    total_spots: number;
-    spots_available: number;
-    start_date: string;
-    end_date: string;
-    is_active: boolean;
-  }>) => {
-    const response = await api.patch(`/admin/trips/${tripId}/`, tripData);
+  updateTrip: async (tripId: number, tripData: Record<string, unknown>) => {
+    const response = await djangoAPI.patch(`/admin/trips/${tripId}/`, tripData, { headers: getAuthHeaders() });
     return response.data;
   },
 
   deleteTrip: async (tripId: number) => {
-    const response = await api.delete(`/admin/trips/${tripId}/`);
+    const response = await djangoAPI.delete(`/admin/trips/${tripId}/`, { headers: getAuthHeaders() });
     return response.data;
   },
 
-  // Booking Management (Admin Only)
-  getAllBookings: async (filters?: {
-    status?: string;
-    trip_id?: number;
-    user_id?: number;
-    date_from?: string;
-    date_to?: string;
-  }) => {
-    const response = await api.get('/admin/bookings/', { params: filters });
+  // Booking Management
+  getAllBookings: async (filters?: Record<string, unknown>) => {
+    const response = await djangoAPI.get('/admin/bookings/', { params: filters, headers: getAuthHeaders() });
     return response.data;
   },
 
   updateBookingStatus: async (bookingId: number, status: string, notes?: string) => {
-    const response = await api.patch(`/admin/bookings/${bookingId}/`, { status, notes });
+    const response = await djangoAPI.patch(`/admin/bookings/${bookingId}/`, { status, notes }, { headers: getAuthHeaders() });
     return response.data;
   },
 
-  deleteBooking: async (bookingId: number) => {
-    const response = await api.delete(`/admin/bookings/${bookingId}/`);
+  // Lead Management
+  getAllLeads: async (filters?: Record<string, unknown>) => {
+    const response = await djangoAPI.get('/admin/leads/', { params: filters, headers: getAuthHeaders() });
     return response.data;
   },
 
-  // Lead Management (Admin Only)
-  getAllLeads: async (filters?: {
-    status?: string;
-    lead_score_min?: number;
-    source?: string;
-    trip_id?: number;
-    date_from?: string;
-    date_to?: string;
-  }) => {
-    const response = await api.get('/admin/leads/', { params: filters });
-    return response.data;
-  },
-
-  updateLead: async (leadId: number, leadData: Partial<{
-    status: string;
-    lead_score: number;
-    notes: string;
-    assigned_to: number;
-  }>) => {
-    const response = await api.patch(`/admin/leads/${leadId}/`, leadData);
-    return response.data;
-  },
-
-  deleteLead: async (leadId: number) => {
-    const response = await api.delete(`/admin/leads/${leadId}/`);
+  updateLead: async (leadId: number, leadData: Record<string, unknown>) => {
+    const response = await djangoAPI.patch(`/admin/leads/${leadId}/`, leadData, { headers: getAuthHeaders() });
     return response.data;
   },
 
   sendWhatsAppToLead: async (leadId: number, message: string) => {
-    const response = await api.post(`/admin/leads/${leadId}/send-whatsapp/`, { message });
+    const response = await djangoAPI.post(`/admin/leads/${leadId}/send-whatsapp/`, { message }, { headers: getAuthHeaders() });
     return response.data;
   },
 
-  // User Management (Admin Only)
-  getAllUsers: async (filters?: {
-    is_active?: boolean;
-    is_staff?: boolean;
-    search?: string;
-  }) => {
-    const response = await api.get('/admin/users/', { params: filters });
-    return response.data;
-  },
-
-  updateUser: async (userId: number, userData: Partial<{
-    is_active: boolean;
-    is_staff: boolean;
-    email: string;
-    username: string;
-  }>) => {
-    const response = await api.patch(`/admin/users/${userId}/`, userData);
-    return response.data;
-  },
-
-  deleteUser: async (userId: number) => {
-    const response = await api.delete(`/admin/users/${userId}/`);
-    return response.data;
-  },
-
-  // Guide Management (Admin Only)
-  createGuide: async (guideData: {
-    name: string;
-    bio: string;
-    specialty: string;
-    experience: string;
-    image?: string;
-    phone_number?: string;
-    email?: string;
-  }) => {
-    const response = await api.post('/admin/guides/', guideData);
-    return response.data;
-  },
-
-  updateGuide: async (guideId: number, guideData: Partial<{
-    name: string;
-    bio: string;
-    specialty: string;
-    experience: string;
-    image: string;
-    phone_number: string;
-    email: string;
-  }>) => {
-    const response = await api.patch(`/admin/guides/${guideId}/`, guideData);
-    return response.data;
-  },
-
-  deleteGuide: async (guideId: number) => {
-    const response = await api.delete(`/admin/guides/${guideId}/`);
-    return response.data;
-  },
-
-  getAllGuides: async () => {
-    const response = await api.get('/admin/guides/');
-    return response.data;
-  },
-
-  // Analytics (Admin Only)
+  // Analytics
   getAnalytics: async (period?: string) => {
-    const response = await api.get('/admin/analytics/', { params: { period } });
+    const response = await djangoAPI.get('/admin/analytics/', { params: { period }, headers: getAuthHeaders() });
     return response.data;
   },
 
   getDashboardStats: async () => {
-    const response = await api.get('/admin/dashboard/stats/');
-    return response.data;
-  },
-
-  getRevenueReport: async (startDate: string, endDate: string) => {
-    const response = await api.get('/admin/reports/revenue/', {
-      params: { start_date: startDate, end_date: endDate }
-    });
-    return response.data;
-  },
-
-  getConversionReport: async () => {
-    const response = await api.get('/admin/reports/conversion/');
-    return response.data;
-  },
-
-  // Review Management (Admin Only)
-  getAllReviews: async (filters?: {
-    trip_id?: number;
-    rating_min?: number;
-    is_approved?: boolean;
-  }) => {
-    const response = await api.get('/admin/reviews/', { params: filters });
-    return response.data;
-  },
-
-  approveReview: async (reviewId: number) => {
-    const response = await api.post(`/admin/reviews/${reviewId}/approve/`);
-    return response.data;
-  },
-
-  rejectReview: async (reviewId: number, reason: string) => {
-    const response = await api.post(`/admin/reviews/${reviewId}/reject/`, { reason });
-    return response.data;
-  },
-
-  deleteReview: async (reviewId: number) => {
-    const response = await api.delete(`/admin/reviews/${reviewId}/`);
+    const response = await djangoAPI.get('/admin/dashboard/stats/', { headers: getAuthHeaders() });
     return response.data;
   },
 };
 
+export default djangoAPI;
+
 export async function fetchBookings() {
-  // Firestore fallback - return empty array for now
-  console.log('fetchBookings called - returning empty array (Firestore fallback)');
-  return [];
+  try {
+    const response = await djangoAPI.get('/bookings/', {
+      headers: getAuthHeaders(),
+    });
+    console.log('✅ Fetched bookings from Django');
+    return response.data;
+  } catch (error) {
+    console.warn('⚠️  Bookings unavailable:', error);
+    return [];
+  }
 }
 
 export async function me(): Promise<{ id: number; username: string; email: string; is_staff?: boolean }> {
-  // Firestore fallback - return mock user
-  console.log('me() called - returning mock user (Firestore fallback)');
-  return { id: 1, username: 'guest', email: 'guest@example.com', is_staff: false };
+  try {
+    const response = await djangoAPI.get('/auth/me/', {
+      headers: getAuthHeaders(),
+    });
+    console.log('✅ Fetched current user from Django');
+    return response.data;
+  } catch (error) {
+    console.warn('⚠️  Current user unavailable:', error);
+    return { id: 1, username: 'guest', email: 'guest@example.com', is_staff: false };
+  }
 }
 
-// Dashboard and user data APIs
 export async function getDashboardSummary() {
-  // Firestore fallback - return mock data
-  console.log('getDashboardSummary called - returning mock data (Firestore fallback)');
-  return {
-    user: { id: 1, name: 'Guest User', email: 'guest@example.com', completedTrips: 0, adventurePoints: 0 },
-    stats: { totalBookings: 0, pendingBookings: 0, confirmedBookings: 0, wishlistCount: 0, recommendationsCount: 0, completedTrips: 0, adventurePoints: 0 },
-    recentActivity: { bookings: [], wishlist: [] }
-  };
+  try {
+    const response = await djangoAPI.get('/dashboard/summary/', {
+      headers: getAuthHeaders(),
+    });
+    console.log('✅ Fetched dashboard summary from Django');
+    return response.data;
+  } catch (error) {
+    console.warn('⚠️  Dashboard unavailable, using fallback:', error);
+    return {
+      user: { id: 1, name: 'Guest User', email: 'guest@example.com', completedTrips: 0, adventurePoints: 0 },
+      stats: { totalBookings: 0, pendingBookings: 0, confirmedBookings: 0, wishlistCount: 0, recommendationsCount: 0, completedTrips: 0, adventurePoints: 0 },
+      recentActivity: { bookings: [], wishlist: [] }
+    };
+  }
+}
+
+// ============= WHATSAPP & LEADS APIS (DJANGO) =============
+
+export async function createLead(data: {
+  name: string;
+  phone: string;
+  email?: string;
+  trip_interest?: number;
+  source?: string;
+  message?: string;
+}) {
+  try {
+    const response = await djangoAPI.post('/leads/', data);
+    console.log('✅ Lead created on Django');
+    return response.data;
+  } catch (error) {
+    console.error('❌ Lead creation failed:', error);
+    throw error;
+  }
+}
+
+export async function sendWhatsAppMessage(phone: string, message: string) {
+  try {
+    const response = await djangoAPI.post('/whatsapp/send/', { phone, message }, {
+      headers: getAuthHeaders(),
+    });
+    console.log('✅ WhatsApp message sent via Django');
+    return response.data;
+  } catch (error) {
+    console.error('❌ WhatsApp send failed:', error);
+    throw error;
+  }
+}
+
+export async function sendWhatsAppToLead(leadId: number, message: string) {
+  try {
+    const response = await djangoAPI.post(`/leads/${leadId}/send-whatsapp/`, { message }, {
+      headers: getAuthHeaders(),
+    });
+    console.log('✅ WhatsApp sent to lead via Django');
+    return response.data;
+  } catch (error) {
+    console.error('❌ WhatsApp to lead failed:', error);
+    throw error;
+  }
+}
+
+// ============= REVIEW APIS (DJANGO) =============
+
+export async function submitReview(data: {
+  trip: number;
+  rating: number;
+  comment: string;
+  traveler_name?: string;
+}) {
+  try {
+    const response = await djangoAPI.post('/reviews/', data, {
+      headers: getAuthHeaders(),
+    });
+    console.log('✅ Review submitted to Django');
+    return response.data;
+  } catch (error) {
+    console.error('❌ Review submission failed:', error);
+    throw error;
+  }
+}
+
+export async function fetchReviews(tripId: number) {
+  try {
+    const response = await djangoAPI.get(`/trips/${tripId}/reviews/`);
+    console.log('✅ Fetched reviews from Django');
+    return response.data;
+  } catch (error) {
+    console.warn('⚠️  Reviews unavailable:', error);
+    return [];
+  }
 }

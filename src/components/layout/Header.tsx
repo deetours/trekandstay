@@ -117,7 +117,7 @@ export const Header: React.FC = () => {
                     to={item.href}
                     className={`group relative flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-colors ${active ? 'text-forest-green' : 'text-stone-gray'} `}
                   >
-                    <span className={`relative inline-flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br ${sty.gradient} ${sty.darkGradient} ${sty.hover} ring-1 ${sty.ring} shadow-sm group-hover:shadow-md transition-all duration-300 ${active ? 'scale-105 ring-2' : ''}`}>
+                    <span className={`relative inline-flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br ${sty.gradient} ${sty.hover} ring-1 ${sty.ring} shadow-sm group-hover:shadow-md transition-all duration-300 ${active ? 'scale-105 ring-2' : ''}`}>
                       <Icon className={`w-3.5 h-3.5 ${sty.icon}`} />
                       {active && <span className="absolute inset-0 rounded-lg bg-gradient-to-br from-white/60 to-white/0 opacity-70 mix-blend-overlay pointer-events-none" />}
                     </span>
@@ -156,7 +156,7 @@ export const Header: React.FC = () => {
           {/* Drawer */}
           <div className="relative w-full max-w-md h-[85vh] rounded-t-3xl lg:rounded-l-3xl shadow-2xl p-0 z-10 flex flex-col border-t-4 border-forest-green bg-[var(--card)] text-[var(--text)]">
             <div className="flex items-center justify-between px-6 pt-6 pb-3 border-b border-[var(--border)]">
-              <h2 className="text-2xl font-great-adventurer font-bold text-forest-green tracking-tight">Your Cart</h2>
+              <h2 className="text-2xl font-oswald font-bold text-forest-green tracking-tight">Your Cart</h2>
               <button className="p-2 rounded-full hover:bg-gray-100" onClick={() => setCartOpen(false)}><X className="w-6 h-6" /></button>
             </div>
             {cart.length === 0 ? (
@@ -171,11 +171,11 @@ export const Header: React.FC = () => {
                       <li key={item.id} className="flex items-center gap-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl shadow p-3">
                         <img src={product.image} alt={product.name} className="w-16 h-16 object-cover rounded-lg border-2 border-white shadow" />
                         <div className="flex-1 min-w-0">
-                          <div className="font-expat-rugged font-bold text-mountain-blue truncate">{product.name}</div>
+                          <div className="font-oswald font-bold text-mountain-blue truncate">{product.name}</div>
                           <div className="font-inter text-gray-500 text-xs truncate">{product.description}</div>
-                          <div className="font-outbrave font-bold text-forest-green mt-1">₹{product.price} <span className="text-xs text-gray-400">x {item.quantity}</span></div>
+                          <div className="font-oswald font-bold text-forest-green mt-1">₹{product.price} <span className="text-xs text-gray-400">x {item.quantity}</span></div>
                         </div>
-                        <span className="text-lg font-outbrave font-bold text-mountain-blue">₹{product.price * item.quantity}</span>
+                        <span className="text-lg font-oswald font-bold text-mountain-blue">₹{product.price * item.quantity}</span>
                       </li>
                     );
                   })}
@@ -183,8 +183,8 @@ export const Header: React.FC = () => {
                 {/* Cart total and checkout */}
                 <div className="px-6 pb-6 pt-2 border-t bg-gradient-to-r from-white to-yellow-50">
                   <div className="flex justify-between items-center mb-4 text-[var(--text)]">
-                    <span className="font-expat-rugged font-bold text-lg text-forest-green">Total</span>
-                    <span className="text-xl font-outbrave font-bold text-mountain-blue">
+                    <span className="font-oswald font-bold text-lg text-forest-green">Total</span>
+                    <span className="text-xl font-oswald font-bold text-mountain-blue">
                       ₹{cart.reduce((sum, item) => {
                         const product = products.find(p => p.id === item.id);
                         return sum + (product ? product.price * item.quantity : 0);

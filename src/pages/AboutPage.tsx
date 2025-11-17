@@ -97,7 +97,7 @@ export const AboutPage: React.FC = () => {
             <div className="flex flex-col items-center mb-4">
               <Logo size="lg" showText={false} />
             </div>
-            <h1 className="text-3xl sm:text-4xl lg:text-6xl font-outbrave font-bold text-forest-green mb-4 sm:mb-6">
+            <h1 className="text-3xl sm:text-4xl lg:text-6xl font-oswald font-bold text-forest-green mb-4 sm:mb-6">
               Trek & Stay
             </h1>
             <p className="text-lg sm:text-xl text-mountain-blue font-inter max-w-4xl mx-auto leading-relaxed">
@@ -139,7 +139,7 @@ export const AboutPage: React.FC = () => {
                     >
                       <Icon className="w-12 h-12 text-adventure-orange" />
                     </motion.div>
-                    <h3 className="text-2xl sm:text-3xl font-outbrave font-bold text-forest-green mb-1 sm:mb-2">
+                    <h3 className="text-2xl sm:text-3xl font-oswald font-bold text-forest-green mb-1 sm:mb-2">
                       {stat.value}
                     </h3>
                     <p className="text-gray-600 font-inter">{stat.label}</p>
@@ -164,7 +164,7 @@ export const AboutPage: React.FC = () => {
               >
                 <Globe className="w-16 h-16 mx-auto opacity-80" />
               </motion.div>
-              <h2 className="text-2xl sm:text-3xl lg:text-5xl font-great-adventurer font-bold mb-5 sm:mb-6">
+              <h2 className="text-2xl sm:text-3xl lg:text-5xl font-oswald font-bold mb-5 sm:mb-6">
                 Our Mission
               </h2>
               <p className="text-base sm:text-xl leading-relaxed mb-6 sm:mb-8 opacity-90 px-0.5">
@@ -197,7 +197,7 @@ export const AboutPage: React.FC = () => {
             transition={{ duration: 0.8, delay: 0.6 }}
           >
             <div className="text-center mb-10 sm:mb-12">
-              <h2 className="text-2xl sm:text-3xl lg:text-5xl font-great-adventurer font-bold text-forest-green mb-4">
+              <h2 className="text-2xl sm:text-3xl lg:text-5xl font-oswald font-bold text-forest-green mb-4">
                 What Drives Us
               </h2>
               <p className="text-base sm:text-xl text-mountain-blue font-inter max-w-3xl mx-auto px-1">
@@ -226,7 +226,7 @@ export const AboutPage: React.FC = () => {
                           <Icon className="w-8 h-8 text-adventure-orange" />
                         </motion.div>
                         <div>
-                          <h3 className="text-xl font-expat-rugged font-bold text-forest-green mb-3">
+                          <h3 className="text-xl font-oswald font-bold text-forest-green mb-3">
                             {value.title}
                           </h3>
                           <p className="text-gray-600 leading-relaxed">
@@ -249,7 +249,7 @@ export const AboutPage: React.FC = () => {
             transition={{ duration: 0.8, delay: 0.8 }}
           >
             <div className="text-center mb-10 sm:mb-12">
-              <h2 className="text-2xl sm:text-3xl lg:text-5xl font-great-adventurer font-bold text-forest-green mb-4">
+              <h2 className="text-2xl sm:text-3xl lg:text-5xl font-oswald font-bold text-forest-green mb-4">
                 Meet Our Adventure Squad
               </h2>
               <p className="text-base sm:text-xl text-mountain-blue font-inter max-w-3xl mx-auto px-1">
@@ -289,7 +289,7 @@ export const AboutPage: React.FC = () => {
 
                     {/* Content */}
                     <div className="p-6">
-                      <h3 className="text-lg sm:text-xl font-expat-rugged font-bold text-forest-green mb-1">
+                      <h3 className="text-lg sm:text-xl font-oswald font-bold text-forest-green mb-1">
                         {member.name}
                       </h3>
                       <p className="text-adventure-orange font-medium mb-3">
@@ -340,7 +340,7 @@ export const AboutPage: React.FC = () => {
                 <Compass className="w-16 h-16 text-adventure-orange mx-auto mb-6" />
               </motion.div>
               
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-great-adventurer font-bold text-forest-green mb-4">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-oswald font-bold text-forest-green mb-4">
                 Ready for Your Next Adventure?
               </h2>
               <p className="text-base sm:text-xl text-mountain-blue mb-6 sm:mb-8 max-w-2xl mx-auto px-1">

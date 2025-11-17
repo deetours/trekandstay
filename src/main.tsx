@@ -7,6 +7,18 @@ import { ToastProvider } from './components/ui/toast';
 import { AuthProvider } from './context/AuthContext';
 
 // ============================================
+// CLEAR OLD SERVICE WORKERS IN DEV
+// ============================================
+if (navigator.serviceWorker) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (const registration of registrations) {
+      registration.unregister();
+      console.log('🧹 Unregistered old service worker');
+    }
+  });
+}
+
+// ============================================
 // THEME INITIALIZATION - LIGHT MODE ONLY
 // ============================================
 

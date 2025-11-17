@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Star as StarIcon, Clock, Users, ArrowRight, ShieldCheck } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Link } from 'react-router-dom';
 import { fetchTrips } from '../../services/api';
-import { CenterModal } from '../ui/CenterModal';
-import { AuroraBackground } from '../ui/aurora-background';
+import { ResponsiveModal } from '../ui/ResponsiveModal';
 
 interface TripDoc {
 	id: string;
@@ -56,10 +55,35 @@ const difficultyColors = {
 };
 
 export const FeaturedDestinations: React.FC = () => {
+	const [quickView, setQuickView] = useState<typeof destinations[number] | null>(null);
 	const [trips, setTrips] = useState<TripDoc[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const [quickView, setQuickView] = useState<typeof destinations[number] | null>(null);
+	const [scrollPosition, setScrollPosition] = useState(0);
+
+	// Prevent body scroll when quick view modal is open using shared helper.
+	useEffect(() => {
+		if (quickView) {
+			// Store current scroll position
+			const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
+			setScrollPosition(currentScroll);
+			// preserve the scroll position visually by setting top when using fixed positioning
+			document.body.style.top = `-${currentScroll}px`;
+			lockBodyScroll();
+		} else {
+			// restore top and unlock after closing
+			document.body.style.top = '';
+			unlockBodyScroll();
+			// Restore scroll position after a brief delay to ensure DOM is updated
+			setTimeout(() => {
+				window.scrollTo(0, scrollPosition);
+			}, 0);
+		}
+		return () => {
+			document.body.style.top = '';
+			unlockBodyScroll(true);
+		};
+	}, [quickView, scrollPosition]);
 
 	useEffect(() => {
 		let active = true;
@@ -114,7 +138,7 @@ export const FeaturedDestinations: React.FC = () => {
 		price: t.price || 0,
 		rating: t.rating || 4.7,
 		reviewCount: t.reviewCount || 12,
-		image: (t.images && t.images[0]) || 'https://via.placeholder.com/400x300?text=Adventure',
+					image: (t.images && t.images[0]) || 'https://picsum.photos/400/300?random=adventure',
 		highlights: t.highlights && t.highlights.length ? t.highlights : ['Scenic views','Great experience','Guided trek'],
 		availableSlots: t.availableSlots,
 		isAvailable: t.isAvailable,
@@ -158,9 +182,8 @@ export const FeaturedDestinations: React.FC = () => {
 	}
 
 	return (
-		<AuroraBackground showRadialGradient={true}>
-			<section id="destinations" className="py-16 md:py-20 bg-gradient-to-br from-stone-gray/80 via-white to-white">
-				<div className="max-w-7xl mx-auto px-4">
+		<section id="destinations" className="py-16 md:py-20 bg-gradient-to-br from-stone-gray/80 via-white to-white">
+			<div className="max-w-7xl mx-auto px-4">
 				<motion.div
 					className="text-center mb-12 md:mb-16"
 					initial={{ opacity: 0, y: 30 }}
@@ -226,7 +249,7 @@ export const FeaturedDestinations: React.FC = () => {
 									   <div className="absolute top-3 left-24 flex gap-2">
 										   {destination.status === 'promoted' && (
 											   <span className="px-2.5 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg animate-pulse">
-												   🔥 Hot Deal
+												   ðŸ”¥ Hot Deal
 											   </span>
 										   )}
 										   {destination.availableSlots !== undefined && destination.availableSlots <= 2 && destination.availableSlots > 0 && (
@@ -286,23 +309,20 @@ export const FeaturedDestinations: React.FC = () => {
 									<div className="flex items-center justify-between gap-2">
 										<div>
 											<span className="text-lg md:text-xl font-outbrave font-bold text-forest-green">
-												₹{destination.price.toLocaleString()}
+												â‚¹{destination.price.toLocaleString()}
 											</span>
 											<span className="text-xs text-gray-500 ml-1">/person</span>
 										</div>
 										<div className="flex items-center gap-1.5">
-										<Button
-											variant="secondary"
-											size="sm"
-											onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-												e.stopPropagation();
-												setQuickView(destination);
-											}}
-											aria-label={`Quick view ${destination.name}`}
-											className="text-xs"
-										>
-											Quick view
-										</Button>
+											<Button
+												variant="secondary"
+												size="sm"
+												onClick={() => setQuickView(destination)}
+												aria-label={`Quick view ${destination.name}`}
+												className="text-xs"
+											>
+												Quick view
+											</Button>
 											<Link to={`/trip/${destination.id}`} className="flex-shrink-0">
 												<Button
 													variant="adventure"
@@ -350,97 +370,123 @@ export const FeaturedDestinations: React.FC = () => {
 				</motion.div>
 			</div>
 
-			{/* Quick View Modal */}
-		<CenterModal
-			isOpen={!!quickView}
-			onClose={() => setQuickView(null)}
-			title={quickView?.name}
-			showCloseButton={true}
-		>
+			{/* Quick View Modal - CENTERED ON SCREEN */}
 			{quickView && (
-				<div className="w-full">
-					{/* Image Section */}
-					<div className="relative w-full h-40 sm:h-48 bg-gray-100 rounded-lg overflow-hidden mb-4">
-						<img
-							src={quickView.image}
-							alt={quickView.name}
-							className="w-full h-full object-cover"
-							loading="lazy"
-							decoding="async"
-						/>
-						<div className="absolute top-2 sm:top-3 md:top-4 left-2 sm:left-3 md:left-4 flex items-center gap-1.5 sm:gap-2 bg-black/50 backdrop-blur-sm px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 rounded-full text-white">
-							<StarIcon className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 fill-current text-sunset-yellow" />
-							<span className="text-xs sm:text-sm md:text-base font-medium">{quickView.rating} ({quickView.reviewCount})</span>
-						</div>
-					</div>
+				<div
+					role="dialog"
+					aria-modal="true"
+					aria-label={`${quickView.name} quick view`}
+					className="fixed inset-0 z-50 flex items-center justify-center p-1.5 sm:p-4 md:p-6 overflow-hidden"
+					style={{ top: 0, left: 0, right: 0, bottom: 0 }}
+				>
+					<div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setQuickView(null)} />
+					<motion.div 
+						className="relative bg-white rounded-xl sm:rounded-2xl md:rounded-3xl shadow-2xl w-full max-w-sm sm:max-w-xl md:max-w-2xl max-h-[90vh] sm:max-h-[85vh] md:max-h-[90vh] flex flex-col"
+						initial={{ opacity: 0, scale: 0.8, y: 20 }}
+						animate={{ opacity: 1, scale: 1, y: 0 }}
+						exit={{ opacity: 0, scale: 0.8, y: 20 }}
+						transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+					>
+						{/* Close Button - Fixed to top */}
+						<button
+							className="absolute top-2 sm:top-3 md:top-4 right-2 sm:right-3 md:right-4 p-1.5 sm:p-2 md:p-2.5 rounded-full bg-white/90 hover:bg-white shadow-lg z-20 transition-all hover:shadow-xl"
+							aria-label="Close"
+							onClick={() => setQuickView(null)}
+						>
+							<X className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-800" />
+						</button>
 
-					{/* Content */}
-					<div className="space-y-3 sm:space-y-4 md:space-y-5">
-						{/* Location */}
-						<div className="flex items-center text-mountain-blue gap-2">
-							<MapPin className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 flex-shrink-0" />
-							<span className="text-sm sm:text-base md:text-lg">{quickView.location}</span>
-						</div>
+					{/* Scrollable Content */}
+					<div className="overflow-y-auto flex-1 overscroll-none pr-1.5 sm:pr-2 md:pr-3" style={{ overflowX: 'hidden' }}>
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+							{/* Image Section */}
+							<div className="relative w-full h-32 sm:h-40 md:h-full md:min-h-[350px] bg-gray-100">
+									<img
+										src={quickView.image}
+										alt={quickView.name}
+										className="w-full h-full object-cover"
+										loading="lazy"
+										decoding="async"
+										onError={(e) => {
+											const target = e.target as HTMLImageElement;
+											target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMjAiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5BWR2ZW50dXJlPC90ZXh0Pjwvc3ZnPg==';
+											target.onerror = null; // Prevent infinite loop
+										}}
+									/>
+									<div className="absolute top-1.5 sm:top-2 md:top-4 left-1.5 sm:left-2 md:left-4 flex items-center gap-1.5 sm:gap-2 bg-black/50 backdrop-blur-sm px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 md:py-2 rounded-full text-white">
+										<StarIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 fill-current text-sunset-yellow" />
+										<span className="text-xs md:text-sm font-medium">{quickView.rating} ({quickView.reviewCount})</span>
+									</div>
+								</div>
 
-						{/* Highlights */}
-						<div>
-							<h4 className="text-sm sm:text-base md:text-lg font-bold text-gray-700 mb-2">Highlights:</h4>
-							<ul className="space-y-1 sm:space-y-1.5 md:space-y-2 text-xs sm:text-sm md:text-base text-gray-700">
-								{quickView.highlights.slice(0, 3).map((h, i) => (
-									<li key={i} className="flex items-start">
-										<div className="w-1 h-1 sm:w-1.5 sm:h-1.5 md:w-2 md:h-2 bg-adventure-orange rounded-full mr-2 sm:mr-3 md:mr-4 mt-1.5 flex-shrink-0" />
-										<span>{h}</span>
-									</li>
-								))}
-							</ul>
-						</div>
+							{/* Content Section */}
+							<div className="p-2 sm:p-3 md:p-6 flex flex-col space-y-1.5 sm:space-y-2 md:space-y-4 overflow-y-auto">
+									<div>
+										<h3 className="text-base sm:text-lg md:text-3xl font-expat-rugged font-bold text-forest-green leading-tight">{quickView.name}</h3>
+										<div className="flex items-center text-mountain-blue mt-0.5 sm:mt-1 md:mt-2">
+											<MapPin className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 mr-1 sm:mr-1.5 md:mr-2 flex-shrink-0" />
+											<span className="text-xs md:text-sm">{quickView.location}</span>
+										</div>
+									</div>
 
-						{/* Info Grid */}
-						<div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4 py-3 sm:py-4 md:py-5 border-t border-b border-gray-200">
-							<div className="text-center">
-								<Clock className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 mx-auto mb-1 sm:mb-1.5 md:mb-2 text-mountain-blue" />
-								<div className="text-xs sm:text-sm md:text-base font-semibold text-gray-800">{quickView.duration}</div>
+									{/* Highlights - Max 2 on mobile */}
+									<div>
+										<h4 className="text-xs md:text-sm font-bold text-gray-700 mb-1">Highlights:</h4>
+										<ul className="space-y-0.5 md:space-y-1 text-xs md:text-sm text-gray-700">
+											{quickView.highlights.slice(0, 2).map((h, i) => (
+												<li key={i} className="flex items-start">
+													<div className="w-0.5 h-0.5 sm:w-1 sm:h-1 md:w-1.5 md:h-1.5 bg-adventure-orange rounded-full mr-1 sm:mr-1.5 md:mr-2.5 mt-1 flex-shrink-0" />
+													<span className="line-clamp-1">{h}</span>
+												</li>
+											))}
+										</ul>
+									</div>
+
+									{/* Info Row */}
+									<div className="grid grid-cols-3 gap-1 sm:gap-2 py-1 sm:py-2 md:py-3 border-t border-b border-gray-200">
+										<div className="text-center">
+											<Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 mx-auto mb-0.5 sm:mb-1 text-mountain-blue" />
+											<div className="text-xs md:text-sm font-semibold text-gray-800">{quickView.duration}</div>
+										</div>
+										<div className="text-center">
+											<Users className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 mx-auto mb-0.5 sm:mb-1 text-mountain-blue" />
+											<div className="text-xs md:text-sm font-semibold text-gray-800">{quickView.availableSlots || 'Check'}</div>
+										</div>
+										<div className="text-center">
+											<ShieldCheck className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 mx-auto mb-0.5 sm:mb-1 text-green-600" />
+											<div className="text-xs md:text-sm font-semibold text-green-700">Certified</div>
+										</div>
+									</div>
+
+									{/* Price & CTA */}
+									<div className="space-y-1 sm:space-y-1.5 md:space-y-3 mt-auto pt-1 sm:pt-1.5 md:pt-2">
+										<div>
+											<span className="text-lg sm:text-xl md:text-3xl font-outbrave font-bold text-forest-green">â‚¹{quickView.price.toLocaleString()}</span>
+											<span className="text-xs text-gray-500 ml-1 md:ml-2">/person</span>
+										</div>
+										<Link to={`/trip/${quickView.id}`} className="block">
+											<Button
+												variant="primary"
+												size="lg"
+												className="w-full text-xs sm:text-sm py-1.5 sm:py-2 md:py-3 min-h-[36px] sm:min-h-[40px] md:min-h-[44px]"
+												onClick={() => setQuickView(null)}
+											>
+												View Full Details & Book
+											</Button>
+										</Link>
+										<button
+											className="w-full py-1 sm:py-1.5 md:py-2.5 px-2 sm:px-3 md:px-4 border-2 border-gray-300 text-gray-700 font-semibold text-xs sm:text-sm md:text-base rounded-lg sm:rounded-lg md:rounded-xl hover:bg-gray-50 transition-colors min-h-[36px] sm:min-h-[40px] md:min-h-[44px]"
+											onClick={() => setQuickView(null)}
+										>
+											Close
+										</button>
+									</div>
+								</div>
 							</div>
-							<div className="text-center">
-								<Users className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 mx-auto mb-1 sm:mb-1.5 md:mb-2 text-mountain-blue" />
-								<div className="text-xs sm:text-sm md:text-base font-semibold text-gray-800">{quickView.availableSlots || 'Check'}</div>
-							</div>
-							<div className="text-center">
-								<ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 mx-auto mb-1 sm:mb-1.5 md:mb-2 text-green-600" />
-								<div className="text-xs sm:text-sm md:text-base font-semibold text-green-700">Certified</div>
-							</div>
 						</div>
-
-						{/* Price */}
-						<div>
-							<span className="text-xl sm:text-2xl md:text-3xl font-outbrave font-bold text-forest-green">₹{quickView.price.toLocaleString()}</span>
-							<span className="text-xs sm:text-sm md:text-base text-gray-500 ml-2">/person</span>
-						</div>
-
-						{/* CTAs */}
-						<div className="space-y-2 sm:space-y-2.5 md:space-y-3 pt-2 sm:pt-3 md:pt-4">
-							<Link to={`/trip/${quickView.id}`} className="block">
-								<Button
-									variant="primary"
-									size="lg"
-									className="w-full text-sm sm:text-base md:text-lg py-2 sm:py-2.5 md:py-3"
-									onClick={() => setQuickView(null)}
-								>
-									View Full Details & Book
-								</Button>
-							</Link>
-							<button
-								className="w-full py-2 sm:py-2.5 md:py-3 px-3 sm:px-4 md:px-5 border-2 border-gray-300 text-gray-700 font-semibold text-sm sm:text-base md:text-lg rounded-lg sm:rounded-xl md:rounded-2xl hover:bg-gray-50 transition-colors"
-								onClick={() => setQuickView(null)}
-							>
-								Close
-							</button>
-						</div>
-					</div>
+					</motion.div>
 				</div>
 			)}
-		</CenterModal>
 		</section>
-		</AuroraBackground>
 	);
 };

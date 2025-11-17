@@ -1,4 +1,5 @@
 import React from 'react';
+import { BackgroundBeams } from '../ui/background-beams';
 
 // Travel brand logos (PNG variants requested instead of SVG wordmarks)
 const travelLogos: { src: string; alt: string }[] = [
@@ -10,9 +11,14 @@ const travelLogos: { src: string; alt: string }[] = [
 
 export const PartnerLogos: React.FC = () => {
   return (
-    <div className="py-10 bg-white/70 dark:bg-[var(--surface)]/60 transition-colors relative overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 opacity-40 dark:opacity-30 bg-[radial-gradient(circle_at_30%_20%,rgba(255,140,60,0.25),transparent_60%)]" />
-      <div className="max-w-6xl mx-auto px-6 relative">
+    <div className="relative py-10 bg-transparent overflow-hidden">
+      {/* Full-width Background Beams - subtle */}
+      <div className="absolute inset-0 w-full h-full" style={{ zIndex: 1 }}>
+        <BackgroundBeams className="opacity-25" />
+      </div>
+
+      <div className="pointer-events-none absolute inset-0 opacity-40 dark:opacity-30 bg-[radial-gradient(circle_at_30%_20%,rgba(255,140,60,0.15),transparent_60%)]" />
+      <div className="max-w-6xl mx-auto px-6 relative z-10">
         <div className="flex flex-col items-center mb-6">
           <p className="text-xs uppercase tracking-[0.2em] font-semibold text-gray-500 dark:text-[var(--muted)] mb-4">Trusted travel ecosystem</p>
           <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-5">

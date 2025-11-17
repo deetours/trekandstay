@@ -64,7 +64,7 @@ export const CatalogPage: React.FC = () => {
     duration: t.duration || '2 Days',
     difficulty: (t.difficulty || 'Moderate'),
     category: deriveCategory(t),
-    image: (t.images && t.images[0]) || 'https://via.placeholder.com/600x400?text=Adventure',
+    image: (t.images && t.images[0]) || 'https://picsum.photos/600/400?random=adventure',
     description: t.description || 'Adventure experience'
   })),[trips]);
 

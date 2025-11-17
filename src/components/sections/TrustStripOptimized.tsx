@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { ShieldCheck, Star, Award, ThumbsUp, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { COLORS } from '../../lib/design-tokens';

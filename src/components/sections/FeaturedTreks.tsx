@@ -5,6 +5,7 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Link } from 'react-router-dom';
 import { fetchTrips } from '../../services/api';
+import { BackgroundBeams } from '../ui/background-beams';
 
 interface TripDoc {
 	id: string;
@@ -64,39 +65,47 @@ export const FeaturedTreks: React.FC = () => {
 
 				if (!active) return;
 
-				if (!data || data.length === 0) {
-					console.warn('FeaturedTreks: No trips returned from API');
-					setTrips([]);
-					setLoading(false);
-					return;
-				}
+			if (!data || data.length === 0) {
+				console.warn('FeaturedTreks: No trips returned from API');
+				setTrips([]);
+				setLoading(false);
+				return;
+			}
 
-				// Simplified sorting - prioritize by rating and status only
-				const sortedTrips = (data as Record<string, unknown>[])
-					.filter((trip: Record<string, unknown>) => trip.price && typeof trip.price === 'number' && trip.price > 0) // Only show trips with prices
-					.sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
-						// Simple priority: confirmed/popular first, then by rating
-						const aScore = (a.status === 'confirmed' ? 3 : a.status === 'promoted' ? 2 : 1) + (typeof a.rating === 'number' ? a.rating : 0);
-						const bScore = (b.status === 'confirmed' ? 3 : b.status === 'promoted' ? 2 : 1) + (typeof b.rating === 'number' ? b.rating : 0);
-						return bScore - aScore;
-					})
-					.slice(0, 6) // Take only 6 trips
-					.map((trip: Record<string, unknown>) => ({
-						id: String(trip.id || trip.slug || Math.random()),
-						name: String(trip.name || trip.title || 'Adventure Trip'),
-						location: String(trip.location || 'Karnataka'),
-						difficulty: String(trip.difficulty || 'Moderate'),
-						duration: String(trip.duration || `${trip.duration_days || 3} Days`),
-						price: Number(trip.price) || 0,
-						highlights: Array.isArray(trip.highlights) ? trip.highlights.slice(0, 2) : ['Scenic views', 'Guided trek'],
-						images: Array.isArray(trip.images) ? trip.images : [trip.image || 'https://via.placeholder.com/400x300?text=Adventure'],
-						rating: Number(trip.rating) || 4.5,
-						reviewCount: Number(trip.review_count || trip.reviewCount) || 0,
-						category: String(trip.category || ''),
-						tags: Array.isArray(trip.tags) ? trip.tags : [],
-						availableSlots: Number(trip.available_slots || trip.available_seats) || undefined,
-						status: String(trip.status || ''),
-					}));
+			// Simplified sorting - prioritize by rating and status only  
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const sortedTrips = (data as any)
+				.filter((trip: unknown) => {
+					const t = trip as Record<string, unknown>;
+					return t.price && typeof t.price === 'number' && t.price > 0;
+				})
+				.sort((a: unknown, b: unknown) => {
+					const aTrip = a as Record<string, unknown>;
+					const bTrip = b as Record<string, unknown>;
+					// Simple priority: confirmed/popular first, then by rating
+					const aScore = (aTrip.status === 'confirmed' ? 3 : aTrip.status === 'promoted' ? 2 : 1) + (typeof aTrip.rating === 'number' ? aTrip.rating : 0);
+					const bScore = (bTrip.status === 'confirmed' ? 3 : bTrip.status === 'promoted' ? 2 : 1) + (typeof bTrip.rating === 'number' ? bTrip.rating : 0);
+					return bScore - aScore;
+				})
+				.map((trip: unknown) => {
+					const t = trip as Record<string, unknown>;
+					return {
+						id: String(t.id || t.slug || Math.random()),
+						name: String(t.name || t.title || 'Adventure Trip'),
+						location: String(t.location || 'Karnataka'),
+						difficulty: String(t.difficulty || 'Moderate'),
+						duration: String(t.duration || `${t.duration_days || 3} Days`),
+						price: Number(t.price) || 0,
+						highlights: Array.isArray(t.highlights) ? (t.highlights as string[]).slice(0, 2) : ['Scenic views', 'Guided trek'],
+						images: Array.isArray(t.images) ? (t.images as string[]) : [String(t.image || 'https://picsum.photos/400/300?random=adventure')],
+						rating: Number(t.rating) || 4.5,
+						reviewCount: Number(t.review_count || t.reviewCount) || 0,
+						category: String(t.category || ''),
+						tags: Array.isArray(t.tags) ? (t.tags as string[]) : [],
+						availableSlots: Number(t.available_slots || t.available_seats) || undefined,
+						status: String(t.status || ''),
+					};
+				});
 
 				console.log('FeaturedTreks: Processed trips:', sortedTrips.length);
 				setTrips(sortedTrips);
@@ -130,7 +139,7 @@ export const FeaturedTreks: React.FC = () => {
 		price: t.price || 0,
 		rating: t.rating || 4.7,
 		reviewCount: t.reviewCount || 12,
-		image: (t.images && t.images[0]) || 'https://via.placeholder.com/400x300?text=Adventure',
+		image: (t.images && t.images[0]) || 'https://picsum.photos/400/300?random=adventure',
 		highlights: t.highlights && t.highlights.length ? t.highlights : ['Scenic views','Great experience','Guided trek'],
 		availableSlots: t.availableSlots,
 		status: t.status,
@@ -161,8 +170,11 @@ export const FeaturedTreks: React.FC = () => {
 	// Show error state
 	if (error && !loading) {
 		return (
-			<section className="py-16 bg-gradient-to-br from-orange-50 to-red-50">
-				<div className="max-w-7xl mx-auto px-4 text-center">
+			<section className="relative py-0 bg-gradient-to-b from-white/5 via-white/0 to-white/10 overflow-hidden">
+				<div className="absolute inset-0 w-full h-full" style={{ zIndex: 1 }}>
+					<BackgroundBeams className="opacity-30" />
+				</div>
+				<div className="max-w-7xl mx-auto px-4 text-center relative z-10 py-16">
 					<p className="text-red-600 text-lg mb-4">{error}</p>
 					<p className="text-gray-600">Please ensure Firebase/Firestore is properly configured</p>
 				</div>
@@ -172,8 +184,11 @@ export const FeaturedTreks: React.FC = () => {
 
 	if (loading) {
 		return (
-			<section className="py-16 bg-gradient-to-br from-orange-50 to-red-50">
-				<div className="max-w-7xl mx-auto px-4">
+			<section className="relative py-0 bg-gradient-to-b from-white/5 via-white/0 to-white/10 overflow-hidden">
+				<div className="absolute inset-0 w-full h-full" style={{ zIndex: 1 }}>
+					<BackgroundBeams className="opacity-30" />
+				</div>
+				<div className="max-w-7xl mx-auto px-4 relative z-10 py-16">
 					<div className="text-center mb-12">
 						<div className="flex items-center justify-center gap-2 mb-4">
 							<div className="w-8 h-8 bg-orange-300 rounded-full animate-pulse"></div>
@@ -206,11 +221,34 @@ export const FeaturedTreks: React.FC = () => {
 		return null; // Silently fail for this section
 	}
 
-	return (
-		<section className="py-16 bg-gradient-to-br from-orange-50 to-red-50">
-			<div className="max-w-7xl mx-auto px-4">
+			return (
+		<section className="relative py-0 bg-gradient-to-b from-white/5 via-stone-gray/20 to-white/10 overflow-hidden">
+			{/* Full-width Background Beams */}
+			<div className="absolute inset-0 w-full h-full" style={{ zIndex: 1 }}>
+				<BackgroundBeams className="opacity-40" />
+			</div>
+
+		{/* SVG Trail at Top - Behind Content but Above Beams */}
+		<div className="absolute top-0 left-0 right-0 w-full" style={{ zIndex: 5 }}>
+			<svg viewBox="0 0 1200 60" className="w-full h-auto max-h-10 sm:max-h-12 md:max-h-16 block" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+					<defs>
+						<linearGradient id="trekTrail" x1="0%" y1="0%" x2="100%" y2="0%">
+							<stop offset="0%" stopColor="#16a34a" stopOpacity="0.4"/><stop offset="25%" stopColor="#f97316" stopOpacity="0.6"/><stop offset="50%" stopColor="#f97316" stopOpacity="0.5"/><stop offset="75%" stopColor="#ea580c" stopOpacity="0.6"/><stop offset="100%" stopColor="#16a34a" stopOpacity="0.4"/>
+						</linearGradient>
+						<filter id="trekGlow"><feGaussianBlur stdDeviation="1" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+					</defs>
+					<path d="M 0,25 Q 150,8 300,25 T 600,25 T 900,25 T 1200,25" stroke="url(#trekTrail)" strokeWidth="2.5" fill="none" strokeLinecap="round" filter="url(#trekGlow)"/>
+					<path d="M 0,30 Q 150,12 300,30 T 600,30 T 900,30 T 1200,30" stroke="#f97316" strokeWidth="1" fill="none" strokeLinecap="round" opacity="0.3"/>
+					<circle cx="150" cy="25" r="3" fill="#16a34a" opacity="0.7"/><circle cx="300" cy="25" r="3.5" fill="#f97316" opacity="0.8"/><circle cx="450" cy="25" r="2.5" fill="#ea580c" opacity="0.6"/><circle cx="600" cy="25" r="3.5" fill="#f97316" opacity="0.8"/><circle cx="750" cy="25" r="2.5" fill="#16a34a" opacity="0.6"/><circle cx="900" cy="25" r="3.5" fill="#f97316" opacity="0.8"/><circle cx="1050" cy="25" r="3" fill="#ea580c" opacity="0.7"/>
+				</svg>
+			</div>
+
+		{/* Gradient fade-in at top - blend from PartnerLogos */}
+		<div className="absolute top-0 left-0 right-0 h-24 md:h-32 bg-gradient-to-b from-white/60 via-white/30 to-transparent z-5 pointer-events-none" />
+
+		<div className="max-w-7xl mx-auto px-4 relative z-20 pt-32 sm:pt-40 md:pt-24 pb-12 md:pb-16">
 				<motion.div
-					className="text-center mb-12"
+					className="text-center mb-12 md:mb-12"
 					initial={{ opacity: 0, y: 30 }}
 					whileInView={{ opacity: 1, y: 0 }}
 					viewport={{ once: true }}
@@ -218,7 +256,7 @@ export const FeaturedTreks: React.FC = () => {
 				>
 					<div className="flex items-center justify-center gap-2 mb-4">
 						<Flame className="w-8 h-8 text-orange-500" />
-						<h2 className="text-4xl lg:text-5xl font-great-adventurer font-bold text-orange-600">
+						<h2 className="text-4xl lg:text-5xl font-oswald font-bold text-orange-600">
 							🔥 Hot Deals
 						</h2>
 						<Flame className="w-8 h-8 text-red-500" />
@@ -253,7 +291,7 @@ export const FeaturedTreks: React.FC = () => {
 										   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
 										   onError={(e) => {
 										   		const target = e.target as HTMLImageElement;
-										   		target.src = 'https://via.placeholder.com/400x300?text=Adventure';
+										   		target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMjAiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5BWR2ZW50dXJlPC90ZXh0Pjwvc3ZnPg==';
 										   		target.onerror = null; // Prevent infinite loop
 										   	}}
 									   />
@@ -287,7 +325,7 @@ export const FeaturedTreks: React.FC = () => {
 
 								{/* Content */}
 								<div className="p-5">
-									<h3 className="text-lg font-expat-rugged font-bold text-orange-600 mb-2 group-hover:text-red-600 transition-colors">
+									<h3 className="text-lg font-oswald font-bold text-orange-600 mb-2 group-hover:text-red-600 transition-colors">
 										{trek.name}
 									</h3>
 
@@ -321,7 +359,7 @@ export const FeaturedTreks: React.FC = () => {
 									{/* Price and CTA */}
 									<div className="flex items-center justify-between">
 										<div>
-											<span className="text-2xl font-outbrave font-bold text-orange-600">
+											<span className="text-2xl font-oswald font-bold text-orange-600">
 												₹{trek.price.toLocaleString()}
 											</span>
 											<span className="text-sm text-gray-500 ml-1">per person</span>
@@ -340,9 +378,11 @@ export const FeaturedTreks: React.FC = () => {
 							</Card>
 						</motion.div>
 					))}
-
 				</motion.div>
 			</div>
+
+			{/* Gradient fade-out at bottom - blend to next section */}
+			<div className="absolute bottom-0 left-0 right-0 h-24 md:h-32 bg-gradient-to-b from-transparent via-white/30 to-white/80 z-20 pointer-events-none" />
 		</section>
 	);
 };

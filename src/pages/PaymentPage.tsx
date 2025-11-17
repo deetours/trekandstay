@@ -14,6 +14,7 @@ const WHATSAPP_NUMBER = '+919902937730';
 
 const LazyCanvas = React.lazy(() => import('@react-three/fiber').then(m => ({ default: m.Canvas })));
 
+// Define Three.js components that use useFrame - these must be inside Canvas context
 const RotatingCoin: React.FC = () => {
   const ref = React.useRef<THREE.Mesh>(null);
   useFrame((state) => {
@@ -35,9 +36,9 @@ const RotatingCoin: React.FC = () => {
 const ConfettiBurst: React.FC<{ trigger: boolean }> = ({ trigger }) => {
   const group = React.useRef<THREE.Group>(null);
   const [particles] = React.useState(() => Array.from({ length: 70 }).map(() => ({
-    x: (Math.random()-0.5)*2,
+    x: (Math.random()-0.2)*2,
     y: (Math.random()-0.2)*0.5,
-    z: (Math.random()-0.5)*2,
+    z: (Math.random()-0.2)*2,
     vx: (Math.random()-0.5)*0.04,
     vy: 0.08 + Math.random()*0.04,
     vz: (Math.random()-0.5)*0.04,

@@ -19,7 +19,6 @@ import { COLORS } from '../../lib/design-tokens';
 
 export const VideoSectionOptimized: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isInView, setIsInView] = useState(false);
 
   return (
     <section className="relative w-full py-12 md:py-16 bg-neutral-50">

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import UserProfile, Booking, TripHistory, TripRecommendation, Lead, Author, Story, StoryImage, StoryAudio, StoryRating, Trip, Guide, Review, Wishlist, Payment, ChatFAQ, SeatLock, MessageTemplate, LeadEvent, OutboundMessage, Task, PaymentVerificationLog, TransactionAudit, UserProgress, PointTransaction, Badge, BadgeUnlock, GamificationEvent, Challenge, UserChallengeProgress
+from .models import UserProfile, Booking, TripHistory, TripRecommendation, Lead, Author, Story, StoryImage, StoryAudio, StoryRating, Trip, Guide, Review, Wishlist, TripPlan, Payment, ChatFAQ, SeatLock, MessageTemplate, LeadEvent, OutboundMessage, Task, PaymentVerificationLog, TransactionAudit, UserProgress, PointTransaction, Badge, BadgeUnlock, GamificationEvent, Challenge, UserChallengeProgress
 
 class LeadSerializer(serializers.ModelSerializer):
     class Meta:
@@ -166,6 +166,28 @@ class WishlistSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at']
 
     def get_trip_image(self, obj: Wishlist):
+        try:
+            imgs = obj.trip.images or []
+            return imgs[0] if imgs else ''
+        except Exception:
+            return ''
+
+class TripPlanSerializer(serializers.ModelSerializer):
+    trip_name = serializers.CharField(source='trip.name', read_only=True)
+    trip_location = serializers.CharField(source='trip.location', read_only=True)
+    trip_duration = serializers.CharField(source='trip.duration', read_only=True)
+    trip_image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TripPlan
+        fields = [
+            'id', 'user', 'trip', 'trip_name', 'trip_location', 'trip_duration', 'trip_image',
+            'title', 'is_public', 'custom_itinerary', 'packing_list', 'notes',
+            'reminders', 'metadata', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+
+    def get_trip_image(self, obj):
         try:
             imgs = obj.trip.images or []
             return imgs[0] if imgs else ''

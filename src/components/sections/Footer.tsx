@@ -84,7 +84,7 @@ export const Footer: React.FC = () => {
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.1 }}
           >
-            <h4 className="text-xl font-great-adventurer font-bold mb-6">Quick Links</h4>
+            <h4 className="text-xl font-oswald font-bold mb-6">Quick Links</h4>
             <ul className="space-y-3">
               {quickLinks.map((link, index) => (
                 <motion.li
@@ -110,7 +110,7 @@ export const Footer: React.FC = () => {
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            <h4 className="text-xl font-great-adventurer font-bold mb-6">Adventures</h4>
+            <h4 className="text-xl font-oswald font-bold mb-6">Adventures</h4>
             <ul className="space-y-3">
               {adventures.map((adventure, index) => (
                 <motion.li
@@ -136,7 +136,7 @@ export const Footer: React.FC = () => {
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.3 }}
           >
-            <h4 className="text-xl font-great-adventurer font-bold mb-6">Stay Connected</h4>
+            <h4 className="text-xl font-oswald font-bold mb-6">Stay Connected</h4>
             
             {/* Newsletter Signup */}
             <div className="mb-6">

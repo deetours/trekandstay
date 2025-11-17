@@ -11,7 +11,7 @@ type Card = {
   image: string;
 };
 
-let interval: NodeJS.Timeout | null = null;
+const interval: NodeJS.Timeout | null = null;
 
 // ---------------------------
 // CardSlide Component
@@ -103,7 +103,7 @@ export const CardSlide = ({
 
             {/* Icon and Title */}
             <div>
-              <h3 className="font-expat-rugged font-bold text-xl md:text-2xl lg:text-3xl text-forest-green mb-2 md:mb-3 leading-tight text-center">
+              <h3 className="font-oswald font-bold text-xl md:text-2xl lg:text-3xl text-forest-green mb-2 md:mb-3 leading-tight text-center">
                 {card.name}
               </h3>
               <p className="font-tall-rugged font-bold text-sm md:text-base lg:text-lg leading-tight uppercase tracking-wider text-adventure-orange text-center">

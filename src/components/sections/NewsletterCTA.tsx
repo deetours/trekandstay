@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from '../ui/Button';
+import { BackgroundBeams } from '../ui/background-beams';
 
 export const NewsletterCTA: React.FC = () => {
   const [phone, setPhone] = useState('');
@@ -25,9 +26,13 @@ export const NewsletterCTA: React.FC = () => {
   };
 
   return (
-    <section className="py-16">
-      <div className="max-w-4xl mx-auto px-6 text-center rounded-3xl border bg-gradient-to-br from-blue-50 via-white to-purple-50 p-10 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 dark:border-slate-700">
-        <h3 className="text-2xl md:text-3xl font-great-adventurer font-bold text-forest-green dark:text-white">Join our adventure updates</h3>
+    <section className="py-16 relative overflow-hidden">
+      {/* Background Beams */}
+      <div className="absolute inset-0" style={{ zIndex: 1 }}>
+        <BackgroundBeams className="opacity-50" />
+      </div>
+      <div className="max-w-4xl mx-auto px-6 text-center rounded-3xl border bg-gradient-to-br from-blue-50 via-white to-purple-50 p-10 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 dark:border-slate-700 relative z-20">
+        <h3 className="text-2xl md:text-3xl font-oswald font-bold text-forest-green dark:text-white">Join our adventure updates</h3>
         <p className="font-inter text-mountain-blue dark:text-slate-300 mt-2">Get exclusive deals, trip alerts and inspiring stories directly on WhatsApp.</p>
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
           <label className="sr-only" htmlFor="whatsapp-number">WhatsApp Number</label>

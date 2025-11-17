@@ -83,7 +83,7 @@ export const TrustStrip: React.FC<{ className?: string }> = ({ className }) => {
 
                 {/* Value - Using Outbrave constant font */}
                 <motion.p
-                  className={`text-xs md:text-sm lg:text-base font-outbrave font-bold transition-colors duration-300 min-h-[1.5rem] md:min-h-[2rem] flex items-center justify-center ${
+                  className={`text-xs md:text-sm lg:text-base font-oswald font-bold transition-colors duration-300 min-h-[1.5rem] md:min-h-[2rem] flex items-center justify-center ${
                     hoveredIndex === index 
                       ? 'text-adventure-orange' 
                       : 'text-mountain-blue'

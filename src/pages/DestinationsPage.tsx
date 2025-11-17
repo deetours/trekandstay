@@ -90,18 +90,18 @@ export const DestinationsPage: React.FC = () => {
         
         // Map API response to TripDoc format
         const trips: TripDoc[] = data.map((trip: Record<string, unknown>) => ({
-          id: trip.id?.toString() || trip.slug,
-          name: trip.name || trip.title,
-          location: trip.location,
-          duration: trip.duration || `${trip.duration_days || 3} Days`,
-          difficulty: trip.difficulty,
-          price: trip.price,
-          images: trip.images || [trip.image],
-          tags: trip.tags || [],
-          description: trip.description,
-          highlights: trip.highlights || [],
-          rating: trip.rating || 4.5,
-          reviewCount: trip.review_count || trip.reviewCount || 0,
+          id: String(trip.id || trip.slug || ''),
+          name: String(trip.name || trip.title || ''),
+          location: String(trip.location || ''),
+          duration: trip.duration ? String(trip.duration) : `${trip.duration_days || 3} Days`,
+          difficulty: trip.difficulty ? String(trip.difficulty) : undefined,
+          price: trip.price ? Number(trip.price) : undefined,
+          images: Array.isArray(trip.images) ? trip.images.map(String) : (trip.image ? [String(trip.image)] : undefined),
+          tags: Array.isArray(trip.tags) ? trip.tags.map(String) : undefined,
+          description: trip.description ? String(trip.description) : undefined,
+          highlights: Array.isArray(trip.highlights) ? trip.highlights.map(String) : undefined,
+          rating: trip.rating ? Number(trip.rating) : 4.5,
+          reviewCount: Number(trip.review_count || trip.reviewCount || 0),
         }));
         
         setRawTrips(trips);
@@ -132,7 +132,7 @@ export const DestinationsPage: React.FC = () => {
       difficulty: diff as 'Easy' | 'Moderate' | 'Hard',
       price: t.price || 0,
       category,
-      image: (t.images && t.images[0]) || 'https://via.placeholder.com/600x400?text=Adventure',
+      image: (t.images && t.images[0]) || 'https://picsum.photos/600/400?random=adventure',
       description: t.description || 'Adventure experience',
       highlights: t.highlights && t.highlights.length ? t.highlights : ['Scenic views','Great experience','Guided trek']
     };

@@ -108,18 +108,36 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     rel = path.replace(/^\/api/, '');
   }
   const url = `${base}${rel.startsWith('/') ? '' : '/'}${rel}`;
-  const res = await fetch(url, {
-    ...options,
-    headers,
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`HTTP ${res.status} ${res.statusText}: ${text}`);
+  // Add a fetch timeout using AbortController to avoid hanging requests
+  const DEFAULT_TIMEOUT_MS = 15000; // 15s default
+  const opt = options as unknown as Record<string, unknown>;
+  const timeoutMs = typeof opt.timeoutMs === 'number' ? opt.timeoutMs : DEFAULT_TIMEOUT_MS;
+  const controller = new AbortController();
+  const signal = controller.signal;
+  const fetchOptions: RequestInit = { ...options, headers, signal };
+  let timeoutId: number | undefined;
+  try {
+    if (timeoutMs && timeoutMs > 0) {
+      timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+    }
+    const res = await fetch(url, fetchOptions);
+    if (timeoutId) window.clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status} ${res.statusText}: ${text}`);
+    }
+    const ct = res.headers.get('content-type') || '';
+    if (ct.includes('application/json')) return res.json();
+    // @ts-expect-error - Returning undefined for non-JSON responses
+    return undefined;
+  } catch (err) {
+    // Normalize abort error message for the app
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error('Request timed out');
+    }
+    throw err;
   }
-  const ct = res.headers.get('content-type') || '';
-  if (ct.includes('application/json')) return res.json();
-  // @ts-expect-error - Returning undefined for non-JSON responses
-  return undefined;
 }
 
 // Map API Trip (snake_case) to frontend camelCase fields where needed

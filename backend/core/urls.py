@@ -15,6 +15,7 @@ from .views import (
     me,
     dashboard_summary,
     WishlistViewSet,
+    TripPlanViewSet,
     PaymentViewSet,
     TripHistoryViewSet,
     TripRecommendationViewSet,
@@ -86,6 +87,7 @@ router.register(r'trips', TripViewSet)
 router.register(r'guides', GuideViewSet)
 router.register(r'reviews', ReviewViewSet)
 router.register(r'wishlist', WishlistViewSet)
+router.register(r'trip-plans', TripPlanViewSet)
 router.register(r'payments', PaymentViewSet)
 router.register(r'triphistory', TripHistoryViewSet)
 router.register(r'triprecommendations', TripRecommendationViewSet)

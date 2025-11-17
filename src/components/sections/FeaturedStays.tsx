@@ -4,6 +4,7 @@ import { Card } from '../ui/Card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/Button';
 import { Star, MapPin, Wifi, Car, Coffee, Utensils } from 'lucide-react';
+import { AuroraBackground } from '../ui/aurora-background';
 
 export function FeaturedStays() {
   const navigate = useNavigate();
@@ -99,8 +100,9 @@ export function FeaturedStays() {
   };
 
   return (
-    <section className="py-16 px-4 bg-gradient-to-b from-white to-blue-50/30">
-      <div className="max-w-7xl mx-auto">
+    <AuroraBackground showRadialGradient={true}>
+      <section className="py-16 px-4 bg-gradient-to-b from-white to-blue-50/30">
+        <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -108,7 +110,7 @@ export function FeaturedStays() {
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <h2 className="text-4xl font-great-adventurer font-bold text-forest-green mb-4">
+          <h2 className="text-4xl font-oswald font-bold text-forest-green mb-4">
             Featured Stays
           </h2>
           <p className="text-xl font-inter text-mountain-blue max-w-3xl mx-auto">
@@ -150,7 +152,7 @@ export function FeaturedStays() {
                     <span className="text-sm text-mountain-blue">{stay.location}</span>
                   </div>
                   
-                  <h3 className="text-xl font-expat-rugged font-bold text-forest-green mb-2 group-hover:text-adventure-orange transition-colors">
+                  <h3 className="text-xl font-oswald font-bold text-forest-green mb-2 group-hover:text-adventure-orange transition-colors">
                     {stay.name}
                   </h3>
                   
@@ -177,7 +179,7 @@ export function FeaturedStays() {
                   
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                      <span className="text-2xl font-outbrave font-bold text-adventure-orange">{stay.price}</span>
+                      <span className="text-2xl font-oswald font-bold text-adventure-orange">{stay.price}</span>
                       <span className="text-sm text-mountain-blue line-through">{stay.originalPrice}</span>
                     </div>
                     <span className="text-sm text-mountain-blue">per night</span>
@@ -215,5 +217,6 @@ export function FeaturedStays() {
         </motion.div>
       </div>
     </section>
+    </AuroraBackground>
   );
 }

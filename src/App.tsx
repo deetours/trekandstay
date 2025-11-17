@@ -56,7 +56,6 @@ const ShopPage = lazy(() => import('./pages/ShopPage'));
 const AdminItineraryPage = lazy(() => import('./pages/admin/AdminItineraryPage'));
 const TripLandingPage = lazy(() => import('./pages/TripLandingPage'));
 const QRDistributionPage = lazy(() => import('./pages/QRDistributionPage'));
-const MarketingCampaignPage = lazy(() => import('./pages/MarketingCampaignPage'));
 
 function App() {
   // Initialize authentication state listener
